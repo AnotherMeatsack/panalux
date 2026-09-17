@@ -1,0 +1,8 @@
+ABOUT
+Free, unofficial, open-source macOS app for using a Micro Color Panel in Lightroom Classic. Custom maps, hold modes, and a notch readout.
+
+TOPICS
+macos, lightroom-classic, photography, photo-editing, color-grading, micro-color-panel, control-surface, custom-mappings, workflow
+
+FULL PUBLIC NOTICE (for the README or a longer About section)
+PanaLux is a free, unofficial, open-source macOS app. It is not affiliated with, endorsed by, or related to Blackmagic Design, Adobe, or Apple. It talks to a Micro Color Panel you already purchased and to Lightroom Classic through PanaLux Bridge, a lightly modified copy of the free community plugin MIDI2LR. You are not buying anything. The author is not selling the panel, Lightroom, or this software.

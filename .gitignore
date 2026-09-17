@@ -1,0 +1,12 @@
+# Build output
+.build/
+.swiftpm/
+DerivedData/
+xcuserdata/
+*.app
+*.dmg
+*.dSYM
+Packaging/AppIcon.iconset/
+
+# macOS
+.DS_Store

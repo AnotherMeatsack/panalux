@@ -1,0 +1,4997 @@
+{
+ "ActionSeries1": {
+  "group": "commandseries",
+  "label": "Action Series1",
+  "type": "button"
+ },
+ "ActionSeries10": {
+  "group": "commandseries",
+  "label": "Action Series10",
+  "type": "button"
+ },
+ "ActionSeries11": {
+  "group": "commandseries",
+  "label": "Action Series11",
+  "type": "button"
+ },
+ "ActionSeries12": {
+  "group": "commandseries",
+  "label": "Action Series12",
+  "type": "button"
+ },
+ "ActionSeries13": {
+  "group": "commandseries",
+  "label": "Action Series13",
+  "type": "button"
+ },
+ "ActionSeries14": {
+  "group": "commandseries",
+  "label": "Action Series14",
+  "type": "button"
+ },
+ "ActionSeries15": {
+  "group": "commandseries",
+  "label": "Action Series15",
+  "type": "button"
+ },
+ "ActionSeries16": {
+  "group": "commandseries",
+  "label": "Action Series16",
+  "type": "button"
+ },
+ "ActionSeries2": {
+  "group": "commandseries",
+  "label": "Action Series2",
+  "type": "button"
+ },
+ "ActionSeries3": {
+  "group": "commandseries",
+  "label": "Action Series3",
+  "type": "button"
+ },
+ "ActionSeries4": {
+  "group": "commandseries",
+  "label": "Action Series4",
+  "type": "button"
+ },
+ "ActionSeries5": {
+  "group": "commandseries",
+  "label": "Action Series5",
+  "type": "button"
+ },
+ "ActionSeries6": {
+  "group": "commandseries",
+  "label": "Action Series6",
+  "type": "button"
+ },
+ "ActionSeries7": {
+  "group": "commandseries",
+  "label": "Action Series7",
+  "type": "button"
+ },
+ "ActionSeries8": {
+  "group": "commandseries",
+  "label": "Action Series8",
+  "type": "button"
+ },
+ "ActionSeries9": {
+  "group": "commandseries",
+  "label": "Action Series9",
+  "type": "button"
+ },
+ "AddOrRemoveFromTargetColl": {
+  "group": "photos",
+  "label": "Add to the target collection",
+  "type": "button"
+ },
+ "AllSaturationAdjustment": {
+  "group": "colorAdjustments",
+  "label": "Saturation",
+  "type": "variable"
+ },
+ "AutoLateralCA": {
+  "group": "lensCorrections",
+  "label": "Remove Chromatic Aberration",
+  "type": "button"
+ },
+ "AutoTone": {
+  "group": "basicTone",
+  "label": "Auto Tone",
+  "type": "button"
+ },
+ "Blacks": {
+  "group": "basicTone",
+  "label": "Blacks",
+  "type": "parameter"
+ },
+ "BlueHue": {
+  "group": "calibration",
+  "label": "Blue Hue Calibration",
+  "type": "parameter"
+ },
+ "BlueSaturation": {
+  "group": "calibration",
+  "label": "Blue Saturation Calibration",
+  "type": "parameter"
+ },
+ "BlurDepthShow": {
+  "group": "lensBlur",
+  "label": "Visualize Depth",
+  "type": "button"
+ },
+ "BokehAnamorphic": {
+  "group": "lensBlur",
+  "label": "Anamorphic",
+  "type": "button"
+ },
+ "BokehBlade": {
+  "group": "lensBlur",
+  "label": "5-Blade",
+  "type": "button"
+ },
+ "BokehCircle": {
+  "group": "lensBlur",
+  "label": "Circle",
+  "type": "button"
+ },
+ "BokehRing": {
+  "group": "lensBlur",
+  "label": "Ring",
+  "type": "button"
+ },
+ "BokehSoapBubble": {
+  "group": "lensBlur",
+  "label": "Bubble",
+  "type": "button"
+ },
+ "Brightness": {
+  "group": "basicTone",
+  "label": "Brightness",
+  "type": "parameter"
+ },
+ "BrushFeatherLarger": {
+  "group": "localizedAdjustments",
+  "label": "Brush Feather Larger",
+  "type": "button"
+ },
+ "BrushFeatherSmaller": {
+  "group": "localizedAdjustments",
+  "label": "Brush Feather Smaller",
+  "type": "button"
+ },
+ "BrushSizeLarger": {
+  "group": "localizedAdjustments",
+  "label": "Brush Size Larger",
+  "type": "button"
+ },
+ "BrushSizeSmaller": {
+  "group": "localizedAdjustments",
+  "label": "Brush Size Smaller",
+  "type": "button"
+ },
+ "ChangeBrushSize": {
+  "group": "localizedAdjustments",
+  "label": "Change Brush Size",
+  "type": "repeat"
+ },
+ "ChangeCurrentSlider": {
+  "group": "develop",
+  "label": "More",
+  "type": "repeat"
+ },
+ "ChangeFeatherSize": {
+  "group": "localizedAdjustments",
+  "label": "Change Feather Size",
+  "type": "repeat"
+ },
+ "ChangeLastDevelopParameter": {
+  "group": "develop",
+  "label": "Last Modified",
+  "type": "repeat"
+ },
+ "Clarity": {
+  "group": "basicTone",
+  "label": "Clarity",
+  "type": "parameter"
+ },
+ "CloseApp": {
+  "group": "photos",
+  "label": "Stop Server",
+  "type": "button"
+ },
+ "ColorGrade3Way": {
+  "group": "colorGrading",
+  "label": "3-Way",
+  "type": "button"
+ },
+ "ColorGradeBlending": {
+  "group": "colorGrading",
+  "label": "Color Blending",
+  "type": "parameter"
+ },
+ "ColorGradeCopy": {
+  "group": "colorGrading",
+  "label": "Copy channel settings",
+  "type": "button"
+ },
+ "ColorGradeGlobal": {
+  "group": "colorGrading",
+  "label": "Global",
+  "type": "button"
+ },
+ "ColorGradeGlobalHue": {
+  "group": "colorGrading",
+  "label": "Global Hue",
+  "type": "parameter"
+ },
+ "ColorGradeGlobalLum": {
+  "group": "colorGrading",
+  "label": "Global Luminance",
+  "type": "parameter"
+ },
+ "ColorGradeGlobalSat": {
+  "group": "colorGrading",
+  "label": "Global Saturation",
+  "type": "parameter"
+ },
+ "ColorGradeHighlight": {
+  "group": "colorGrading",
+  "label": "Highlights",
+  "type": "button"
+ },
+ "ColorGradeHighlightLum": {
+  "group": "colorGrading",
+  "label": "Highlight Luminance",
+  "type": "parameter"
+ },
+ "ColorGradeMidtone": {
+  "group": "colorGrading",
+  "label": "Midtones",
+  "type": "button"
+ },
+ "ColorGradeMidtoneHue": {
+  "group": "colorGrading",
+  "label": "Midtone Hue",
+  "type": "parameter"
+ },
+ "ColorGradeMidtoneLum": {
+  "group": "colorGrading",
+  "label": "Midtone Luminance",
+  "type": "parameter"
+ },
+ "ColorGradeMidtoneSat": {
+  "group": "colorGrading",
+  "label": "Midtone Saturation",
+  "type": "parameter"
+ },
+ "ColorGradePaste": {
+  "group": "colorGrading",
+  "label": "Paste channel settings",
+  "type": "button"
+ },
+ "ColorGradeReset3way": {
+  "group": "colorGrading",
+  "label": "Reset 3-way",
+  "type": "button"
+ },
+ "ColorGradeResetAll": {
+  "group": "colorGrading",
+  "label": "Reset all channels",
+  "type": "button"
+ },
+ "ColorGradeResetCurrent": {
+  "group": "colorGrading",
+  "label": "current",
+  "type": "button"
+ },
+ "ColorGradeShadow": {
+  "group": "colorGrading",
+  "label": "Shadows",
+  "type": "button"
+ },
+ "ColorGradeShadowLum": {
+  "group": "colorGrading",
+  "label": "Shadow Luminance",
+  "type": "parameter"
+ },
+ "ColorLabelNone": {
+  "group": "flagging",
+  "label": "Remove color label",
+  "type": "button"
+ },
+ "ColorNoiseReduction": {
+  "group": "detail",
+  "label": "Color Noise Reduction",
+  "type": "parameter"
+ },
+ "ColorNoiseReductionDetail": {
+  "group": "detail",
+  "label": "Color Noise Reduction Detail",
+  "type": "parameter"
+ },
+ "ColorNoiseReductionSmoothness": {
+  "group": "detail",
+  "label": "Color Noise Reduction Smoothness",
+  "type": "parameter"
+ },
+ "Contrast": {
+  "group": "basicTone",
+  "label": "Contrast",
+  "type": "parameter"
+ },
+ "ConvertToGrayscale": {
+  "group": "colorAdjustments",
+  "label": "Convert to Grayscale",
+  "type": "button"
+ },
+ "CropBottom": {
+  "group": "crop",
+  "label": "Bottom",
+  "type": "parameter"
+ },
+ "CropConstrainToWarp": {
+  "group": "transform",
+  "label": "Constrain to Warp",
+  "type": "button"
+ },
+ "CropLeft": {
+  "group": "crop",
+  "label": "Left",
+  "type": "parameter"
+ },
+ "CropOverlay": {
+  "group": "crop",
+  "label": "Crop Overlay",
+  "type": "button"
+ },
+ "CropRight": {
+  "group": "crop",
+  "label": "Right",
+  "type": "parameter"
+ },
+ "CropTop": {
+  "group": "crop",
+  "label": "Top",
+  "type": "parameter"
+ },
+ "CurveRefineSaturation": {
+  "group": "toneCurve",
+  "label": "Refine Saturation",
+  "type": "parameter"
+ },
+ "CycleLoupeViewInfo": {
+  "group": "view",
+  "label": "Cycle view style",
+  "type": "button"
+ },
+ "CycleMaskOverlayColor": {
+  "group": "localizedAdjustments",
+  "label": "Overlay Color",
+  "type": "button"
+ },
+ "DecreaseRating": {
+  "group": "rating",
+  "label": "Decrease Rating",
+  "type": "button"
+ },
+ "DecrementLastDevelopParameter": {
+  "group": "develop",
+  "label": "Last Modified",
+  "type": "button"
+ },
+ "DefringeGreenAmount": {
+  "group": "lensCorrections",
+  "label": "Defringe Green Amount",
+  "type": "parameter"
+ },
+ "DefringeGreenHueHi": {
+  "group": "lensCorrections",
+  "label": "High",
+  "type": "parameter"
+ },
+ "DefringeGreenHueLo": {
+  "group": "lensCorrections",
+  "label": "Low",
+  "type": "parameter"
+ },
+ "DefringePurpleAmount": {
+  "group": "lensCorrections",
+  "label": "Defringe Purple Amount",
+  "type": "parameter"
+ },
+ "DefringePurpleHueHi": {
+  "group": "lensCorrections",
+  "label": "High",
+  "type": "parameter"
+ },
+ "DefringePurpleHueLo": {
+  "group": "lensCorrections",
+  "label": "Low",
+  "type": "parameter"
+ },
+ "Dehaze": {
+  "group": "basicTone",
+  "label": "Dehaze",
+  "type": "parameter"
+ },
+ "EditPhotoshop": {
+  "group": "photos",
+  "label": "Edit in Photoshop",
+  "type": "button"
+ },
+ "EnableCalibration": {
+  "group": "calibration",
+  "label": "Calibration enable/disable",
+  "type": "button"
+ },
+ "EnableColorAdjustments": {
+  "group": "colorAdjustments",
+  "label": "Color adjustments enable/disable",
+  "type": "button"
+ },
+ "EnableColorGrading": {
+  "group": "colorGrading",
+  "label": "Color grading enable/disable",
+  "type": "button"
+ },
+ "EnableDetail": {
+  "group": "detail",
+  "label": "Detail enable/disable",
+  "type": "button"
+ },
+ "EnableEffects": {
+  "group": "effects",
+  "label": "Effects enable/disable",
+  "type": "button"
+ },
+ "EnableGrayscaleMix": {
+  "group": "colorAdjustments",
+  "label": "Grayscale mix enable/disable",
+  "type": "button"
+ },
+ "EnableLensCorrections": {
+  "group": "lensCorrections",
+  "label": "Lens corrections enable/disable",
+  "type": "button"
+ },
+ "EnableRedEye": {
+  "group": "localizedAdjustments",
+  "label": "Red-Eye enable/disable",
+  "type": "button"
+ },
+ "EnableRetouch": {
+  "group": "localizedAdjustments",
+  "label": "Spot removal enable/disable",
+  "type": "button"
+ },
+ "EnableToneCurve": {
+  "group": "toneCurve",
+  "label": "Tone curve enable/disable",
+  "type": "button"
+ },
+ "EnableTransform": {
+  "group": "transform",
+  "label": "Transform enable/disable",
+  "type": "button"
+ },
+ "Exposure": {
+  "group": "basicTone",
+  "label": "Exposure",
+  "type": "parameter"
+ },
+ "FilterNone": {
+  "group": "filter",
+  "label": "No filter",
+  "type": "button"
+ },
+ "Filter_1": {
+  "group": "filter",
+  "label": "Filter 1",
+  "type": "button"
+ },
+ "Filter_10": {
+  "group": "filter",
+  "label": "Filter 10",
+  "type": "button"
+ },
+ "Filter_11": {
+  "group": "filter",
+  "label": "Filter 11",
+  "type": "button"
+ },
+ "Filter_12": {
+  "group": "filter",
+  "label": "Filter 12",
+  "type": "button"
+ },
+ "Filter_2": {
+  "group": "filter",
+  "label": "Filter 2",
+  "type": "button"
+ },
+ "Filter_3": {
+  "group": "filter",
+  "label": "Filter 3",
+  "type": "button"
+ },
+ "Filter_4": {
+  "group": "filter",
+  "label": "Filter 4",
+  "type": "button"
+ },
+ "Filter_5": {
+  "group": "filter",
+  "label": "Filter 5",
+  "type": "button"
+ },
+ "Filter_6": {
+  "group": "filter",
+  "label": "Filter 6",
+  "type": "button"
+ },
+ "Filter_7": {
+  "group": "filter",
+  "label": "Filter 7",
+  "type": "button"
+ },
+ "Filter_8": {
+  "group": "filter",
+  "label": "Filter 8",
+  "type": "button"
+ },
+ "Filter_9": {
+  "group": "filter",
+  "label": "Filter 9",
+  "type": "button"
+ },
+ "Fine16": {
+  "group": "develop",
+  "label": "Fine correction",
+  "type": "button"
+ },
+ "Fine2": {
+  "group": "develop",
+  "label": "Fine correction",
+  "type": "button"
+ },
+ "Fine4": {
+  "group": "develop",
+  "label": "Fine correction",
+  "type": "button"
+ },
+ "Fine8": {
+  "group": "develop",
+  "label": "Fine correction",
+  "type": "button"
+ },
+ "FineDecrease": {
+  "group": "develop",
+  "label": "Fine correction",
+  "type": "button"
+ },
+ "FineIncrease": {
+  "group": "develop",
+  "label": "Fine correction",
+  "type": "button"
+ },
+ "FineOff": {
+  "group": "develop",
+  "label": "Fine correction",
+  "type": "button"
+ },
+ "FullRefresh": {
+  "group": "photos",
+  "label": "Manual Update",
+  "type": "button"
+ },
+ "GrainAmount": {
+  "group": "effects",
+  "label": "Grain Amount",
+  "type": "parameter"
+ },
+ "GrainFrequency": {
+  "group": "effects",
+  "label": "Grain Roughness",
+  "type": "parameter"
+ },
+ "GrainSize": {
+  "group": "effects",
+  "label": "Grain Size",
+  "type": "parameter"
+ },
+ "GrayMixerAqua": {
+  "group": "colorAdjustments",
+  "label": "Gray Mixer Aqua",
+  "type": "parameter"
+ },
+ "GrayMixerBlue": {
+  "group": "colorAdjustments",
+  "label": "Gray Mixer Blue",
+  "type": "parameter"
+ },
+ "GrayMixerGreen": {
+  "group": "colorAdjustments",
+  "label": "Gray Mixer Green",
+  "type": "parameter"
+ },
+ "GrayMixerMagenta": {
+  "group": "colorAdjustments",
+  "label": "Gray Mixer Magenta",
+  "type": "parameter"
+ },
+ "GrayMixerOrange": {
+  "group": "colorAdjustments",
+  "label": "Gray Mixer Orange",
+  "type": "parameter"
+ },
+ "GrayMixerPurple": {
+  "group": "colorAdjustments",
+  "label": "Gray Mixer Purple",
+  "type": "parameter"
+ },
+ "GrayMixerRed": {
+  "group": "colorAdjustments",
+  "label": "Gray Mixer Red",
+  "type": "parameter"
+ },
+ "GrayMixerYellow": {
+  "group": "colorAdjustments",
+  "label": "Gray Mixer Yellow",
+  "type": "parameter"
+ },
+ "GreenHue": {
+  "group": "calibration",
+  "label": "Green Hue Calibration",
+  "type": "parameter"
+ },
+ "GreenSaturation": {
+  "group": "calibration",
+  "label": "Green Saturation Calibration",
+  "type": "parameter"
+ },
+ "GridViewStyle": {
+  "group": "view",
+  "label": "Cycle grid views",
+  "type": "button"
+ },
+ "HDREditMode": {
+  "group": "HDR",
+  "label": "Enable HDR Edit Mode",
+  "type": "button"
+ },
+ "Highlights": {
+  "group": "basicTone",
+  "label": "Highlights",
+  "type": "parameter"
+ },
+ "HoldAltOpt": {
+  "group": "basicTone",
+  "label": "press and hold",
+  "type": "button"
+ },
+ "HueAdjustmentAqua": {
+  "group": "colorAdjustments",
+  "label": "Hue Adjustment Aqua",
+  "type": "parameter"
+ },
+ "HueAdjustmentBlue": {
+  "group": "colorAdjustments",
+  "label": "Hue Adjustment Blue",
+  "type": "parameter"
+ },
+ "HueAdjustmentGreen": {
+  "group": "colorAdjustments",
+  "label": "Hue Adjustment Green",
+  "type": "parameter"
+ },
+ "HueAdjustmentMagenta": {
+  "group": "colorAdjustments",
+  "label": "Hue Adjustment Magenta",
+  "type": "parameter"
+ },
+ "HueAdjustmentOrange": {
+  "group": "colorAdjustments",
+  "label": "Hue Adjustment Orange",
+  "type": "parameter"
+ },
+ "HueAdjustmentPurple": {
+  "group": "colorAdjustments",
+  "label": "Hue Adjustment Purple",
+  "type": "parameter"
+ },
+ "HueAdjustmentRed": {
+  "group": "colorAdjustments",
+  "label": "Hue Adjustment Red",
+  "type": "parameter"
+ },
+ "HueAdjustmentYellow": {
+  "group": "colorAdjustments",
+  "label": "Hue Adjustment Yellow",
+  "type": "parameter"
+ },
+ "IncreaseDecreaseRating": {
+  "group": "rating",
+  "label": "Increase Rating",
+  "type": "button"
+ },
+ "IncreaseRating": {
+  "group": "rating",
+  "label": "Increase Rating",
+  "type": "button"
+ },
+ "IncrementLastDevelopParameter": {
+  "group": "develop",
+  "label": "Last Modified",
+  "type": "button"
+ },
+ "Key1": {
+  "group": "keyshortcuts",
+  "label": "Key1",
+  "type": "button"
+ },
+ "Key10": {
+  "group": "keyshortcuts",
+  "label": "Key10",
+  "type": "button"
+ },
+ "Key10Key9": {
+  "group": "keyshortcuts",
+  "label": "Key10 Key9",
+  "type": "repeat"
+ },
+ "Key11": {
+  "group": "keyshortcuts",
+  "label": "Key11",
+  "type": "button"
+ },
+ "Key12": {
+  "group": "keyshortcuts",
+  "label": "Key12",
+  "type": "button"
+ },
+ "Key12Key11": {
+  "group": "keyshortcuts",
+  "label": "Key12 Key11",
+  "type": "repeat"
+ },
+ "Key13": {
+  "group": "keyshortcuts",
+  "label": "Key13",
+  "type": "button"
+ },
+ "Key14": {
+  "group": "keyshortcuts",
+  "label": "Key14",
+  "type": "button"
+ },
+ "Key14Key13": {
+  "group": "keyshortcuts",
+  "label": "Key14 Key13",
+  "type": "repeat"
+ },
+ "Key15": {
+  "group": "keyshortcuts",
+  "label": "Key15",
+  "type": "button"
+ },
+ "Key16": {
+  "group": "keyshortcuts",
+  "label": "Key16",
+  "type": "button"
+ },
+ "Key16Key15": {
+  "group": "keyshortcuts",
+  "label": "Key16 Key15",
+  "type": "repeat"
+ },
+ "Key17": {
+  "group": "keyshortcuts",
+  "label": "Key17",
+  "type": "button"
+ },
+ "Key18": {
+  "group": "keyshortcuts",
+  "label": "Key18",
+  "type": "button"
+ },
+ "Key18Key17": {
+  "group": "keyshortcuts",
+  "label": "Key18 Key17",
+  "type": "repeat"
+ },
+ "Key19": {
+  "group": "keyshortcuts",
+  "label": "Key19",
+  "type": "button"
+ },
+ "Key2": {
+  "group": "keyshortcuts",
+  "label": "Key2",
+  "type": "button"
+ },
+ "Key20": {
+  "group": "keyshortcuts",
+  "label": "Key20",
+  "type": "button"
+ },
+ "Key20Key19": {
+  "group": "keyshortcuts",
+  "label": "Key20 Key19",
+  "type": "repeat"
+ },
+ "Key21": {
+  "group": "keyshortcuts",
+  "label": "Key21",
+  "type": "button"
+ },
+ "Key22": {
+  "group": "keyshortcuts",
+  "label": "Key22",
+  "type": "button"
+ },
+ "Key22Key21": {
+  "group": "keyshortcuts",
+  "label": "Key22 Key21",
+  "type": "repeat"
+ },
+ "Key23": {
+  "group": "keyshortcuts",
+  "label": "Key23",
+  "type": "button"
+ },
+ "Key24": {
+  "group": "keyshortcuts",
+  "label": "Key24",
+  "type": "button"
+ },
+ "Key24Key23": {
+  "group": "keyshortcuts",
+  "label": "Key24 Key23",
+  "type": "repeat"
+ },
+ "Key25": {
+  "group": "keyshortcuts",
+  "label": "Key25",
+  "type": "button"
+ },
+ "Key26": {
+  "group": "keyshortcuts",
+  "label": "Key26",
+  "type": "button"
+ },
+ "Key26Key25": {
+  "group": "keyshortcuts",
+  "label": "Key26 Key25",
+  "type": "repeat"
+ },
+ "Key27": {
+  "group": "keyshortcuts",
+  "label": "Key27",
+  "type": "button"
+ },
+ "Key28": {
+  "group": "keyshortcuts",
+  "label": "Key28",
+  "type": "button"
+ },
+ "Key28Key27": {
+  "group": "keyshortcuts",
+  "label": "Key28 Key27",
+  "type": "repeat"
+ },
+ "Key29": {
+  "group": "keyshortcuts",
+  "label": "Key29",
+  "type": "button"
+ },
+ "Key2Key1": {
+  "group": "keyshortcuts",
+  "label": "Key2 Key1",
+  "type": "repeat"
+ },
+ "Key3": {
+  "group": "keyshortcuts",
+  "label": "Key3",
+  "type": "button"
+ },
+ "Key30": {
+  "group": "keyshortcuts",
+  "label": "Key30",
+  "type": "button"
+ },
+ "Key30Key29": {
+  "group": "keyshortcuts",
+  "label": "Key30 Key29",
+  "type": "repeat"
+ },
+ "Key31": {
+  "group": "keyshortcuts",
+  "label": "Key31",
+  "type": "button"
+ },
+ "Key32": {
+  "group": "keyshortcuts",
+  "label": "Key32",
+  "type": "button"
+ },
+ "Key32Key31": {
+  "group": "keyshortcuts",
+  "label": "Key32 Key31",
+  "type": "repeat"
+ },
+ "Key33": {
+  "group": "keyshortcuts",
+  "label": "Key33",
+  "type": "button"
+ },
+ "Key34": {
+  "group": "keyshortcuts",
+  "label": "Key34",
+  "type": "button"
+ },
+ "Key34Key33": {
+  "group": "keyshortcuts",
+  "label": "Key34 Key33",
+  "type": "repeat"
+ },
+ "Key35": {
+  "group": "keyshortcuts",
+  "label": "Key35",
+  "type": "button"
+ },
+ "Key36": {
+  "group": "keyshortcuts",
+  "label": "Key36",
+  "type": "button"
+ },
+ "Key36Key35": {
+  "group": "keyshortcuts",
+  "label": "Key36 Key35",
+  "type": "repeat"
+ },
+ "Key37": {
+  "group": "keyshortcuts",
+  "label": "Key37",
+  "type": "button"
+ },
+ "Key38": {
+  "group": "keyshortcuts",
+  "label": "Key38",
+  "type": "button"
+ },
+ "Key38Key37": {
+  "group": "keyshortcuts",
+  "label": "Key38 Key37",
+  "type": "repeat"
+ },
+ "Key39": {
+  "group": "keyshortcuts",
+  "label": "Key39",
+  "type": "button"
+ },
+ "Key4": {
+  "group": "keyshortcuts",
+  "label": "Key4",
+  "type": "button"
+ },
+ "Key40": {
+  "group": "keyshortcuts",
+  "label": "Key40",
+  "type": "button"
+ },
+ "Key40Key39": {
+  "group": "keyshortcuts",
+  "label": "Key40 Key39",
+  "type": "repeat"
+ },
+ "Key4Key3": {
+  "group": "keyshortcuts",
+  "label": "Key4 Key3",
+  "type": "repeat"
+ },
+ "Key5": {
+  "group": "keyshortcuts",
+  "label": "Key5",
+  "type": "button"
+ },
+ "Key6": {
+  "group": "keyshortcuts",
+  "label": "Key6",
+  "type": "button"
+ },
+ "Key6Key5": {
+  "group": "keyshortcuts",
+  "label": "Key6 Key5",
+  "type": "repeat"
+ },
+ "Key7": {
+  "group": "keyshortcuts",
+  "label": "Key7",
+  "type": "button"
+ },
+ "Key8": {
+  "group": "keyshortcuts",
+  "label": "Key8",
+  "type": "button"
+ },
+ "Key8Key7": {
+  "group": "keyshortcuts",
+  "label": "Key8 Key7",
+  "type": "repeat"
+ },
+ "Key9": {
+  "group": "keyshortcuts",
+  "label": "Key9",
+  "type": "button"
+ },
+ "Keyword1": {
+  "group": "keywords",
+  "label": "Keyword1",
+  "type": "button"
+ },
+ "Keyword10": {
+  "group": "keywords",
+  "label": "Keyword10",
+  "type": "button"
+ },
+ "Keyword10Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword10 Toggle",
+  "type": "button"
+ },
+ "Keyword11": {
+  "group": "keywords",
+  "label": "Keyword11",
+  "type": "button"
+ },
+ "Keyword11Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword11 Toggle",
+  "type": "button"
+ },
+ "Keyword12": {
+  "group": "keywords",
+  "label": "Keyword12",
+  "type": "button"
+ },
+ "Keyword12Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword12 Toggle",
+  "type": "button"
+ },
+ "Keyword13": {
+  "group": "keywords",
+  "label": "Keyword13",
+  "type": "button"
+ },
+ "Keyword13Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword13 Toggle",
+  "type": "button"
+ },
+ "Keyword14": {
+  "group": "keywords",
+  "label": "Keyword14",
+  "type": "button"
+ },
+ "Keyword14Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword14 Toggle",
+  "type": "button"
+ },
+ "Keyword15": {
+  "group": "keywords",
+  "label": "Keyword15",
+  "type": "button"
+ },
+ "Keyword15Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword15 Toggle",
+  "type": "button"
+ },
+ "Keyword16": {
+  "group": "keywords",
+  "label": "Keyword16",
+  "type": "button"
+ },
+ "Keyword16Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword16 Toggle",
+  "type": "button"
+ },
+ "Keyword17": {
+  "group": "keywords",
+  "label": "Keyword17",
+  "type": "button"
+ },
+ "Keyword17Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword17 Toggle",
+  "type": "button"
+ },
+ "Keyword18": {
+  "group": "keywords",
+  "label": "Keyword18",
+  "type": "button"
+ },
+ "Keyword18Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword18 Toggle",
+  "type": "button"
+ },
+ "Keyword19": {
+  "group": "keywords",
+  "label": "Keyword19",
+  "type": "button"
+ },
+ "Keyword19Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword19 Toggle",
+  "type": "button"
+ },
+ "Keyword1Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword1 Toggle",
+  "type": "button"
+ },
+ "Keyword2": {
+  "group": "keywords",
+  "label": "Keyword2",
+  "type": "button"
+ },
+ "Keyword20": {
+  "group": "keywords",
+  "label": "Keyword20",
+  "type": "button"
+ },
+ "Keyword20Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword20 Toggle",
+  "type": "button"
+ },
+ "Keyword21": {
+  "group": "keywords",
+  "label": "Keyword21",
+  "type": "button"
+ },
+ "Keyword21Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword21 Toggle",
+  "type": "button"
+ },
+ "Keyword22": {
+  "group": "keywords",
+  "label": "Keyword22",
+  "type": "button"
+ },
+ "Keyword22Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword22 Toggle",
+  "type": "button"
+ },
+ "Keyword23": {
+  "group": "keywords",
+  "label": "Keyword23",
+  "type": "button"
+ },
+ "Keyword23Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword23 Toggle",
+  "type": "button"
+ },
+ "Keyword24": {
+  "group": "keywords",
+  "label": "Keyword24",
+  "type": "button"
+ },
+ "Keyword24Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword24 Toggle",
+  "type": "button"
+ },
+ "Keyword25": {
+  "group": "keywords",
+  "label": "Keyword25",
+  "type": "button"
+ },
+ "Keyword25Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword25 Toggle",
+  "type": "button"
+ },
+ "Keyword26": {
+  "group": "keywords",
+  "label": "Keyword26",
+  "type": "button"
+ },
+ "Keyword26Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword26 Toggle",
+  "type": "button"
+ },
+ "Keyword27": {
+  "group": "keywords",
+  "label": "Keyword27",
+  "type": "button"
+ },
+ "Keyword27Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword27 Toggle",
+  "type": "button"
+ },
+ "Keyword28": {
+  "group": "keywords",
+  "label": "Keyword28",
+  "type": "button"
+ },
+ "Keyword28Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword28 Toggle",
+  "type": "button"
+ },
+ "Keyword29": {
+  "group": "keywords",
+  "label": "Keyword29",
+  "type": "button"
+ },
+ "Keyword29Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword29 Toggle",
+  "type": "button"
+ },
+ "Keyword2Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword2 Toggle",
+  "type": "button"
+ },
+ "Keyword3": {
+  "group": "keywords",
+  "label": "Keyword3",
+  "type": "button"
+ },
+ "Keyword30": {
+  "group": "keywords",
+  "label": "Keyword30",
+  "type": "button"
+ },
+ "Keyword30Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword30 Toggle",
+  "type": "button"
+ },
+ "Keyword31": {
+  "group": "keywords",
+  "label": "Keyword31",
+  "type": "button"
+ },
+ "Keyword31Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword31 Toggle",
+  "type": "button"
+ },
+ "Keyword32": {
+  "group": "keywords",
+  "label": "Keyword32",
+  "type": "button"
+ },
+ "Keyword32Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword32 Toggle",
+  "type": "button"
+ },
+ "Keyword33": {
+  "group": "keywords",
+  "label": "Keyword33",
+  "type": "button"
+ },
+ "Keyword33Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword33 Toggle",
+  "type": "button"
+ },
+ "Keyword34": {
+  "group": "keywords",
+  "label": "Keyword34",
+  "type": "button"
+ },
+ "Keyword34Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword34 Toggle",
+  "type": "button"
+ },
+ "Keyword35": {
+  "group": "keywords",
+  "label": "Keyword35",
+  "type": "button"
+ },
+ "Keyword35Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword35 Toggle",
+  "type": "button"
+ },
+ "Keyword36": {
+  "group": "keywords",
+  "label": "Keyword36",
+  "type": "button"
+ },
+ "Keyword36Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword36 Toggle",
+  "type": "button"
+ },
+ "Keyword37": {
+  "group": "keywords",
+  "label": "Keyword37",
+  "type": "button"
+ },
+ "Keyword37Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword37 Toggle",
+  "type": "button"
+ },
+ "Keyword38": {
+  "group": "keywords",
+  "label": "Keyword38",
+  "type": "button"
+ },
+ "Keyword38Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword38 Toggle",
+  "type": "button"
+ },
+ "Keyword39": {
+  "group": "keywords",
+  "label": "Keyword39",
+  "type": "button"
+ },
+ "Keyword39Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword39 Toggle",
+  "type": "button"
+ },
+ "Keyword3Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword3 Toggle",
+  "type": "button"
+ },
+ "Keyword4": {
+  "group": "keywords",
+  "label": "Keyword4",
+  "type": "button"
+ },
+ "Keyword40": {
+  "group": "keywords",
+  "label": "Keyword40",
+  "type": "button"
+ },
+ "Keyword40Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword40 Toggle",
+  "type": "button"
+ },
+ "Keyword41": {
+  "group": "keywords",
+  "label": "Keyword41",
+  "type": "button"
+ },
+ "Keyword41Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword41 Toggle",
+  "type": "button"
+ },
+ "Keyword42": {
+  "group": "keywords",
+  "label": "Keyword42",
+  "type": "button"
+ },
+ "Keyword42Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword42 Toggle",
+  "type": "button"
+ },
+ "Keyword43": {
+  "group": "keywords",
+  "label": "Keyword43",
+  "type": "button"
+ },
+ "Keyword43Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword43 Toggle",
+  "type": "button"
+ },
+ "Keyword44": {
+  "group": "keywords",
+  "label": "Keyword44",
+  "type": "button"
+ },
+ "Keyword44Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword44 Toggle",
+  "type": "button"
+ },
+ "Keyword45": {
+  "group": "keywords",
+  "label": "Keyword45",
+  "type": "button"
+ },
+ "Keyword45Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword45 Toggle",
+  "type": "button"
+ },
+ "Keyword46": {
+  "group": "keywords",
+  "label": "Keyword46",
+  "type": "button"
+ },
+ "Keyword46Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword46 Toggle",
+  "type": "button"
+ },
+ "Keyword47": {
+  "group": "keywords",
+  "label": "Keyword47",
+  "type": "button"
+ },
+ "Keyword47Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword47 Toggle",
+  "type": "button"
+ },
+ "Keyword48": {
+  "group": "keywords",
+  "label": "Keyword48",
+  "type": "button"
+ },
+ "Keyword48Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword48 Toggle",
+  "type": "button"
+ },
+ "Keyword49": {
+  "group": "keywords",
+  "label": "Keyword49",
+  "type": "button"
+ },
+ "Keyword49Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword49 Toggle",
+  "type": "button"
+ },
+ "Keyword4Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword4 Toggle",
+  "type": "button"
+ },
+ "Keyword5": {
+  "group": "keywords",
+  "label": "Keyword5",
+  "type": "button"
+ },
+ "Keyword50": {
+  "group": "keywords",
+  "label": "Keyword50",
+  "type": "button"
+ },
+ "Keyword50Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword50 Toggle",
+  "type": "button"
+ },
+ "Keyword51": {
+  "group": "keywords",
+  "label": "Keyword51",
+  "type": "button"
+ },
+ "Keyword51Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword51 Toggle",
+  "type": "button"
+ },
+ "Keyword52": {
+  "group": "keywords",
+  "label": "Keyword52",
+  "type": "button"
+ },
+ "Keyword52Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword52 Toggle",
+  "type": "button"
+ },
+ "Keyword53": {
+  "group": "keywords",
+  "label": "Keyword53",
+  "type": "button"
+ },
+ "Keyword53Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword53 Toggle",
+  "type": "button"
+ },
+ "Keyword54": {
+  "group": "keywords",
+  "label": "Keyword54",
+  "type": "button"
+ },
+ "Keyword54Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword54 Toggle",
+  "type": "button"
+ },
+ "Keyword55": {
+  "group": "keywords",
+  "label": "Keyword55",
+  "type": "button"
+ },
+ "Keyword55Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword55 Toggle",
+  "type": "button"
+ },
+ "Keyword56": {
+  "group": "keywords",
+  "label": "Keyword56",
+  "type": "button"
+ },
+ "Keyword56Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword56 Toggle",
+  "type": "button"
+ },
+ "Keyword57": {
+  "group": "keywords",
+  "label": "Keyword57",
+  "type": "button"
+ },
+ "Keyword57Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword57 Toggle",
+  "type": "button"
+ },
+ "Keyword58": {
+  "group": "keywords",
+  "label": "Keyword58",
+  "type": "button"
+ },
+ "Keyword58Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword58 Toggle",
+  "type": "button"
+ },
+ "Keyword59": {
+  "group": "keywords",
+  "label": "Keyword59",
+  "type": "button"
+ },
+ "Keyword59Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword59 Toggle",
+  "type": "button"
+ },
+ "Keyword5Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword5 Toggle",
+  "type": "button"
+ },
+ "Keyword6": {
+  "group": "keywords",
+  "label": "Keyword6",
+  "type": "button"
+ },
+ "Keyword60": {
+  "group": "keywords",
+  "label": "Keyword60",
+  "type": "button"
+ },
+ "Keyword60Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword60 Toggle",
+  "type": "button"
+ },
+ "Keyword61": {
+  "group": "keywords",
+  "label": "Keyword61",
+  "type": "button"
+ },
+ "Keyword61Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword61 Toggle",
+  "type": "button"
+ },
+ "Keyword62": {
+  "group": "keywords",
+  "label": "Keyword62",
+  "type": "button"
+ },
+ "Keyword62Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword62 Toggle",
+  "type": "button"
+ },
+ "Keyword63": {
+  "group": "keywords",
+  "label": "Keyword63",
+  "type": "button"
+ },
+ "Keyword63Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword63 Toggle",
+  "type": "button"
+ },
+ "Keyword64": {
+  "group": "keywords",
+  "label": "Keyword64",
+  "type": "button"
+ },
+ "Keyword64Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword64 Toggle",
+  "type": "button"
+ },
+ "Keyword6Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword6 Toggle",
+  "type": "button"
+ },
+ "Keyword7": {
+  "group": "keywords",
+  "label": "Keyword7",
+  "type": "button"
+ },
+ "Keyword7Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword7 Toggle",
+  "type": "button"
+ },
+ "Keyword8": {
+  "group": "keywords",
+  "label": "Keyword8",
+  "type": "button"
+ },
+ "Keyword8Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword8 Toggle",
+  "type": "button"
+ },
+ "Keyword9": {
+  "group": "keywords",
+  "label": "Keyword9",
+  "type": "button"
+ },
+ "Keyword9Toggle": {
+  "group": "keywordtoggle",
+  "label": "Keyword9 Toggle",
+  "type": "button"
+ },
+ "LRCopy": {
+  "group": "develop",
+  "label": "Copy Settings",
+  "type": "button"
+ },
+ "LRPaste": {
+  "group": "develop",
+  "label": "Paste Settings",
+  "type": "button"
+ },
+ "LensBlurActive": {
+  "group": "lensBlur",
+  "label": "Apply Lens Blur",
+  "type": "button"
+ },
+ "LensBlurAmount": {
+  "group": "lensBlur",
+  "label": "Lens Blur Amount",
+  "type": "parameter"
+ },
+ "LensBlurHighlightsBoost": {
+  "group": "lensBlur",
+  "label": "Highlights Boost",
+  "type": "parameter"
+ },
+ "LensManualDistortionAmount": {
+  "group": "lensCorrections",
+  "label": "Lens Manual Distortion Amount",
+  "type": "parameter"
+ },
+ "LensProfileChromaticAberrationScale": {
+  "group": "lensCorrections",
+  "label": "chromatic Aberration",
+  "type": "parameter"
+ },
+ "LensProfileDistortionScale": {
+  "group": "lensCorrections",
+  "label": "Lens Profile Distortion Scale",
+  "type": "parameter"
+ },
+ "LensProfileEnable": {
+  "group": "lensCorrections",
+  "label": "Toggle Profile Corrections",
+  "type": "button"
+ },
+ "LensProfileVignettingScale": {
+  "group": "lensCorrections",
+  "label": "Lens Profile Vignetting Scale",
+  "type": "parameter"
+ },
+ "LocalPreset1": {
+  "group": "locadjpre",
+  "label": "Local Preset1",
+  "type": "button"
+ },
+ "LocalPreset10": {
+  "group": "locadjpre",
+  "label": "Local Preset10",
+  "type": "button"
+ },
+ "LocalPreset11": {
+  "group": "locadjpre",
+  "label": "Local Preset11",
+  "type": "button"
+ },
+ "LocalPreset12": {
+  "group": "locadjpre",
+  "label": "Local Preset12",
+  "type": "button"
+ },
+ "LocalPreset13": {
+  "group": "locadjpre",
+  "label": "Local Preset13",
+  "type": "button"
+ },
+ "LocalPreset14": {
+  "group": "locadjpre",
+  "label": "Local Preset14",
+  "type": "button"
+ },
+ "LocalPreset15": {
+  "group": "locadjpre",
+  "label": "Local Preset15",
+  "type": "button"
+ },
+ "LocalPreset16": {
+  "group": "locadjpre",
+  "label": "Local Preset16",
+  "type": "button"
+ },
+ "LocalPreset17": {
+  "group": "locadjpre",
+  "label": "Local Preset17",
+  "type": "button"
+ },
+ "LocalPreset18": {
+  "group": "locadjpre",
+  "label": "Local Preset18",
+  "type": "button"
+ },
+ "LocalPreset19": {
+  "group": "locadjpre",
+  "label": "Local Preset19",
+  "type": "button"
+ },
+ "LocalPreset2": {
+  "group": "locadjpre",
+  "label": "Local Preset2",
+  "type": "button"
+ },
+ "LocalPreset20": {
+  "group": "locadjpre",
+  "label": "Local Preset20",
+  "type": "button"
+ },
+ "LocalPreset21": {
+  "group": "locadjpre",
+  "label": "Local Preset21",
+  "type": "button"
+ },
+ "LocalPreset22": {
+  "group": "locadjpre",
+  "label": "Local Preset22",
+  "type": "button"
+ },
+ "LocalPreset23": {
+  "group": "locadjpre",
+  "label": "Local Preset23",
+  "type": "button"
+ },
+ "LocalPreset24": {
+  "group": "locadjpre",
+  "label": "Local Preset24",
+  "type": "button"
+ },
+ "LocalPreset25": {
+  "group": "locadjpre",
+  "label": "Local Preset25",
+  "type": "button"
+ },
+ "LocalPreset26": {
+  "group": "locadjpre",
+  "label": "Local Preset26",
+  "type": "button"
+ },
+ "LocalPreset27": {
+  "group": "locadjpre",
+  "label": "Local Preset27",
+  "type": "button"
+ },
+ "LocalPreset28": {
+  "group": "locadjpre",
+  "label": "Local Preset28",
+  "type": "button"
+ },
+ "LocalPreset29": {
+  "group": "locadjpre",
+  "label": "Local Preset29",
+  "type": "button"
+ },
+ "LocalPreset3": {
+  "group": "locadjpre",
+  "label": "Local Preset3",
+  "type": "button"
+ },
+ "LocalPreset30": {
+  "group": "locadjpre",
+  "label": "Local Preset30",
+  "type": "button"
+ },
+ "LocalPreset31": {
+  "group": "locadjpre",
+  "label": "Local Preset31",
+  "type": "button"
+ },
+ "LocalPreset32": {
+  "group": "locadjpre",
+  "label": "Local Preset32",
+  "type": "button"
+ },
+ "LocalPreset33": {
+  "group": "locadjpre",
+  "label": "Local Preset33",
+  "type": "button"
+ },
+ "LocalPreset34": {
+  "group": "locadjpre",
+  "label": "Local Preset34",
+  "type": "button"
+ },
+ "LocalPreset35": {
+  "group": "locadjpre",
+  "label": "Local Preset35",
+  "type": "button"
+ },
+ "LocalPreset36": {
+  "group": "locadjpre",
+  "label": "Local Preset36",
+  "type": "button"
+ },
+ "LocalPreset37": {
+  "group": "locadjpre",
+  "label": "Local Preset37",
+  "type": "button"
+ },
+ "LocalPreset38": {
+  "group": "locadjpre",
+  "label": "Local Preset38",
+  "type": "button"
+ },
+ "LocalPreset39": {
+  "group": "locadjpre",
+  "label": "Local Preset39",
+  "type": "button"
+ },
+ "LocalPreset4": {
+  "group": "locadjpre",
+  "label": "Local Preset4",
+  "type": "button"
+ },
+ "LocalPreset40": {
+  "group": "locadjpre",
+  "label": "Local Preset40",
+  "type": "button"
+ },
+ "LocalPreset41": {
+  "group": "locadjpre",
+  "label": "Local Preset41",
+  "type": "button"
+ },
+ "LocalPreset42": {
+  "group": "locadjpre",
+  "label": "Local Preset42",
+  "type": "button"
+ },
+ "LocalPreset43": {
+  "group": "locadjpre",
+  "label": "Local Preset43",
+  "type": "button"
+ },
+ "LocalPreset44": {
+  "group": "locadjpre",
+  "label": "Local Preset44",
+  "type": "button"
+ },
+ "LocalPreset45": {
+  "group": "locadjpre",
+  "label": "Local Preset45",
+  "type": "button"
+ },
+ "LocalPreset46": {
+  "group": "locadjpre",
+  "label": "Local Preset46",
+  "type": "button"
+ },
+ "LocalPreset47": {
+  "group": "locadjpre",
+  "label": "Local Preset47",
+  "type": "button"
+ },
+ "LocalPreset48": {
+  "group": "locadjpre",
+  "label": "Local Preset48",
+  "type": "button"
+ },
+ "LocalPreset49": {
+  "group": "locadjpre",
+  "label": "Local Preset49",
+  "type": "button"
+ },
+ "LocalPreset5": {
+  "group": "locadjpre",
+  "label": "Local Preset5",
+  "type": "button"
+ },
+ "LocalPreset50": {
+  "group": "locadjpre",
+  "label": "Local Preset50",
+  "type": "button"
+ },
+ "LocalPreset6": {
+  "group": "locadjpre",
+  "label": "Local Preset6",
+  "type": "button"
+ },
+ "LocalPreset7": {
+  "group": "locadjpre",
+  "label": "Local Preset7",
+  "type": "button"
+ },
+ "LocalPreset8": {
+  "group": "locadjpre",
+  "label": "Local Preset8",
+  "type": "button"
+ },
+ "LocalPreset9": {
+  "group": "locadjpre",
+  "label": "Local Preset9",
+  "type": "button"
+ },
+ "Loupe": {
+  "group": "gotoToolModulePanel",
+  "label": "Loupe",
+  "type": "button"
+ },
+ "LuminanceAdjustmentAqua": {
+  "group": "colorAdjustments",
+  "label": "Luminance Adjustment Aqua",
+  "type": "parameter"
+ },
+ "LuminanceAdjustmentBlue": {
+  "group": "colorAdjustments",
+  "label": "Luminance Adjustment Blue",
+  "type": "parameter"
+ },
+ "LuminanceAdjustmentGreen": {
+  "group": "colorAdjustments",
+  "label": "Luminance Adjustment Green",
+  "type": "parameter"
+ },
+ "LuminanceAdjustmentMagenta": {
+  "group": "colorAdjustments",
+  "label": "Luminance Adjustment Magenta",
+  "type": "parameter"
+ },
+ "LuminanceAdjustmentOrange": {
+  "group": "colorAdjustments",
+  "label": "Luminance Adjustment Orange",
+  "type": "parameter"
+ },
+ "LuminanceAdjustmentPurple": {
+  "group": "colorAdjustments",
+  "label": "Luminance Adjustment Purple",
+  "type": "parameter"
+ },
+ "LuminanceAdjustmentRed": {
+  "group": "colorAdjustments",
+  "label": "Luminance Adjustment Red",
+  "type": "parameter"
+ },
+ "LuminanceAdjustmentYellow": {
+  "group": "colorAdjustments",
+  "label": "Luminance Adjustment Yellow",
+  "type": "parameter"
+ },
+ "LuminanceNoiseReductionContrast": {
+  "group": "detail",
+  "label": "Luminance Contrast",
+  "type": "parameter"
+ },
+ "LuminanceNoiseReductionDetail": {
+  "group": "detail",
+  "label": "Luminance Detail",
+  "type": "parameter"
+ },
+ "LuminanceSmoothing": {
+  "group": "detail",
+  "label": "Luminance Smoothing",
+  "type": "parameter"
+ },
+ "Mask": {
+  "group": "mask",
+  "label": "Mask",
+  "type": "button"
+ },
+ "MaskAddBack": {
+  "group": "mask",
+  "label": "Mask Add Back",
+  "type": "button"
+ },
+ "MaskAddBrush": {
+  "group": "mask",
+  "label": "Mask Add Brush",
+  "type": "button"
+ },
+ "MaskAddColor": {
+  "group": "mask",
+  "label": "Mask Add Color",
+  "type": "button"
+ },
+ "MaskAddDepth": {
+  "group": "mask",
+  "label": "Mask Add Depth",
+  "type": "button"
+ },
+ "MaskAddGrad": {
+  "group": "mask",
+  "label": "Mask Add Grad",
+  "type": "button"
+ },
+ "MaskAddLand": {
+  "group": "mask",
+  "label": "Mask Add Land",
+  "type": "button"
+ },
+ "MaskAddLum": {
+  "group": "mask",
+  "label": "Mask Add Lum",
+  "type": "button"
+ },
+ "MaskAddObj": {
+  "group": "mask",
+  "label": "Mask Add Obj",
+  "type": "button"
+ },
+ "MaskAddPeople": {
+  "group": "mask",
+  "label": "Mask Add People",
+  "type": "button"
+ },
+ "MaskAddRad": {
+  "group": "mask",
+  "label": "Mask Add Rad",
+  "type": "button"
+ },
+ "MaskAddSky": {
+  "group": "mask",
+  "label": "Mask Add Sky",
+  "type": "button"
+ },
+ "MaskAddSubject": {
+  "group": "mask",
+  "label": "Mask Add Subject",
+  "type": "button"
+ },
+ "MaskDelete": {
+  "group": "mask",
+  "label": "mask group",
+  "type": "button"
+ },
+ "MaskDeleteTool": {
+  "group": "mask",
+  "label": "tool",
+  "type": "button"
+ },
+ "MaskEnable": {
+  "group": "mask",
+  "label": "Toggle Mask",
+  "type": "button"
+ },
+ "MaskHide": {
+  "group": "mask",
+  "label": "mask group",
+  "type": "button"
+ },
+ "MaskHideTool": {
+  "group": "mask",
+  "label": "tool",
+  "type": "button"
+ },
+ "MaskIntBack": {
+  "group": "mask",
+  "label": "Intersect with mask...",
+  "type": "button"
+ },
+ "MaskIntBrush": {
+  "group": "mask",
+  "label": "Intersect with mask...",
+  "type": "button"
+ },
+ "MaskIntColor": {
+  "group": "mask",
+  "label": "Intersect with mask...",
+  "type": "button"
+ },
+ "MaskIntDepth": {
+  "group": "mask",
+  "label": "Intersect with mask...",
+  "type": "button"
+ },
+ "MaskIntGrad": {
+  "group": "mask",
+  "label": "Intersect with mask...",
+  "type": "button"
+ },
+ "MaskIntLand": {
+  "group": "mask",
+  "label": "Intersect with mask...",
+  "type": "button"
+ },
+ "MaskIntLum": {
+  "group": "mask",
+  "label": "Intersect with mask...",
+  "type": "button"
+ },
+ "MaskIntObj": {
+  "group": "mask",
+  "label": "Intersect with mask...",
+  "type": "button"
+ },
+ "MaskIntPeople": {
+  "group": "mask",
+  "label": "Intersect with mask...",
+  "type": "button"
+ },
+ "MaskIntRad": {
+  "group": "mask",
+  "label": "Intersect with mask...",
+  "type": "button"
+ },
+ "MaskIntSky": {
+  "group": "mask",
+  "label": "Intersect with mask...",
+  "type": "button"
+ },
+ "MaskIntSubject": {
+  "group": "mask",
+  "label": "Intersect with mask...",
+  "type": "button"
+ },
+ "MaskInvert": {
+  "group": "mask",
+  "label": "Invert mask group",
+  "type": "button"
+ },
+ "MaskInvertDup": {
+  "group": "mask",
+  "label": "Duplicate and invert mask group",
+  "type": "button"
+ },
+ "MaskInvertTool": {
+  "group": "mask",
+  "label": "Toggle invert for selected tool",
+  "type": "button"
+ },
+ "MaskNewBack": {
+  "group": "mask",
+  "label": "Mask New Back",
+  "type": "button"
+ },
+ "MaskNewBrush": {
+  "group": "mask",
+  "label": "Mask New Brush",
+  "type": "button"
+ },
+ "MaskNewColor": {
+  "group": "mask",
+  "label": "Mask New Color",
+  "type": "button"
+ },
+ "MaskNewDepth": {
+  "group": "mask",
+  "label": "Mask New Depth",
+  "type": "button"
+ },
+ "MaskNewGrad": {
+  "group": "mask",
+  "label": "Mask New Grad",
+  "type": "button"
+ },
+ "MaskNewLand": {
+  "group": "mask",
+  "label": "Mask New Land",
+  "type": "button"
+ },
+ "MaskNewLum": {
+  "group": "mask",
+  "label": "Mask New Lum",
+  "type": "button"
+ },
+ "MaskNewObj": {
+  "group": "mask",
+  "label": "Mask New Obj",
+  "type": "button"
+ },
+ "MaskNewPeople": {
+  "group": "mask",
+  "label": "Mask New People",
+  "type": "button"
+ },
+ "MaskNewRad": {
+  "group": "mask",
+  "label": "Mask New Rad",
+  "type": "button"
+ },
+ "MaskNewSky": {
+  "group": "mask",
+  "label": "Mask New Sky",
+  "type": "button"
+ },
+ "MaskNewSubject": {
+  "group": "mask",
+  "label": "Mask New Subject",
+  "type": "button"
+ },
+ "MaskNext": {
+  "group": "Next",
+  "label": "Next mask group",
+  "type": "button"
+ },
+ "MaskNextTool": {
+  "group": "mask",
+  "label": "Next mask tool",
+  "type": "button"
+ },
+ "MaskPrevious": {
+  "group": "Previous",
+  "label": "Previous mask group",
+  "type": "button"
+ },
+ "MaskPreviousTool": {
+  "group": "mask",
+  "label": "Previous mask tool",
+  "type": "button"
+ },
+ "MaskReset": {
+  "group": "mask",
+  "label": "Delete all masks",
+  "type": "button"
+ },
+ "MaskSubBack": {
+  "group": "mask",
+  "label": "Subtract from mask...",
+  "type": "button"
+ },
+ "MaskSubBrush": {
+  "group": "mask",
+  "label": "Subtract from mask...",
+  "type": "button"
+ },
+ "MaskSubColor": {
+  "group": "mask",
+  "label": "Subtract from mask...",
+  "type": "button"
+ },
+ "MaskSubDepth": {
+  "group": "mask",
+  "label": "Subtract from mask...",
+  "type": "button"
+ },
+ "MaskSubGrad": {
+  "group": "mask",
+  "label": "Subtract from mask...",
+  "type": "button"
+ },
+ "MaskSubLum": {
+  "group": "mask",
+  "label": "Subtract from mask...",
+  "type": "button"
+ },
+ "MaskSubObj": {
+  "group": "mask",
+  "label": "Subtract from mask...",
+  "type": "button"
+ },
+ "MaskSubPeople": {
+  "group": "mask",
+  "label": "Subtract from mask...",
+  "type": "button"
+ },
+ "MaskSubRad": {
+  "group": "mask",
+  "label": "Subtract from mask...",
+  "type": "button"
+ },
+ "MaskSubSky": {
+  "group": "mask",
+  "label": "Subtract from mask...",
+  "type": "button"
+ },
+ "MaskSubSubject": {
+  "group": "mask",
+  "label": "Subtract from mask...",
+  "type": "button"
+ },
+ "Next": {
+  "group": "photos",
+  "label": "Next",
+  "type": "button"
+ },
+ "NextPrev": {
+  "group": "photos",
+  "label": "Previous Photo",
+  "type": "repeat"
+ },
+ "NextPro": {
+  "group": "profiles",
+  "label": "Next Profile",
+  "type": "button"
+ },
+ "NextScreenMode": {
+  "group": "view",
+  "label": "Cycle to next screen mode",
+  "type": "button"
+ },
+ "PV1": {
+  "group": "develop",
+  "label": "P V1",
+  "type": "button"
+ },
+ "PV2": {
+  "group": "develop",
+  "label": "P V2",
+  "type": "button"
+ },
+ "PV3": {
+  "group": "develop",
+  "label": "P V3",
+  "type": "button"
+ },
+ "PV4": {
+  "group": "develop",
+  "label": "P V4",
+  "type": "button"
+ },
+ "PV5": {
+  "group": "develop",
+  "label": "P V5",
+  "type": "button"
+ },
+ "PVLatest": {
+  "group": "develop",
+  "label": "Update to current process version",
+  "type": "button"
+ },
+ "ParametricDarks": {
+  "group": "toneCurve",
+  "label": "Dark Tones",
+  "type": "parameter"
+ },
+ "ParametricHighlightSplit": {
+  "group": "toneCurve",
+  "label": "Highlight Split",
+  "type": "parameter"
+ },
+ "ParametricHighlights": {
+  "group": "toneCurve",
+  "label": "Highlight Tones",
+  "type": "parameter"
+ },
+ "ParametricLights": {
+  "group": "toneCurve",
+  "label": "Light Tones",
+  "type": "parameter"
+ },
+ "ParametricMidtoneSplit": {
+  "group": "toneCurve",
+  "label": "Midtone Split",
+  "type": "parameter"
+ },
+ "ParametricShadowSplit": {
+  "group": "toneCurve",
+  "label": "Shadow Split",
+  "type": "parameter"
+ },
+ "ParametricShadows": {
+  "group": "toneCurve",
+  "label": "Shadow Tones",
+  "type": "parameter"
+ },
+ "PerspectiveAspect": {
+  "group": "transform",
+  "label": "Perspective Aspect",
+  "type": "parameter"
+ },
+ "PerspectiveHorizontal": {
+  "group": "transform",
+  "label": "Perspective Horizontal",
+  "type": "parameter"
+ },
+ "PerspectiveRotate": {
+  "group": "transform",
+  "label": "Perspective Rotate",
+  "type": "parameter"
+ },
+ "PerspectiveScale": {
+  "group": "transform",
+  "label": "Perspective Scale",
+  "type": "parameter"
+ },
+ "PerspectiveVertical": {
+  "group": "transform",
+  "label": "Perspective Vertical",
+  "type": "parameter"
+ },
+ "PerspectiveX": {
+  "group": "transform",
+  "label": "Perspective X",
+  "type": "parameter"
+ },
+ "PerspectiveY": {
+  "group": "transform",
+  "label": "Perspective Y",
+  "type": "parameter"
+ },
+ "Pick": {
+  "group": "flagging",
+  "label": "Pick",
+  "type": "button"
+ },
+ "PointCurveBlacksUpDown": {
+  "group": "toneCurve",
+  "label": "Gradation Curve",
+  "type": "repeat"
+ },
+ "PointCurveHighlightsUpDown": {
+  "group": "toneCurve",
+  "label": "Gradation Curve",
+  "type": "repeat"
+ },
+ "PointCurveLinear": {
+  "group": "toneCurve",
+  "label": "Linear",
+  "type": "button"
+ },
+ "PointCurveMediumContrast": {
+  "group": "toneCurve",
+  "label": "Medium Contrast",
+  "type": "button"
+ },
+ "PointCurveStrongContrast": {
+  "group": "toneCurve",
+  "label": "Strong Contrast",
+  "type": "button"
+ },
+ "PostCropVignetteAmount": {
+  "group": "effects",
+  "label": "Post Crop Vignette Amount",
+  "type": "parameter"
+ },
+ "PostCropVignetteFeather": {
+  "group": "effects",
+  "label": "Post Crop Vignette Feather",
+  "type": "parameter"
+ },
+ "PostCropVignetteHighlightContrast": {
+  "group": "effects",
+  "label": "Post Crop Vignette Highlight Contrast",
+  "type": "parameter"
+ },
+ "PostCropVignetteMidpoint": {
+  "group": "effects",
+  "label": "Post Crop Vignette Midpoint",
+  "type": "parameter"
+ },
+ "PostCropVignetteRoundness": {
+  "group": "effects",
+  "label": "Post Crop Vignette Roundness",
+  "type": "parameter"
+ },
+ "PostCropVignetteStyle": {
+  "group": "effects",
+  "label": "Post Crop Vignette Style",
+  "type": "variable"
+ },
+ "PostCropVignetteStyleColorPriority": {
+  "group": "effects",
+  "label": "Color Priority",
+  "type": "button"
+ },
+ "PostCropVignetteStyleHighlightPriority": {
+  "group": "effects",
+  "label": "Highlight Priority",
+  "type": "button"
+ },
+ "PostCropVignetteStylePaintOverlay": {
+  "group": "effects",
+  "label": "Paint Overlay",
+  "type": "button"
+ },
+ "PresetAmount": {
+  "group": "developPresets",
+  "label": "Amount",
+  "type": "parameter"
+ },
+ "PresetNext": {
+  "group": "developPresets",
+  "label": "Next preset",
+  "type": "button"
+ },
+ "PresetPrevious": {
+  "group": "developPresets",
+  "label": "Previous preset",
+  "type": "button"
+ },
+ "PresetPreviousNext": {
+  "group": "developPresets",
+  "label": "Previous preset",
+  "type": "repeat"
+ },
+ "Preset_1": {
+  "group": "developPresets",
+  "label": "Preset 1",
+  "type": "button"
+ },
+ "Preset_10": {
+  "group": "developPresets",
+  "label": "Preset 10",
+  "type": "button"
+ },
+ "Preset_11": {
+  "group": "developPresets",
+  "label": "Preset 11",
+  "type": "button"
+ },
+ "Preset_12": {
+  "group": "developPresets",
+  "label": "Preset 12",
+  "type": "button"
+ },
+ "Preset_13": {
+  "group": "developPresets",
+  "label": "Preset 13",
+  "type": "button"
+ },
+ "Preset_14": {
+  "group": "developPresets",
+  "label": "Preset 14",
+  "type": "button"
+ },
+ "Preset_15": {
+  "group": "developPresets",
+  "label": "Preset 15",
+  "type": "button"
+ },
+ "Preset_16": {
+  "group": "developPresets",
+  "label": "Preset 16",
+  "type": "button"
+ },
+ "Preset_17": {
+  "group": "developPresets",
+  "label": "Preset 17",
+  "type": "button"
+ },
+ "Preset_18": {
+  "group": "developPresets",
+  "label": "Preset 18",
+  "type": "button"
+ },
+ "Preset_19": {
+  "group": "developPresets",
+  "label": "Preset 19",
+  "type": "button"
+ },
+ "Preset_2": {
+  "group": "developPresets",
+  "label": "Preset 2",
+  "type": "button"
+ },
+ "Preset_20": {
+  "group": "developPresets",
+  "label": "Preset 20",
+  "type": "button"
+ },
+ "Preset_21": {
+  "group": "developPresets",
+  "label": "Preset 21",
+  "type": "button"
+ },
+ "Preset_22": {
+  "group": "developPresets",
+  "label": "Preset 22",
+  "type": "button"
+ },
+ "Preset_23": {
+  "group": "developPresets",
+  "label": "Preset 23",
+  "type": "button"
+ },
+ "Preset_24": {
+  "group": "developPresets",
+  "label": "Preset 24",
+  "type": "button"
+ },
+ "Preset_25": {
+  "group": "developPresets",
+  "label": "Preset 25",
+  "type": "button"
+ },
+ "Preset_26": {
+  "group": "developPresets",
+  "label": "Preset 26",
+  "type": "button"
+ },
+ "Preset_27": {
+  "group": "developPresets",
+  "label": "Preset 27",
+  "type": "button"
+ },
+ "Preset_28": {
+  "group": "developPresets",
+  "label": "Preset 28",
+  "type": "button"
+ },
+ "Preset_29": {
+  "group": "developPresets",
+  "label": "Preset 29",
+  "type": "button"
+ },
+ "Preset_3": {
+  "group": "developPresets",
+  "label": "Preset 3",
+  "type": "button"
+ },
+ "Preset_30": {
+  "group": "developPresets",
+  "label": "Preset 30",
+  "type": "button"
+ },
+ "Preset_31": {
+  "group": "developPresets",
+  "label": "Preset 31",
+  "type": "button"
+ },
+ "Preset_32": {
+  "group": "developPresets",
+  "label": "Preset 32",
+  "type": "button"
+ },
+ "Preset_33": {
+  "group": "developPresets",
+  "label": "Preset 33",
+  "type": "button"
+ },
+ "Preset_34": {
+  "group": "developPresets",
+  "label": "Preset 34",
+  "type": "button"
+ },
+ "Preset_35": {
+  "group": "developPresets",
+  "label": "Preset 35",
+  "type": "button"
+ },
+ "Preset_36": {
+  "group": "developPresets",
+  "label": "Preset 36",
+  "type": "button"
+ },
+ "Preset_37": {
+  "group": "developPresets",
+  "label": "Preset 37",
+  "type": "button"
+ },
+ "Preset_38": {
+  "group": "developPresets",
+  "label": "Preset 38",
+  "type": "button"
+ },
+ "Preset_39": {
+  "group": "developPresets",
+  "label": "Preset 39",
+  "type": "button"
+ },
+ "Preset_4": {
+  "group": "developPresets",
+  "label": "Preset 4",
+  "type": "button"
+ },
+ "Preset_40": {
+  "group": "developPresets",
+  "label": "Preset 40",
+  "type": "button"
+ },
+ "Preset_41": {
+  "group": "developPresets",
+  "label": "Preset 41",
+  "type": "button"
+ },
+ "Preset_42": {
+  "group": "developPresets",
+  "label": "Preset 42",
+  "type": "button"
+ },
+ "Preset_43": {
+  "group": "developPresets",
+  "label": "Preset 43",
+  "type": "button"
+ },
+ "Preset_44": {
+  "group": "developPresets",
+  "label": "Preset 44",
+  "type": "button"
+ },
+ "Preset_45": {
+  "group": "developPresets",
+  "label": "Preset 45",
+  "type": "button"
+ },
+ "Preset_46": {
+  "group": "developPresets",
+  "label": "Preset 46",
+  "type": "button"
+ },
+ "Preset_47": {
+  "group": "developPresets",
+  "label": "Preset 47",
+  "type": "button"
+ },
+ "Preset_48": {
+  "group": "developPresets",
+  "label": "Preset 48",
+  "type": "button"
+ },
+ "Preset_49": {
+  "group": "developPresets",
+  "label": "Preset 49",
+  "type": "button"
+ },
+ "Preset_5": {
+  "group": "developPresets",
+  "label": "Preset 5",
+  "type": "button"
+ },
+ "Preset_50": {
+  "group": "developPresets",
+  "label": "Preset 50",
+  "type": "button"
+ },
+ "Preset_51": {
+  "group": "developPresets",
+  "label": "Preset 51",
+  "type": "button"
+ },
+ "Preset_52": {
+  "group": "developPresets",
+  "label": "Preset 52",
+  "type": "button"
+ },
+ "Preset_53": {
+  "group": "developPresets",
+  "label": "Preset 53",
+  "type": "button"
+ },
+ "Preset_54": {
+  "group": "developPresets",
+  "label": "Preset 54",
+  "type": "button"
+ },
+ "Preset_55": {
+  "group": "developPresets",
+  "label": "Preset 55",
+  "type": "button"
+ },
+ "Preset_56": {
+  "group": "developPresets",
+  "label": "Preset 56",
+  "type": "button"
+ },
+ "Preset_57": {
+  "group": "developPresets",
+  "label": "Preset 57",
+  "type": "button"
+ },
+ "Preset_58": {
+  "group": "developPresets",
+  "label": "Preset 58",
+  "type": "button"
+ },
+ "Preset_59": {
+  "group": "developPresets",
+  "label": "Preset 59",
+  "type": "button"
+ },
+ "Preset_6": {
+  "group": "developPresets",
+  "label": "Preset 6",
+  "type": "button"
+ },
+ "Preset_60": {
+  "group": "developPresets",
+  "label": "Preset 60",
+  "type": "button"
+ },
+ "Preset_61": {
+  "group": "developPresets",
+  "label": "Preset 61",
+  "type": "button"
+ },
+ "Preset_62": {
+  "group": "developPresets",
+  "label": "Preset 62",
+  "type": "button"
+ },
+ "Preset_63": {
+  "group": "developPresets",
+  "label": "Preset 63",
+  "type": "button"
+ },
+ "Preset_64": {
+  "group": "developPresets",
+  "label": "Preset 64",
+  "type": "button"
+ },
+ "Preset_65": {
+  "group": "developPresets",
+  "label": "Preset 65",
+  "type": "button"
+ },
+ "Preset_66": {
+  "group": "developPresets",
+  "label": "Preset 66",
+  "type": "button"
+ },
+ "Preset_67": {
+  "group": "developPresets",
+  "label": "Preset 67",
+  "type": "button"
+ },
+ "Preset_68": {
+  "group": "developPresets",
+  "label": "Preset 68",
+  "type": "button"
+ },
+ "Preset_69": {
+  "group": "developPresets",
+  "label": "Preset 69",
+  "type": "button"
+ },
+ "Preset_7": {
+  "group": "developPresets",
+  "label": "Preset 7",
+  "type": "button"
+ },
+ "Preset_70": {
+  "group": "developPresets",
+  "label": "Preset 70",
+  "type": "button"
+ },
+ "Preset_71": {
+  "group": "developPresets",
+  "label": "Preset 71",
+  "type": "button"
+ },
+ "Preset_72": {
+  "group": "developPresets",
+  "label": "Preset 72",
+  "type": "button"
+ },
+ "Preset_73": {
+  "group": "developPresets",
+  "label": "Preset 73",
+  "type": "button"
+ },
+ "Preset_74": {
+  "group": "developPresets",
+  "label": "Preset 74",
+  "type": "button"
+ },
+ "Preset_75": {
+  "group": "developPresets",
+  "label": "Preset 75",
+  "type": "button"
+ },
+ "Preset_76": {
+  "group": "developPresets",
+  "label": "Preset 76",
+  "type": "button"
+ },
+ "Preset_77": {
+  "group": "developPresets",
+  "label": "Preset 77",
+  "type": "button"
+ },
+ "Preset_78": {
+  "group": "developPresets",
+  "label": "Preset 78",
+  "type": "button"
+ },
+ "Preset_79": {
+  "group": "developPresets",
+  "label": "Preset 79",
+  "type": "button"
+ },
+ "Preset_8": {
+  "group": "developPresets",
+  "label": "Preset 8",
+  "type": "button"
+ },
+ "Preset_80": {
+  "group": "developPresets",
+  "label": "Preset 80",
+  "type": "button"
+ },
+ "Preset_9": {
+  "group": "developPresets",
+  "label": "Preset 9",
+  "type": "button"
+ },
+ "Prev": {
+  "group": "photos",
+  "label": "Prev",
+  "type": "button"
+ },
+ "PrevPro": {
+  "group": "profiles",
+  "label": "Previous Profile",
+  "type": "button"
+ },
+ "QuickDevBlacksAdj": {
+  "group": "quickdev",
+  "label": "Blacks",
+  "type": "repeat"
+ },
+ "QuickDevBlacksLarge": {
+  "group": "quickdev",
+  "label": "Decrease black clipping",
+  "type": "button"
+ },
+ "QuickDevBlacksLargeDec": {
+  "group": "quickdev",
+  "label": "Increase black clipping",
+  "type": "button"
+ },
+ "QuickDevBlacksSmall": {
+  "group": "quickdev",
+  "label": "Decrease black clipping",
+  "type": "button"
+ },
+ "QuickDevBlacksSmallDec": {
+  "group": "quickdev",
+  "label": "Increase black clipping",
+  "type": "button"
+ },
+ "QuickDevClarityAdj": {
+  "group": "quickdev",
+  "label": "Clarity",
+  "type": "repeat"
+ },
+ "QuickDevClarityLarge": {
+  "group": "quickdev",
+  "label": "Increase clarity",
+  "type": "button"
+ },
+ "QuickDevClarityLargeDec": {
+  "group": "quickdev",
+  "label": "Decrease clarity",
+  "type": "button"
+ },
+ "QuickDevClaritySmall": {
+  "group": "quickdev",
+  "label": "Increase clarity",
+  "type": "button"
+ },
+ "QuickDevClaritySmallDec": {
+  "group": "quickdev",
+  "label": "Decrease clarity",
+  "type": "button"
+ },
+ "QuickDevContrastAdj": {
+  "group": "quickdev",
+  "label": "Contrast",
+  "type": "repeat"
+ },
+ "QuickDevContrastLarge": {
+  "group": "quickdev",
+  "label": "Increase contrast",
+  "type": "button"
+ },
+ "QuickDevContrastLargeDec": {
+  "group": "quickdev",
+  "label": "Decrease contrast",
+  "type": "button"
+ },
+ "QuickDevContrastSmall": {
+  "group": "quickdev",
+  "label": "Increase contrast",
+  "type": "button"
+ },
+ "QuickDevContrastSmallDec": {
+  "group": "quickdev",
+  "label": "Decrease contrast",
+  "type": "button"
+ },
+ "QuickDevCropAspect1x1": {
+  "group": "quickdev",
+  "label": "Quick Dev Crop Aspect1x1",
+  "type": "button"
+ },
+ "QuickDevCropAspect2x3": {
+  "group": "quickdev",
+  "label": "Quick Dev Crop Aspect2x3",
+  "type": "button"
+ },
+ "QuickDevCropAspect3x4": {
+  "group": "quickdev",
+  "label": "Quick Dev Crop Aspect3x4",
+  "type": "button"
+ },
+ "QuickDevCropAspect4x5": {
+  "group": "quickdev",
+  "label": "Quick Dev Crop Aspect4x5",
+  "type": "button"
+ },
+ "QuickDevCropAspect5x7": {
+  "group": "quickdev",
+  "label": "Quick Dev Crop Aspect5x7",
+  "type": "button"
+ },
+ "QuickDevCropAspect85x11": {
+  "group": "quickdev",
+  "label": "Quick Dev Crop Aspect85x11",
+  "type": "button"
+ },
+ "QuickDevCropAspect9x16": {
+  "group": "quickdev",
+  "label": "Quick Dev Crop Aspect9x16",
+  "type": "button"
+ },
+ "QuickDevCropAspectAsShot": {
+  "group": "quickdev",
+  "label": "As shot",
+  "type": "button"
+ },
+ "QuickDevCropAspectOriginal": {
+  "group": "quickdev",
+  "label": "Original",
+  "type": "button"
+ },
+ "QuickDevExpAdj": {
+  "group": "quickdev",
+  "label": "Exposure",
+  "type": "repeat"
+ },
+ "QuickDevExpLarge": {
+  "group": "quickdev",
+  "label": "Increase exposure 1 stop",
+  "type": "button"
+ },
+ "QuickDevExpLargeDec": {
+  "group": "quickdev",
+  "label": "Decrease exposure 1 stop",
+  "type": "button"
+ },
+ "QuickDevExpSmHalf": {
+  "group": "quickdev",
+  "label": "Increase exposure 1/6 stop",
+  "type": "button"
+ },
+ "QuickDevExpSmHalfDec": {
+  "group": "quickdev",
+  "label": "Decrease exposure 1/6 stop",
+  "type": "button"
+ },
+ "QuickDevExpSmall": {
+  "group": "quickdev",
+  "label": "Increase exposure 1/3 stop",
+  "type": "button"
+ },
+ "QuickDevExpSmallDec": {
+  "group": "quickdev",
+  "label": "Decrease exposure 1/3 stop",
+  "type": "button"
+ },
+ "QuickDevHighlightsAdj": {
+  "group": "quickdev",
+  "label": "Highlights",
+  "type": "repeat"
+ },
+ "QuickDevHighlightsLarge": {
+  "group": "quickdev",
+  "label": "Increase highlights",
+  "type": "button"
+ },
+ "QuickDevHighlightsLargeDec": {
+  "group": "quickdev",
+  "label": "Decrease highlights",
+  "type": "button"
+ },
+ "QuickDevHighlightsSmall": {
+  "group": "quickdev",
+  "label": "Increase highlights",
+  "type": "button"
+ },
+ "QuickDevHighlightsSmallDec": {
+  "group": "quickdev",
+  "label": "Decrease highlights",
+  "type": "button"
+ },
+ "QuickDevSatAdj": {
+  "group": "quickdev",
+  "label": "Saturation",
+  "type": "repeat"
+ },
+ "QuickDevSatLarge": {
+  "group": "quickdev",
+  "label": "Saturation",
+  "type": "button"
+ },
+ "QuickDevSatLargeDec": {
+  "group": "quickdev",
+  "label": "Saturation",
+  "type": "button"
+ },
+ "QuickDevSatSmall": {
+  "group": "quickdev",
+  "label": "Saturation",
+  "type": "button"
+ },
+ "QuickDevSatSmallDec": {
+  "group": "quickdev",
+  "label": "Saturation",
+  "type": "button"
+ },
+ "QuickDevShadowsAdj": {
+  "group": "quickdev",
+  "label": "Shadows",
+  "type": "repeat"
+ },
+ "QuickDevShadowsLarge": {
+  "group": "quickdev",
+  "label": "Decrease shadows",
+  "type": "button"
+ },
+ "QuickDevShadowsLargeDec": {
+  "group": "quickdev",
+  "label": "Increase shadows",
+  "type": "button"
+ },
+ "QuickDevShadowsSmall": {
+  "group": "quickdev",
+  "label": "Decrease shadows",
+  "type": "button"
+ },
+ "QuickDevShadowsSmallDec": {
+  "group": "quickdev",
+  "label": "Increase shadows",
+  "type": "button"
+ },
+ "QuickDevTempAdj": {
+  "group": "quickdev",
+  "label": "Temperature",
+  "type": "repeat"
+ },
+ "QuickDevTempLarge": {
+  "group": "quickdev",
+  "label": "Make warmer",
+  "type": "button"
+ },
+ "QuickDevTempLargeDec": {
+  "group": "quickdev",
+  "label": "Make cooler",
+  "type": "button"
+ },
+ "QuickDevTempSmalDec": {
+  "group": "quickdev",
+  "label": "Make cooler",
+  "type": "button"
+ },
+ "QuickDevTempSmall": {
+  "group": "quickdev",
+  "label": "Make warmer",
+  "type": "button"
+ },
+ "QuickDevTintAdj": {
+  "group": "quickdev",
+  "label": "Tint",
+  "type": "repeat"
+ },
+ "QuickDevTintLarge": {
+  "group": "quickdev",
+  "label": "Tint more magenta",
+  "type": "button"
+ },
+ "QuickDevTintLargeDec": {
+  "group": "quickdev",
+  "label": "Tint more green",
+  "type": "button"
+ },
+ "QuickDevTintSmall": {
+  "group": "quickdev",
+  "label": "Tint more magenta",
+  "type": "button"
+ },
+ "QuickDevTintSmallDec": {
+  "group": "quickdev",
+  "label": "Tint more green",
+  "type": "button"
+ },
+ "QuickDevVibranceAdj": {
+  "group": "quickdev",
+  "label": "Vibrance",
+  "type": "repeat"
+ },
+ "QuickDevVibranceLarge": {
+  "group": "quickdev",
+  "label": "Increase vibrance",
+  "type": "button"
+ },
+ "QuickDevVibranceLargeDec": {
+  "group": "quickdev",
+  "label": "Decrease vibrance",
+  "type": "button"
+ },
+ "QuickDevVibranceSmall": {
+  "group": "quickdev",
+  "label": "Increase vibrance",
+  "type": "button"
+ },
+ "QuickDevVibranceSmallDec": {
+  "group": "quickdev",
+  "label": "Decrease vibrance",
+  "type": "button"
+ },
+ "QuickDevWBAuto": {
+  "group": "quickdev",
+  "label": "Auto",
+  "type": "button"
+ },
+ "QuickDevWBCloudy": {
+  "group": "quickdev",
+  "label": "Cloudy",
+  "type": "button"
+ },
+ "QuickDevWBDaylight": {
+  "group": "quickdev",
+  "label": "Daylight",
+  "type": "button"
+ },
+ "QuickDevWBFlash": {
+  "group": "quickdev",
+  "label": "Flash",
+  "type": "button"
+ },
+ "QuickDevWBFluorescent": {
+  "group": "quickdev",
+  "label": "Fluorescent",
+  "type": "button"
+ },
+ "QuickDevWBShade": {
+  "group": "quickdev",
+  "label": "Shade",
+  "type": "button"
+ },
+ "QuickDevWBTungsten": {
+  "group": "quickdev",
+  "label": "Tungsten",
+  "type": "button"
+ },
+ "QuickDevWhitesAdj": {
+  "group": "quickdev",
+  "label": "Whites",
+  "type": "repeat"
+ },
+ "QuickDevWhitesLarge": {
+  "group": "quickdev",
+  "label": "Increase white clipping",
+  "type": "button"
+ },
+ "QuickDevWhitesLargeDec": {
+  "group": "quickdev",
+  "label": "Decrease white clipping",
+  "type": "button"
+ },
+ "QuickDevWhitesSmall": {
+  "group": "quickdev",
+  "label": "Increase white clipping",
+  "type": "button"
+ },
+ "QuickDevWhitesSmallDec": {
+  "group": "quickdev",
+  "label": "Decrease white clipping",
+  "type": "button"
+ },
+ "RedEye": {
+  "group": "localizedAdjustments",
+  "label": "Red-Eye Correction",
+  "type": "button"
+ },
+ "RedHue": {
+  "group": "calibration",
+  "label": "Red Hue Calibration",
+  "type": "parameter"
+ },
+ "RedSaturation": {
+  "group": "calibration",
+  "label": "Red Saturation Calibration",
+  "type": "parameter"
+ },
+ "Redo": {
+  "group": "develop",
+  "label": "Redo",
+  "type": "button"
+ },
+ "RedoUndo": {
+  "group": "develop",
+  "label": "Redo",
+  "type": "repeat"
+ },
+ "Reject": {
+  "group": "flagging",
+  "label": "Reject",
+  "type": "button"
+ },
+ "RemoveFlag": {
+  "group": "flagging",
+  "label": "Unflagged",
+  "type": "button"
+ },
+ "ResetAll": {
+  "group": "develop",
+  "label": "Reset Settings",
+  "type": "button"
+ },
+ "ResetAllGrayMixer": {
+  "group": "resetColorAdjustments",
+  "label": "Gray Mixer",
+  "type": "button"
+ },
+ "ResetAllHueAdjustment": {
+  "group": "resetColorAdjustments",
+  "label": "Hue Adjustments",
+  "type": "button"
+ },
+ "ResetAllLuminanceAdjustment": {
+  "group": "resetColorAdjustments",
+  "label": "Luminance Adjustments",
+  "type": "button"
+ },
+ "ResetAllSaturationAdjustment": {
+  "group": "resetColorAdjustments",
+  "label": "Saturation Adjustments",
+  "type": "button"
+ },
+ "ResetBlacks": {
+  "group": "basicTone",
+  "label": "Blacks",
+  "type": "button"
+ },
+ "ResetBlueHue": {
+  "group": "calibration",
+  "label": "Blue Hue Calibration",
+  "type": "button"
+ },
+ "ResetBlueSaturation": {
+  "group": "calibration",
+  "label": "Blue Saturation Calibration",
+  "type": "button"
+ },
+ "ResetClarity": {
+  "group": "basicTone",
+  "label": "Clarity",
+  "type": "button"
+ },
+ "ResetColorGradeBlending": {
+  "group": "colorGrading",
+  "label": "Color Blending",
+  "type": "button"
+ },
+ "ResetColorGradeGlobalHue": {
+  "group": "colorGrading",
+  "label": "Global Hue",
+  "type": "button"
+ },
+ "ResetColorGradeGlobalLum": {
+  "group": "colorGrading",
+  "label": "Global Luminance",
+  "type": "button"
+ },
+ "ResetColorGradeGlobalSat": {
+  "group": "colorGrading",
+  "label": "Global Saturation",
+  "type": "button"
+ },
+ "ResetColorGradeHighlightLum": {
+  "group": "colorGrading",
+  "label": "Highlight Luminance",
+  "type": "button"
+ },
+ "ResetColorGradeMidtoneHue": {
+  "group": "colorGrading",
+  "label": "Midtone Hue",
+  "type": "button"
+ },
+ "ResetColorGradeMidtoneLum": {
+  "group": "colorGrading",
+  "label": "Midtone Luminance",
+  "type": "button"
+ },
+ "ResetColorGradeMidtoneSat": {
+  "group": "colorGrading",
+  "label": "Midtone Saturation",
+  "type": "button"
+ },
+ "ResetColorGradeShadowLum": {
+  "group": "colorGrading",
+  "label": "Shadow Luminance",
+  "type": "button"
+ },
+ "ResetColorNoiseReduction": {
+  "group": "detail",
+  "label": "Color Noise Reduction",
+  "type": "button"
+ },
+ "ResetColorNoiseReductionDetail": {
+  "group": "detail",
+  "label": "Color Noise Reduction Detail",
+  "type": "button"
+ },
+ "ResetColorNoiseReductionSmoothness": {
+  "group": "detail",
+  "label": "Color Noise Reduction Smoothness",
+  "type": "button"
+ },
+ "ResetContrast": {
+  "group": "basicTone",
+  "label": "Contrast",
+  "type": "button"
+ },
+ "ResetCrop": {
+  "group": "crop",
+  "label": "Reset Crop",
+  "type": "button"
+ },
+ "ResetCurveRefineSaturation": {
+  "group": "toneCurve",
+  "label": "Refine Saturation",
+  "type": "button"
+ },
+ "ResetDefringeGreenAmount": {
+  "group": "lensCorrections",
+  "label": "Defringe Green Amount",
+  "type": "button"
+ },
+ "ResetDefringeGreenHueHi": {
+  "group": "lensCorrections",
+  "label": "High",
+  "type": "button"
+ },
+ "ResetDefringeGreenHueLo": {
+  "group": "lensCorrections",
+  "label": "Low",
+  "type": "button"
+ },
+ "ResetDefringePurpleAmount": {
+  "group": "lensCorrections",
+  "label": "Defringe Purple Amount",
+  "type": "button"
+ },
+ "ResetDefringePurpleHueHi": {
+  "group": "lensCorrections",
+  "label": "High",
+  "type": "button"
+ },
+ "ResetDefringePurpleHueLo": {
+  "group": "lensCorrections",
+  "label": "Low",
+  "type": "button"
+ },
+ "ResetDehaze": {
+  "group": "basicTone",
+  "label": "Dehaze Amount",
+  "type": "button"
+ },
+ "ResetExposure": {
+  "group": "basicTone",
+  "label": "Exposure",
+  "type": "button"
+ },
+ "ResetGrainAmount": {
+  "group": "effects",
+  "label": "Grain Amount",
+  "type": "button"
+ },
+ "ResetGrainFrequency": {
+  "group": "effects",
+  "label": "Grain Roughness",
+  "type": "button"
+ },
+ "ResetGrainSize": {
+  "group": "effects",
+  "label": "Grain Size",
+  "type": "button"
+ },
+ "ResetGrayMixerAqua": {
+  "group": "resetColorAdjustments",
+  "label": "Gray Mixer Aqua",
+  "type": "button"
+ },
+ "ResetGrayMixerBlue": {
+  "group": "resetColorAdjustments",
+  "label": "Gray Mixer Blue",
+  "type": "button"
+ },
+ "ResetGrayMixerGreen": {
+  "group": "resetColorAdjustments",
+  "label": "Gray Mixer Green",
+  "type": "button"
+ },
+ "ResetGrayMixerMagenta": {
+  "group": "resetColorAdjustments",
+  "label": "Gray Mixer Magenta",
+  "type": "button"
+ },
+ "ResetGrayMixerOrange": {
+  "group": "resetColorAdjustments",
+  "label": "Gray Mixer Orange",
+  "type": "button"
+ },
+ "ResetGrayMixerPurple": {
+  "group": "resetColorAdjustments",
+  "label": "Gray Mixer Purple",
+  "type": "button"
+ },
+ "ResetGrayMixerRed": {
+  "group": "resetColorAdjustments",
+  "label": "Gray Mixer Red",
+  "type": "button"
+ },
+ "ResetGrayMixerYellow": {
+  "group": "resetColorAdjustments",
+  "label": "Gray Mixer Yellow",
+  "type": "button"
+ },
+ "ResetGreenHue": {
+  "group": "calibration",
+  "label": "Green Hue Calibration",
+  "type": "button"
+ },
+ "ResetGreenSaturation": {
+  "group": "calibration",
+  "label": "Green Saturation Calibration",
+  "type": "button"
+ },
+ "ResetHealing": {
+  "group": "localadjresets",
+  "label": "Reset Healing",
+  "type": "button"
+ },
+ "ResetHighlights": {
+  "group": "basicTone",
+  "label": "Highlights",
+  "type": "button"
+ },
+ "ResetHueAdjustmentAqua": {
+  "group": "resetColorAdjustments",
+  "label": "Hue Adjustment Aqua",
+  "type": "button"
+ },
+ "ResetHueAdjustmentBlue": {
+  "group": "resetColorAdjustments",
+  "label": "Hue Adjustment Blue",
+  "type": "button"
+ },
+ "ResetHueAdjustmentGreen": {
+  "group": "resetColorAdjustments",
+  "label": "Hue Adjustment Green",
+  "type": "button"
+ },
+ "ResetHueAdjustmentMagenta": {
+  "group": "resetColorAdjustments",
+  "label": "Hue Adjustment Magenta",
+  "type": "button"
+ },
+ "ResetHueAdjustmentOrange": {
+  "group": "resetColorAdjustments",
+  "label": "Hue Adjustment Orange",
+  "type": "button"
+ },
+ "ResetHueAdjustmentPurple": {
+  "group": "resetColorAdjustments",
+  "label": "Hue Adjustment Purple",
+  "type": "button"
+ },
+ "ResetHueAdjustmentRed": {
+  "group": "resetColorAdjustments",
+  "label": "Hue Adjustment Red",
+  "type": "button"
+ },
+ "ResetHueAdjustmentYellow": {
+  "group": "resetColorAdjustments",
+  "label": "Hue Adjustment Yellow",
+  "type": "button"
+ },
+ "ResetLast": {
+  "group": "develop",
+  "label": "Last Modified",
+  "type": "button"
+ },
+ "ResetLensBlurAmount": {
+  "group": "lensBlur",
+  "label": "Lens Blur Amount",
+  "type": "button"
+ },
+ "ResetLensBlurHighlightsBoost": {
+  "group": "lensBlur",
+  "label": "Highlights Boost",
+  "type": "button"
+ },
+ "ResetLensManualDistortionAmount": {
+  "group": "lensCorrections",
+  "label": "Lens Manual Distortion Amount",
+  "type": "button"
+ },
+ "ResetLensProfileChromaticAberrationScale": {
+  "group": "lensCorrections",
+  "label": "chromatic Aberration",
+  "type": "button"
+ },
+ "ResetLensProfileDistortionScale": {
+  "group": "lensCorrections",
+  "label": "Lens Profile Distortion Scale",
+  "type": "button"
+ },
+ "ResetLensProfileVignettingScale": {
+  "group": "lensCorrections",
+  "label": "Lens Profile Vignetting Scale",
+  "type": "button"
+ },
+ "ResetLuminanceAdjustmentAqua": {
+  "group": "resetColorAdjustments",
+  "label": "Luminance Adjustment Aqua",
+  "type": "button"
+ },
+ "ResetLuminanceAdjustmentBlue": {
+  "group": "resetColorAdjustments",
+  "label": "Luminance Adjustment Blue",
+  "type": "button"
+ },
+ "ResetLuminanceAdjustmentGreen": {
+  "group": "resetColorAdjustments",
+  "label": "Luminance Adjustment Green",
+  "type": "button"
+ },
+ "ResetLuminanceAdjustmentMagenta": {
+  "group": "resetColorAdjustments",
+  "label": "Luminance Adjustment Magenta",
+  "type": "button"
+ },
+ "ResetLuminanceAdjustmentOrange": {
+  "group": "resetColorAdjustments",
+  "label": "Luminance Adjustment Orange",
+  "type": "button"
+ },
+ "ResetLuminanceAdjustmentPurple": {
+  "group": "resetColorAdjustments",
+  "label": "Luminance Adjustment Purple",
+  "type": "button"
+ },
+ "ResetLuminanceAdjustmentRed": {
+  "group": "resetColorAdjustments",
+  "label": "Luminance Adjustment Red",
+  "type": "button"
+ },
+ "ResetLuminanceAdjustmentYellow": {
+  "group": "resetColorAdjustments",
+  "label": "Luminance Adjustment Yellow",
+  "type": "button"
+ },
+ "ResetLuminanceNoiseReductionContrast": {
+  "group": "detail",
+  "label": "Luminance Contrast",
+  "type": "button"
+ },
+ "ResetLuminanceNoiseReductionDetail": {
+  "group": "detail",
+  "label": "Luminance Detail",
+  "type": "button"
+ },
+ "ResetLuminanceSmoothing": {
+  "group": "detail",
+  "label": "Luminance Smoothing",
+  "type": "button"
+ },
+ "ResetParametricDarks": {
+  "group": "toneCurve",
+  "label": "Dark Tones",
+  "type": "button"
+ },
+ "ResetParametricHighlightSplit": {
+  "group": "toneCurve",
+  "label": "Highlight Split",
+  "type": "button"
+ },
+ "ResetParametricHighlights": {
+  "group": "toneCurve",
+  "label": "Highlight Tones",
+  "type": "button"
+ },
+ "ResetParametricLights": {
+  "group": "toneCurve",
+  "label": "Light Tones",
+  "type": "button"
+ },
+ "ResetParametricMidtoneSplit": {
+  "group": "toneCurve",
+  "label": "Midtone Split",
+  "type": "button"
+ },
+ "ResetParametricShadowSplit": {
+  "group": "toneCurve",
+  "label": "Shadow Split",
+  "type": "button"
+ },
+ "ResetParametricShadows": {
+  "group": "toneCurve",
+  "label": "Shadow Tones",
+  "type": "button"
+ },
+ "ResetPerspectiveAspect": {
+  "group": "transform",
+  "label": "Perspective Aspect",
+  "type": "button"
+ },
+ "ResetPerspectiveHorizontal": {
+  "group": "transform",
+  "label": "Perspective Horizontal",
+  "type": "button"
+ },
+ "ResetPerspectiveRotate": {
+  "group": "transform",
+  "label": "Perspective Rotate",
+  "type": "button"
+ },
+ "ResetPerspectiveScale": {
+  "group": "transform",
+  "label": "Perspective Scale",
+  "type": "button"
+ },
+ "ResetPerspectiveUpright": {
+  "group": "transform",
+  "label": "Reset Upright Settings",
+  "type": "button"
+ },
+ "ResetPerspectiveVertical": {
+  "group": "transform",
+  "label": "Perspective Vertical",
+  "type": "button"
+ },
+ "ResetPerspectiveX": {
+  "group": "transform",
+  "label": "Perspective X",
+  "type": "button"
+ },
+ "ResetPerspectiveY": {
+  "group": "transform",
+  "label": "Perspective Y",
+  "type": "button"
+ },
+ "ResetPostCropVignetteAmount": {
+  "group": "effects",
+  "label": "Post Crop Vignette Amount",
+  "type": "button"
+ },
+ "ResetPostCropVignetteFeather": {
+  "group": "effects",
+  "label": "Post Crop Vignette Feather",
+  "type": "button"
+ },
+ "ResetPostCropVignetteHighlightContrast": {
+  "group": "effects",
+  "label": "Post Crop Vignette Highlight Contrast",
+  "type": "button"
+ },
+ "ResetPostCropVignetteMidpoint": {
+  "group": "effects",
+  "label": "Post Crop Vignette Midpoint",
+  "type": "button"
+ },
+ "ResetPostCropVignetteRoundness": {
+  "group": "effects",
+  "label": "Post Crop Vignette Roundness",
+  "type": "button"
+ },
+ "ResetPostCropVignetteStyle": {
+  "group": "effects",
+  "label": "Post Crop Vignette Style",
+  "type": "button"
+ },
+ "ResetRedHue": {
+  "group": "calibration",
+  "label": "Red Hue Calibration",
+  "type": "button"
+ },
+ "ResetRedSaturation": {
+  "group": "calibration",
+  "label": "Red Saturation Calibration",
+  "type": "button"
+ },
+ "ResetRedeye": {
+  "group": "localadjresets",
+  "label": "Reset Red-Eye",
+  "type": "button"
+ },
+ "ResetSDRBlend": {
+  "group": "HDR",
+  "label": "Reset S D R Blend",
+  "type": "button"
+ },
+ "ResetSDRBrightness": {
+  "group": "HDR",
+  "label": "Reset S D R Brightness",
+  "type": "button"
+ },
+ "ResetSDRClarity": {
+  "group": "HDR",
+  "label": "Reset S D R Clarity",
+  "type": "button"
+ },
+ "ResetSDRContrast": {
+  "group": "HDR",
+  "label": "Reset S D R Contrast",
+  "type": "button"
+ },
+ "ResetSDRHighlights": {
+  "group": "HDR",
+  "label": "Reset S D R Highlights",
+  "type": "button"
+ },
+ "ResetSDRShadows": {
+  "group": "HDR",
+  "label": "Reset S D R Shadows",
+  "type": "button"
+ },
+ "ResetSDRWhites": {
+  "group": "HDR",
+  "label": "Reset S D R Whites",
+  "type": "button"
+ },
+ "ResetSaturation": {
+  "group": "basicTone",
+  "label": "Saturation",
+  "type": "button"
+ },
+ "ResetSaturationAdjustmentAqua": {
+  "group": "resetColorAdjustments",
+  "label": "Saturation Adjustment Aqua",
+  "type": "button"
+ },
+ "ResetSaturationAdjustmentBlue": {
+  "group": "resetColorAdjustments",
+  "label": "Saturation Adjustment Blue",
+  "type": "button"
+ },
+ "ResetSaturationAdjustmentGreen": {
+  "group": "resetColorAdjustments",
+  "label": "Saturation Adjustment Green",
+  "type": "button"
+ },
+ "ResetSaturationAdjustmentMagenta": {
+  "group": "resetColorAdjustments",
+  "label": "Saturation Adjustment Magenta",
+  "type": "button"
+ },
+ "ResetSaturationAdjustmentOrange": {
+  "group": "resetColorAdjustments",
+  "label": "Saturation Adjustment Orange",
+  "type": "button"
+ },
+ "ResetSaturationAdjustmentPurple": {
+  "group": "resetColorAdjustments",
+  "label": "Saturation Adjustment Purple",
+  "type": "button"
+ },
+ "ResetSaturationAdjustmentRed": {
+  "group": "resetColorAdjustments",
+  "label": "Saturation Adjustment Red",
+  "type": "button"
+ },
+ "ResetSaturationAdjustmentYellow": {
+  "group": "resetColorAdjustments",
+  "label": "Saturation Adjustment Yellow",
+  "type": "button"
+ },
+ "ResetShadowTint": {
+  "group": "calibration",
+  "label": "Shadow Tint Calibration",
+  "type": "button"
+ },
+ "ResetShadows": {
+  "group": "basicTone",
+  "label": "Shadows",
+  "type": "button"
+ },
+ "ResetSharpenDetail": {
+  "group": "detail",
+  "label": "Sharpen Detail",
+  "type": "button"
+ },
+ "ResetSharpenEdgeMasking": {
+  "group": "detail",
+  "label": "Sharpen Edge Masking",
+  "type": "button"
+ },
+ "ResetSharpenRadius": {
+  "group": "detail",
+  "label": "Sharpen Radius",
+  "type": "button"
+ },
+ "ResetSharpness": {
+  "group": "detail",
+  "label": "Sharpness",
+  "type": "button"
+ },
+ "ResetSplitToningBalance": {
+  "group": "colorGrading",
+  "label": "Color Grading Balance",
+  "type": "button"
+ },
+ "ResetSplitToningHighlightHue": {
+  "group": "colorGrading",
+  "label": "Highlight Hue",
+  "type": "button"
+ },
+ "ResetSplitToningHighlightSaturation": {
+  "group": "colorGrading",
+  "label": "Highlight Saturation",
+  "type": "button"
+ },
+ "ResetSplitToningShadowHue": {
+  "group": "colorGrading",
+  "label": "Shadow Hue",
+  "type": "button"
+ },
+ "ResetSplitToningShadowSaturation": {
+  "group": "colorGrading",
+  "label": "Shadow Saturation",
+  "type": "button"
+ },
+ "ResetTemperature": {
+  "group": "basicTone",
+  "label": "Temperature",
+  "type": "button"
+ },
+ "ResetTexture": {
+  "group": "basicTone",
+  "label": "Texture",
+  "type": "button"
+ },
+ "ResetTint": {
+  "group": "basicTone",
+  "label": "Tint",
+  "type": "button"
+ },
+ "ResetTransforms": {
+  "group": "transform",
+  "label": "Reset Transforms",
+  "type": "button"
+ },
+ "ResetVibrance": {
+  "group": "basicTone",
+  "label": "Vibrance",
+  "type": "button"
+ },
+ "ResetVignetteAmount": {
+  "group": "lensCorrections",
+  "label": "Vignette Amount",
+  "type": "button"
+ },
+ "ResetVignetteMidpoint": {
+  "group": "lensCorrections",
+  "label": "Vignette Midpoint",
+  "type": "button"
+ },
+ "ResetWhites": {
+  "group": "basicTone",
+  "label": "Whites",
+  "type": "button"
+ },
+ "Resetlocal_Amount": {
+  "group": "localadjresets",
+  "label": "amount",
+  "type": "button"
+ },
+ "Resetlocal_Blacks": {
+  "group": "localadjresets",
+  "label": "Blacks",
+  "type": "button"
+ },
+ "Resetlocal_Clarity": {
+  "group": "localadjresets",
+  "label": "Clarity",
+  "type": "button"
+ },
+ "Resetlocal_Contrast": {
+  "group": "localadjresets",
+  "label": "Contrast",
+  "type": "button"
+ },
+ "Resetlocal_Defringe": {
+  "group": "localadjresets",
+  "label": "Defringe",
+  "type": "button"
+ },
+ "Resetlocal_Dehaze": {
+  "group": "localadjresets",
+  "label": "Dehaze",
+  "type": "button"
+ },
+ "Resetlocal_Exposure": {
+  "group": "localadjresets",
+  "label": "Exposure",
+  "type": "button"
+ },
+ "Resetlocal_Grain": {
+  "group": "localadjresets",
+  "label": "Grain",
+  "type": "button"
+ },
+ "Resetlocal_Highlights": {
+  "group": "localadjresets",
+  "label": "Highlights",
+  "type": "button"
+ },
+ "Resetlocal_LuminanceNoise": {
+  "group": "localadjresets",
+  "label": "Luminance Noise Reduction",
+  "type": "button"
+ },
+ "Resetlocal_Moire": {
+  "group": "localadjresets",
+  "label": "Moire",
+  "type": "button"
+ },
+ "Resetlocal_RefineSaturation": {
+  "group": "localadjresets",
+  "label": "Refine Sat.",
+  "type": "button"
+ },
+ "Resetlocal_Saturation": {
+  "group": "localadjresets",
+  "label": "Saturation",
+  "type": "button"
+ },
+ "Resetlocal_Shadows": {
+  "group": "localadjresets",
+  "label": "Shadows",
+  "type": "button"
+ },
+ "Resetlocal_Sharpness": {
+  "group": "localadjresets",
+  "label": "Sharpness",
+  "type": "button"
+ },
+ "Resetlocal_Temperature": {
+  "group": "localadjresets",
+  "label": "Temp.",
+  "type": "button"
+ },
+ "Resetlocal_Texture": {
+  "group": "localadjresets",
+  "label": "Texture",
+  "type": "button"
+ },
+ "Resetlocal_Tint": {
+  "group": "localadjresets",
+  "label": "Tint",
+  "type": "button"
+ },
+ "Resetlocal_ToningLuminance": {
+  "group": "localadjresets",
+  "label": "Luminance",
+  "type": "button"
+ },
+ "Resetlocal_Whites": {
+  "group": "localadjresets",
+  "label": "Whites",
+  "type": "button"
+ },
+ "ResetstraightenAngle": {
+  "group": "crop",
+  "label": "Straighten Angle",
+  "type": "button"
+ },
+ "RevealPanelAdjust": {
+  "group": "basicTone",
+  "label": "Reveal Panel Adjust",
+  "type": "button"
+ },
+ "RevealPanelCalibrate": {
+  "group": "calibration",
+  "label": "Reveal Panel Calibrate",
+  "type": "button"
+ },
+ "RevealPanelColorGrading": {
+  "group": "colorGrading",
+  "label": "Reveal Panel Color Grading",
+  "type": "button"
+ },
+ "RevealPanelDetail": {
+  "group": "detail",
+  "label": "Reveal Panel Detail",
+  "type": "button"
+ },
+ "RevealPanelEffects": {
+  "group": "effects",
+  "label": "Reveal Panel Effects",
+  "type": "button"
+ },
+ "RevealPanelLens": {
+  "group": "lensCorrections",
+  "label": "Reveal Panel Lens",
+  "type": "button"
+ },
+ "RevealPanelLensBlur": {
+  "group": "lensBlur",
+  "label": "Reveal Panel Lens Blur",
+  "type": "button"
+ },
+ "RevealPanelMixer": {
+  "group": "colorAdjustments",
+  "label": "Reveal Panel Mixer",
+  "type": "button"
+ },
+ "RevealPanelTone": {
+  "group": "toneCurve",
+  "label": "Reveal Panel Tone",
+  "type": "button"
+ },
+ "RevealPanelTransform": {
+  "group": "transform",
+  "label": "Reveal Panel Transform",
+  "type": "button"
+ },
+ "RotateLeft": {
+  "group": "photos",
+  "label": "Rotate left",
+  "type": "button"
+ },
+ "RotateRight": {
+  "group": "photos",
+  "label": "Rotate right",
+  "type": "button"
+ },
+ "RotateRightLeft": {
+  "group": "photos",
+  "label": "Rotate right",
+  "type": "repeat"
+ },
+ "SDRBlend": {
+  "group": "HDR",
+  "label": "S D R Blend",
+  "type": "parameter"
+ },
+ "SDRBrightness": {
+  "group": "HDR",
+  "label": "S D R Brightness",
+  "type": "parameter"
+ },
+ "SDRClarity": {
+  "group": "HDR",
+  "label": "S D R Clarity",
+  "type": "parameter"
+ },
+ "SDRContrast": {
+  "group": "HDR",
+  "label": "S D R Contrast",
+  "type": "parameter"
+ },
+ "SDRHighlights": {
+  "group": "HDR",
+  "label": "S D R Highlights",
+  "type": "parameter"
+ },
+ "SDRShadows": {
+  "group": "HDR",
+  "label": "S D R Shadows",
+  "type": "parameter"
+ },
+ "SDRWhites": {
+  "group": "HDR",
+  "label": "S D R Whites",
+  "type": "parameter"
+ },
+ "Saturation": {
+  "group": "basicTone",
+  "label": "Saturation",
+  "type": "parameter"
+ },
+ "SaturationAdjustmentAqua": {
+  "group": "colorAdjustments",
+  "label": "Saturation Adjustment Aqua",
+  "type": "parameter"
+ },
+ "SaturationAdjustmentBlue": {
+  "group": "colorAdjustments",
+  "label": "Saturation Adjustment Blue",
+  "type": "parameter"
+ },
+ "SaturationAdjustmentGreen": {
+  "group": "colorAdjustments",
+  "label": "Saturation Adjustment Green",
+  "type": "parameter"
+ },
+ "SaturationAdjustmentMagenta": {
+  "group": "colorAdjustments",
+  "label": "Saturation Adjustment Magenta",
+  "type": "parameter"
+ },
+ "SaturationAdjustmentOrange": {
+  "group": "colorAdjustments",
+  "label": "Saturation Adjustment Orange",
+  "type": "parameter"
+ },
+ "SaturationAdjustmentPurple": {
+  "group": "colorAdjustments",
+  "label": "Saturation Adjustment Purple",
+  "type": "parameter"
+ },
+ "SaturationAdjustmentRed": {
+  "group": "colorAdjustments",
+  "label": "Saturation Adjustment Red",
+  "type": "parameter"
+ },
+ "SaturationAdjustmentYellow": {
+  "group": "colorAdjustments",
+  "label": "Saturation Adjustment Yellow",
+  "type": "parameter"
+ },
+ "Select1Left": {
+  "group": "photos",
+  "label": "Add to Selection",
+  "type": "button"
+ },
+ "Select1Right": {
+  "group": "photos",
+  "label": "Add to Selection",
+  "type": "button"
+ },
+ "SelectRightLeft": {
+  "group": "photos",
+  "label": "Add to Selection",
+  "type": "repeat"
+ },
+ "SetRating": {
+  "group": "rating",
+  "label": "Set Rating",
+  "type": "variable"
+ },
+ "SetRating0": {
+  "group": "rating",
+  "label": "Set Rating0",
+  "type": "button"
+ },
+ "SetRating1": {
+  "group": "rating",
+  "label": "1 star",
+  "type": "button"
+ },
+ "SetRating2": {
+  "group": "rating",
+  "label": "Set Rating2",
+  "type": "button"
+ },
+ "SetRating3": {
+  "group": "rating",
+  "label": "Set Rating3",
+  "type": "button"
+ },
+ "SetRating4": {
+  "group": "rating",
+  "label": "Set Rating4",
+  "type": "button"
+ },
+ "SetRating5": {
+  "group": "rating",
+  "label": "Set Rating5",
+  "type": "button"
+ },
+ "SetTreatmentBW": {
+  "group": "quickdev",
+  "label": "Set treatment B&W",
+  "type": "button"
+ },
+ "SetTreatmentColor": {
+  "group": "quickdev",
+  "label": "Set treatment Color",
+  "type": "button"
+ },
+ "ShadowTint": {
+  "group": "calibration",
+  "label": "Shadow Tint Calibration",
+  "type": "parameter"
+ },
+ "Shadows": {
+  "group": "basicTone",
+  "label": "Shadows",
+  "type": "parameter"
+ },
+ "SharpenDetail": {
+  "group": "detail",
+  "label": "Sharpen Detail",
+  "type": "parameter"
+ },
+ "SharpenEdgeMasking": {
+  "group": "detail",
+  "label": "Sharpen Edge Masking",
+  "type": "parameter"
+ },
+ "SharpenRadius": {
+  "group": "detail",
+  "label": "Sharpen Radius",
+  "type": "parameter"
+ },
+ "Sharpness": {
+  "group": "detail",
+  "label": "Sharpness",
+  "type": "parameter"
+ },
+ "ShoFullHidePanels": {
+  "group": "view",
+  "label": "Full screen, hide panels",
+  "type": "button"
+ },
+ "ShoFullPreview": {
+  "group": "view",
+  "label": "Full screen preview",
+  "type": "button"
+ },
+ "ShoScndVwcompare": {
+  "group": "secondaryDisplay",
+  "label": "Compare",
+  "type": "button"
+ },
+ "ShoScndVwgrid": {
+  "group": "secondaryDisplay",
+  "label": "Grid",
+  "type": "button"
+ },
+ "ShoScndVwlive_loupe": {
+  "group": "secondaryDisplay",
+  "label": "Live Loupe",
+  "type": "button"
+ },
+ "ShoScndVwlocked_loupe": {
+  "group": "secondaryDisplay",
+  "label": "Locked Loupe",
+  "type": "button"
+ },
+ "ShoScndVwloupe": {
+  "group": "secondaryDisplay",
+  "label": "Loupe",
+  "type": "button"
+ },
+ "ShoScndVwslideshow": {
+  "group": "secondaryDisplay",
+  "label": "Slideshow",
+  "type": "button"
+ },
+ "ShoScndVwsurvey": {
+  "group": "secondaryDisplay",
+  "label": "Survey",
+  "type": "button"
+ },
+ "ShoVwRefHoriz": {
+  "group": "develop",
+  "label": "Reference View — Left/Right",
+  "type": "button"
+ },
+ "ShoVwRefVert": {
+  "group": "develop",
+  "label": "Reference View — Top/Bottom",
+  "type": "button"
+ },
+ "ShoVwcompare": {
+  "group": "view",
+  "label": "Compare",
+  "type": "button"
+ },
+ "ShoVwdevelop_before": {
+  "group": "develop",
+  "label": "Before",
+  "type": "button"
+ },
+ "ShoVwdevelop_before_after_horiz": {
+  "group": "develop",
+  "label": "Before/After Left/Right",
+  "type": "button"
+ },
+ "ShoVwdevelop_before_after_vert": {
+  "group": "develop",
+  "label": "Before/After Top/Bottom",
+  "type": "button"
+ },
+ "ShoVwdevelop_loupe": {
+  "group": "develop",
+  "label": "Loupe",
+  "type": "button"
+ },
+ "ShoVwgrid": {
+  "group": "view",
+  "label": "Grid",
+  "type": "button"
+ },
+ "ShoVwloupe": {
+  "group": "view",
+  "label": "Loupe",
+  "type": "button"
+ },
+ "ShoVwpeople": {
+  "group": "view",
+  "label": "People",
+  "type": "button"
+ },
+ "ShoVwsurvey": {
+  "group": "view",
+  "label": "Survey",
+  "type": "button"
+ },
+ "ShowClipping": {
+  "group": "develop",
+  "label": "Show clipping",
+  "type": "button"
+ },
+ "ShowSlideShow": {
+  "group": "view",
+  "label": "Enter Impromptu Slideshow mode",
+  "type": "button"
+ },
+ "SliderDecrease": {
+  "group": "develop",
+  "label": "Less",
+  "type": "button"
+ },
+ "SliderIncrease": {
+  "group": "develop",
+  "label": "More",
+  "type": "button"
+ },
+ "SplitToningBalance": {
+  "group": "colorGrading",
+  "label": "Color Grading Balance",
+  "type": "parameter"
+ },
+ "SplitToningHighlightHue": {
+  "group": "colorGrading",
+  "label": "Highlight Hue",
+  "type": "parameter"
+ },
+ "SplitToningHighlightSaturation": {
+  "group": "colorGrading",
+  "label": "Highlight Saturation",
+  "type": "parameter"
+ },
+ "SplitToningShadowHue": {
+  "group": "colorGrading",
+  "label": "Shadow Hue",
+  "type": "parameter"
+ },
+ "SplitToningShadowSaturation": {
+  "group": "colorGrading",
+  "label": "Shadow Saturation",
+  "type": "parameter"
+ },
+ "SpotRemoval": {
+  "group": "localizedAdjustments",
+  "label": "Spot Removal",
+  "type": "button"
+ },
+ "SwToMbook": {
+  "group": "gotoToolModulePanel",
+  "label": "Book",
+  "type": "button"
+ },
+ "SwToMdevelop": {
+  "group": "develop",
+  "label": "Develop",
+  "type": "button"
+ },
+ "SwToMlibrary": {
+  "group": "view",
+  "label": "Library",
+  "type": "button"
+ },
+ "SwToMmap": {
+  "group": "gotoToolModulePanel",
+  "label": "Map",
+  "type": "button"
+ },
+ "SwToMprint": {
+  "group": "gotoToolModulePanel",
+  "label": "Print",
+  "type": "button"
+ },
+ "SwToMslideshow": {
+  "group": "gotoToolModulePanel",
+  "label": "Slideshow",
+  "type": "button"
+ },
+ "SwToMweb": {
+  "group": "gotoToolModulePanel",
+  "label": "Web",
+  "type": "button"
+ },
+ "Temperature": {
+  "group": "basicTone",
+  "label": "Temperature",
+  "type": "parameter"
+ },
+ "Texture": {
+  "group": "basicTone",
+  "label": "Texture",
+  "type": "parameter"
+ },
+ "Tint": {
+  "group": "basicTone",
+  "label": "Tint",
+  "type": "parameter"
+ },
+ "ToggleBlue": {
+  "group": "flagging",
+  "label": "Blue",
+  "type": "button"
+ },
+ "ToggleFlag": {
+  "group": "flagging",
+  "label": "Toggle Flag",
+  "type": "button"
+ },
+ "ToggleGreen": {
+  "group": "flagging",
+  "label": "Green",
+  "type": "button"
+ },
+ "ToggleLoupe": {
+  "group": "view",
+  "label": "Loupe view activate/inactivate",
+  "type": "button"
+ },
+ "TogglePurple": {
+  "group": "flagging",
+  "label": "Purple",
+  "type": "button"
+ },
+ "ToggleRed": {
+  "group": "flagging",
+  "label": "Red",
+  "type": "button"
+ },
+ "ToggleScreenTwo": {
+  "group": "secondaryDisplay",
+  "label": "Show",
+  "type": "button"
+ },
+ "ToggleYellow": {
+  "group": "flagging",
+  "label": "Yellow",
+  "type": "button"
+ },
+ "ToggleZoomOffOn": {
+  "group": "view",
+  "label": "Enable/Disable Zoom",
+  "type": "button"
+ },
+ "Undo": {
+  "group": "develop",
+  "label": "Undo",
+  "type": "button"
+ },
+ "UprightAuto": {
+  "group": "transform",
+  "label": "Auto",
+  "type": "button"
+ },
+ "UprightFull": {
+  "group": "transform",
+  "label": "Full",
+  "type": "button"
+ },
+ "UprightGuided": {
+  "group": "transform",
+  "label": "Guided",
+  "type": "button"
+ },
+ "UprightLevel": {
+  "group": "transform",
+  "label": "Level",
+  "type": "button"
+ },
+ "UprightOff": {
+  "group": "transform",
+  "label": "Off",
+  "type": "button"
+ },
+ "UprightVertical": {
+  "group": "transform",
+  "label": "Vertical",
+  "type": "button"
+ },
+ "Vibrance": {
+  "group": "basicTone",
+  "label": "Vibrance",
+  "type": "parameter"
+ },
+ "VignetteAmount": {
+  "group": "lensCorrections",
+  "label": "Vignette Amount",
+  "type": "parameter"
+ },
+ "VignetteMidpoint": {
+  "group": "lensCorrections",
+  "label": "Vignette Midpoint",
+  "type": "parameter"
+ },
+ "VirtualCopy": {
+  "group": "develop",
+  "label": "Create Virtual Copy",
+  "type": "button"
+ },
+ "WhiteBalanceAs_Shot": {
+  "group": "basicTone",
+  "label": "As Shot",
+  "type": "button"
+ },
+ "WhiteBalanceAuto": {
+  "group": "basicTone",
+  "label": "Auto",
+  "type": "button"
+ },
+ "WhiteBalanceCloudy": {
+  "group": "basicTone",
+  "label": "Cloudy",
+  "type": "button"
+ },
+ "WhiteBalanceDaylight": {
+  "group": "basicTone",
+  "label": "Daylight",
+  "type": "button"
+ },
+ "WhiteBalanceFlash": {
+  "group": "basicTone",
+  "label": "Flash",
+  "type": "button"
+ },
+ "WhiteBalanceFluorescent": {
+  "group": "basicTone",
+  "label": "Fluorescent",
+  "type": "button"
+ },
+ "WhiteBalanceShade": {
+  "group": "basicTone",
+  "label": "Shade",
+  "type": "button"
+ },
+ "WhiteBalanceTungsten": {
+  "group": "basicTone",
+  "label": "Tungsten",
+  "type": "button"
+ },
+ "Whites": {
+  "group": "basicTone",
+  "label": "Whites",
+  "type": "parameter"
+ },
+ "ZoomInLargeStep": {
+  "group": "view",
+  "label": "Zoom In",
+  "type": "button"
+ },
+ "ZoomInOut": {
+  "group": "view",
+  "label": "Zoom Out",
+  "type": "repeat"
+ },
+ "ZoomInSmallStep": {
+  "group": "view",
+  "label": "Zoom In",
+  "type": "button"
+ },
+ "ZoomOutIn": {
+  "group": "view",
+  "label": "Zoom Out",
+  "type": "repeat"
+ },
+ "ZoomOutLargeStep": {
+  "group": "view",
+  "label": "Zoom Out",
+  "type": "button"
+ },
+ "ZoomOutSmallStep": {
+  "group": "view",
+  "label": "Zoom Out",
+  "type": "button"
+ },
+ "ZoomTo100": {
+  "group": "view",
+  "label": "Zoom to 100%",
+  "type": "button"
+ },
+ "local_Amount": {
+  "group": "localizedAdjustments",
+  "label": "amount",
+  "type": "parameter"
+ },
+ "local_Blacks": {
+  "group": "localizedAdjustments",
+  "label": "Blacks",
+  "type": "parameter"
+ },
+ "local_Clarity": {
+  "group": "localizedAdjustments",
+  "label": "Clarity",
+  "type": "parameter"
+ },
+ "local_Contrast": {
+  "group": "localizedAdjustments",
+  "label": "Contrast",
+  "type": "parameter"
+ },
+ "local_Defringe": {
+  "group": "localizedAdjustments",
+  "label": "Defringe",
+  "type": "parameter"
+ },
+ "local_Dehaze": {
+  "group": "localizedAdjustments",
+  "label": "Dehaze",
+  "type": "parameter"
+ },
+ "local_Exposure": {
+  "group": "localizedAdjustments",
+  "label": "Exposure",
+  "type": "parameter"
+ },
+ "local_Grain": {
+  "group": "localizedAdjustments",
+  "label": "Grain",
+  "type": "parameter"
+ },
+ "local_Highlights": {
+  "group": "localizedAdjustments",
+  "label": "Highlights",
+  "type": "parameter"
+ },
+ "local_Hue": {
+  "group": "localizedAdjustments",
+  "label": "Hue",
+  "type": "parameter"
+ },
+ "local_LuminanceNoise": {
+  "group": "localizedAdjustments",
+  "label": "Luminance Noise Reduction",
+  "type": "parameter"
+ },
+ "local_Moire": {
+  "group": "localizedAdjustments",
+  "label": "Moire",
+  "type": "parameter"
+ },
+ "local_RefineSaturation": {
+  "group": "localizedAdjustments",
+  "label": "Refine Sat.",
+  "type": "parameter"
+ },
+ "local_Saturation": {
+  "group": "localizedAdjustments",
+  "label": "Saturation",
+  "type": "parameter"
+ },
+ "local_Shadows": {
+  "group": "localizedAdjustments",
+  "label": "Shadows",
+  "type": "parameter"
+ },
+ "local_Sharpness": {
+  "group": "localizedAdjustments",
+  "label": "Sharpness",
+  "type": "parameter"
+ },
+ "local_Temperature": {
+  "group": "localizedAdjustments",
+  "label": "Temp.",
+  "type": "parameter"
+ },
+ "local_Texture": {
+  "group": "localizedAdjustments",
+  "label": "Texture",
+  "type": "parameter"
+ },
+ "local_Tint": {
+  "group": "localizedAdjustments",
+  "label": "Tint",
+  "type": "parameter"
+ },
+ "local_ToningHue": {
+  "group": "localizedAdjustments",
+  "label": "Toning",
+  "type": "parameter"
+ },
+ "local_ToningLuminance": {
+  "group": "localizedAdjustments",
+  "label": "Luminance",
+  "type": "parameter"
+ },
+ "local_ToningSaturation": {
+  "group": "localizedAdjustments",
+  "label": "Saturation",
+  "type": "parameter"
+ },
+ "local_Whites": {
+  "group": "localizedAdjustments",
+  "label": "Whites",
+  "type": "parameter"
+ },
+ "openExportDialog": {
+  "group": "photos",
+  "label": "Export...",
+  "type": "button"
+ },
+ "openExportWithPreviousDialog": {
+  "group": "photos",
+  "label": "Export again",
+  "type": "button"
+ },
+ "profile1": {
+  "group": "profiles",
+  "label": "profile1",
+  "type": "button"
+ },
+ "profile10": {
+  "group": "profiles",
+  "label": "profile10",
+  "type": "button"
+ },
+ "profile11": {
+  "group": "profiles",
+  "label": "profile11",
+  "type": "button"
+ },
+ "profile12": {
+  "group": "profiles",
+  "label": "profile12",
+  "type": "button"
+ },
+ "profile13": {
+  "group": "profiles",
+  "label": "profile13",
+  "type": "button"
+ },
+ "profile14": {
+  "group": "profiles",
+  "label": "profile14",
+  "type": "button"
+ },
+ "profile15": {
+  "group": "profiles",
+  "label": "profile15",
+  "type": "button"
+ },
+ "profile16": {
+  "group": "profiles",
+  "label": "profile16",
+  "type": "button"
+ },
+ "profile17": {
+  "group": "profiles",
+  "label": "profile17",
+  "type": "button"
+ },
+ "profile18": {
+  "group": "profiles",
+  "label": "profile18",
+  "type": "button"
+ },
+ "profile19": {
+  "group": "profiles",
+  "label": "profile19",
+  "type": "button"
+ },
+ "profile2": {
+  "group": "profiles",
+  "label": "profile2",
+  "type": "button"
+ },
+ "profile20": {
+  "group": "profiles",
+  "label": "profile20",
+  "type": "button"
+ },
+ "profile21": {
+  "group": "profiles",
+  "label": "profile21",
+  "type": "button"
+ },
+ "profile22": {
+  "group": "profiles",
+  "label": "profile22",
+  "type": "button"
+ },
+ "profile23": {
+  "group": "profiles",
+  "label": "profile23",
+  "type": "button"
+ },
+ "profile24": {
+  "group": "profiles",
+  "label": "profile24",
+  "type": "button"
+ },
+ "profile25": {
+  "group": "profiles",
+  "label": "profile25",
+  "type": "button"
+ },
+ "profile26": {
+  "group": "profiles",
+  "label": "profile26",
+  "type": "button"
+ },
+ "profile3": {
+  "group": "profiles",
+  "label": "profile3",
+  "type": "button"
+ },
+ "profile4": {
+  "group": "profiles",
+  "label": "profile4",
+  "type": "button"
+ },
+ "profile5": {
+  "group": "profiles",
+  "label": "profile5",
+  "type": "button"
+ },
+ "profile6": {
+  "group": "profiles",
+  "label": "profile6",
+  "type": "button"
+ },
+ "profile7": {
+  "group": "profiles",
+  "label": "profile7",
+  "type": "button"
+ },
+ "profile8": {
+  "group": "profiles",
+  "label": "profile8",
+  "type": "button"
+ },
+ "profile9": {
+  "group": "profiles",
+  "label": "profile9",
+  "type": "button"
+ },
+ "straightenAngle": {
+  "group": "crop",
+  "label": "Straighten Angle",
+  "type": "parameter"
+ }
+}

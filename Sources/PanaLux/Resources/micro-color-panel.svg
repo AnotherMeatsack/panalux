@@ -1,0 +1,439 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" id="micro-color-panel" version="1.1" width="2160" height="1104" viewBox="0 0 1080 552" preserveAspectRatio="xMidYMid meet" role="group" aria-labelledby="panel-title panel-description">
+  <title id="panel-title">Micro Color Panel — editable control map</title>
+  <desc id="panel-description">Flat vector illustration traced from the supplied front-view photograph. Twelve encoders, forty buttons, three independent outer rings, and three trackballs. Each control is a named, keyboard-focusable SVG group. All artwork is vector; no raster images or external assets. Control IDs are UI identifiers, not hardware protocol codes.</desc>
+  <metadata id="panel-metadata">{"asset": "Micro Color Panel editable control map", "reference": "User-supplied BMDCIMICROCL_2.jpg", "coordinate_system": {"viewBox": [0, 0, 1080, 552], "source_photo_offset": [60, 353]}, "geometry_note": "Visual layout matched to the reference photograph, not manufacturer CAD.", "control_id_note": "Stable UI identifiers only; not device report IDs or protocol codes.", "raster_assets": false}</metadata>
+  <style>
+/* All base geometry/colors are presentation attributes for editor portability. */
+text { font-family: Arial, Helvetica, sans-serif; }
+.control { cursor: pointer; outline: none; }
+.control text, .control .icon, .control .detail { pointer-events: none; }
+.control:hover .interactive-face { stroke: #a5cfff; stroke-width: 1.6; }
+.control:focus-visible .interactive-face { stroke: #a5cfff; stroke-width: 2.1; }
+.control[data-selected="true"] .interactive-face,
+.control.is-selected .interactive-face { fill: #274761; stroke: #a5cfff; stroke-width: 2.1; }
+.control[data-selected="true"] .control-label,
+.control.is-selected .control-label { fill: #d8ebff; }
+.control[data-active="true"] .interactive-face { stroke: #9ce7c1; stroke-width: 2.1; }
+</style>
+  <g id="chassis" pointer-events="none" aria-hidden="true">
+    <rect id="chassis-outline" x="12" y="13" width="1056" height="526" rx="46" fill="#191c20" stroke="#60656d" stroke-width="1.4" />
+    <rect id="chassis-inner-edge" x="16" y="17" width="1048" height="518" rx="42" fill="none" stroke="#2b3036" stroke-width="1" />
+    <path id="top-recess-surround" d="M 67 18 H 1014 V 51 Q 1014 72 994 72 H 646 C 626 72 620 86 598 86 H 504 C 482 86 476 72 456 72 H 87 Q 67 72 67 51 Z" fill="#25292e" stroke="#464c54" stroke-width="1.1" />
+    <path id="top-recess" d="M 73 34 H 1008 V 50 Q 1008 64 994 64 H 644 C 624 64 618 79 598 79 H 504 C 484 79 478 64 458 64 H 88 Q 73 64 73 50 Z" fill="#0c0e11" stroke="#353a42" stroke-width="1" />
+    <path id="top-recess-lip" d="M 77 36 H 1004" fill="none" stroke="#444a52" stroke-width="1" />
+    <text x="540" y="519" text-anchor="middle" font-size="8.1" letter-spacing="1.45" fill="#777e88">MICRO COLOR PANEL</text>
+  </g>
+  <g id="controls">
+    <g id="encoder_y_lift" class="control control-encoder" data-control-id="encoder_y_lift" data-control-type="encoder" data-label="Y LIFT" data-selected="false" tabindex="0" role="button" aria-label="Configure Y LIFT">
+      <title>Y LIFT</title>
+      <rect id="encoder_y_lift-hit" x="41" y="99" width="60" height="65" rx="8" fill="#ffffff" fill-opacity="0" pointer-events="all" />
+      <circle id="encoder_y_lift-socket" cx="71" cy="125" r="21" fill="#0d1014" stroke="#41474f" stroke-width="1" />
+      <circle id="encoder_y_lift-face" class="interactive-face" cx="71" cy="125" r="17.3" fill="#3e444d" stroke="#7a838f" stroke-width="1.1" />
+      <text id="encoder_y_lift-label" class="control-label" x="71" y="163" text-anchor="middle" font-size="7.0" font-weight="600" fill="#cbd1d9">Y LIFT</text>
+    </g>
+    <g id="encoder_y_gamma" class="control control-encoder" data-control-id="encoder_y_gamma" data-control-type="encoder" data-label="Y GAMMA" data-selected="false" tabindex="0" role="button" aria-label="Configure Y GAMMA">
+      <title>Y GAMMA</title>
+      <rect id="encoder_y_gamma-hit" x="123" y="99" width="60" height="65" rx="8" fill="#ffffff" fill-opacity="0" pointer-events="all" />
+      <circle id="encoder_y_gamma-socket" cx="153" cy="125" r="21" fill="#0d1014" stroke="#41474f" stroke-width="1" />
+      <circle id="encoder_y_gamma-face" class="interactive-face" cx="153" cy="125" r="17.3" fill="#3e444d" stroke="#7a838f" stroke-width="1.1" />
+      <text id="encoder_y_gamma-label" class="control-label" x="153" y="163" text-anchor="middle" font-size="7.0" font-weight="600" fill="#cbd1d9">Y GAMMA</text>
+    </g>
+    <g id="encoder_y_gain" class="control control-encoder" data-control-id="encoder_y_gain" data-control-type="encoder" data-label="Y GAIN" data-selected="false" tabindex="0" role="button" aria-label="Configure Y GAIN">
+      <title>Y GAIN</title>
+      <rect id="encoder_y_gain-hit" x="203" y="99" width="60" height="65" rx="8" fill="#ffffff" fill-opacity="0" pointer-events="all" />
+      <circle id="encoder_y_gain-socket" cx="233" cy="125" r="21" fill="#0d1014" stroke="#41474f" stroke-width="1" />
+      <circle id="encoder_y_gain-face" class="interactive-face" cx="233" cy="125" r="17.3" fill="#3e444d" stroke="#7a838f" stroke-width="1.1" />
+      <text id="encoder_y_gain-label" class="control-label" x="233" y="163" text-anchor="middle" font-size="7.0" font-weight="600" fill="#cbd1d9">Y GAIN</text>
+    </g>
+    <g id="encoder_contrast" class="control control-encoder" data-control-id="encoder_contrast" data-control-type="encoder" data-label="CONTRAST" data-selected="false" tabindex="0" role="button" aria-label="Configure CONTRAST">
+      <title>CONTRAST</title>
+      <rect id="encoder_contrast-hit" x="284" y="99" width="60" height="65" rx="8" fill="#ffffff" fill-opacity="0" pointer-events="all" />
+      <circle id="encoder_contrast-socket" cx="314" cy="125" r="21" fill="#0d1014" stroke="#41474f" stroke-width="1" />
+      <circle id="encoder_contrast-face" class="interactive-face" cx="314" cy="125" r="17.3" fill="#3e444d" stroke="#7a838f" stroke-width="1.1" />
+      <text id="encoder_contrast-label" class="control-label" x="314" y="163" text-anchor="middle" font-size="7.0" font-weight="600" fill="#cbd1d9">CONTRAST</text>
+    </g>
+    <g id="encoder_pivot" class="control control-encoder" data-control-id="encoder_pivot" data-control-type="encoder" data-label="PIVOT" data-selected="false" tabindex="0" role="button" aria-label="Configure PIVOT">
+      <title>PIVOT</title>
+      <rect id="encoder_pivot-hit" x="389" y="99" width="60" height="65" rx="8" fill="#ffffff" fill-opacity="0" pointer-events="all" />
+      <circle id="encoder_pivot-socket" cx="419" cy="125" r="21" fill="#0d1014" stroke="#41474f" stroke-width="1" />
+      <circle id="encoder_pivot-face" class="interactive-face" cx="419" cy="125" r="17.3" fill="#3e444d" stroke="#7a838f" stroke-width="1.1" />
+      <text id="encoder_pivot-label" class="control-label" x="419" y="163" text-anchor="middle" font-size="7.0" font-weight="600" fill="#cbd1d9">PIVOT</text>
+    </g>
+    <g id="encoder_mid_detail" class="control control-encoder" data-control-id="encoder_mid_detail" data-control-type="encoder" data-label="MID DETAIL" data-selected="false" tabindex="0" role="button" aria-label="Configure MID DETAIL">
+      <title>MID DETAIL</title>
+      <rect id="encoder_mid_detail-hit" x="469" y="99" width="60" height="65" rx="8" fill="#ffffff" fill-opacity="0" pointer-events="all" />
+      <circle id="encoder_mid_detail-socket" cx="499" cy="125" r="21" fill="#0d1014" stroke="#41474f" stroke-width="1" />
+      <circle id="encoder_mid_detail-face" class="interactive-face" cx="499" cy="125" r="17.3" fill="#3e444d" stroke="#7a838f" stroke-width="1.1" />
+      <text id="encoder_mid_detail-label" class="control-label" x="499" y="163" text-anchor="middle" font-size="7.0" font-weight="600" fill="#cbd1d9">MID DETAIL</text>
+    </g>
+    <g id="encoder_color_boost" class="control control-encoder" data-control-id="encoder_color_boost" data-control-type="encoder" data-label="COLOR BOOST" data-selected="false" tabindex="0" role="button" aria-label="Configure COLOR BOOST">
+      <title>COLOR BOOST</title>
+      <rect id="encoder_color_boost-hit" x="550" y="99" width="60" height="65" rx="8" fill="#ffffff" fill-opacity="0" pointer-events="all" />
+      <circle id="encoder_color_boost-socket" cx="580" cy="125" r="21" fill="#0d1014" stroke="#41474f" stroke-width="1" />
+      <circle id="encoder_color_boost-face" class="interactive-face" cx="580" cy="125" r="17.3" fill="#3e444d" stroke="#7a838f" stroke-width="1.1" />
+      <text id="encoder_color_boost-label" class="control-label" x="580" y="163" text-anchor="middle" font-size="7.0" font-weight="600" fill="#cbd1d9">COLOR BOOST</text>
+    </g>
+    <g id="encoder_shadows" class="control control-encoder" data-control-id="encoder_shadows" data-control-type="encoder" data-label="SHADOWS" data-selected="false" tabindex="0" role="button" aria-label="Configure SHADOWS">
+      <title>SHADOWS</title>
+      <rect id="encoder_shadows-hit" x="631" y="99" width="60" height="65" rx="8" fill="#ffffff" fill-opacity="0" pointer-events="all" />
+      <circle id="encoder_shadows-socket" cx="661" cy="125" r="21" fill="#0d1014" stroke="#41474f" stroke-width="1" />
+      <circle id="encoder_shadows-face" class="interactive-face" cx="661" cy="125" r="17.3" fill="#3e444d" stroke="#7a838f" stroke-width="1.1" />
+      <text id="encoder_shadows-label" class="control-label" x="661" y="163" text-anchor="middle" font-size="7.0" font-weight="600" fill="#cbd1d9">SHADOWS</text>
+    </g>
+    <g id="encoder_highlights" class="control control-encoder" data-control-id="encoder_highlights" data-control-type="encoder" data-label="HIGHLIGHTS" data-selected="false" tabindex="0" role="button" aria-label="Configure HIGHLIGHTS">
+      <title>HIGHLIGHTS</title>
+      <rect id="encoder_highlights-hit" x="737" y="99" width="60" height="65" rx="8" fill="#ffffff" fill-opacity="0" pointer-events="all" />
+      <circle id="encoder_highlights-socket" cx="767" cy="125" r="21" fill="#0d1014" stroke="#41474f" stroke-width="1" />
+      <circle id="encoder_highlights-face" class="interactive-face" cx="767" cy="125" r="17.3" fill="#3e444d" stroke="#7a838f" stroke-width="1.1" />
+      <text id="encoder_highlights-label" class="control-label" x="767" y="163" text-anchor="middle" font-size="7.0" font-weight="600" fill="#cbd1d9">HIGHLIGHTS</text>
+    </g>
+    <g id="encoder_saturation" class="control control-encoder" data-control-id="encoder_saturation" data-control-type="encoder" data-label="SATURATION" data-selected="false" tabindex="0" role="button" aria-label="Configure SATURATION">
+      <title>SATURATION</title>
+      <rect id="encoder_saturation-hit" x="818" y="99" width="60" height="65" rx="8" fill="#ffffff" fill-opacity="0" pointer-events="all" />
+      <circle id="encoder_saturation-socket" cx="848" cy="125" r="21" fill="#0d1014" stroke="#41474f" stroke-width="1" />
+      <circle id="encoder_saturation-face" class="interactive-face" cx="848" cy="125" r="17.3" fill="#3e444d" stroke="#7a838f" stroke-width="1.1" />
+      <text id="encoder_saturation-label" class="control-label" x="848" y="163" text-anchor="middle" font-size="7.0" font-weight="600" fill="#cbd1d9">SATURATION</text>
+    </g>
+    <g id="encoder_hue" class="control control-encoder" data-control-id="encoder_hue" data-control-type="encoder" data-label="HUE" data-selected="false" tabindex="0" role="button" aria-label="Configure HUE">
+      <title>HUE</title>
+      <rect id="encoder_hue-hit" x="899" y="99" width="60" height="65" rx="8" fill="#ffffff" fill-opacity="0" pointer-events="all" />
+      <circle id="encoder_hue-socket" cx="929" cy="125" r="21" fill="#0d1014" stroke="#41474f" stroke-width="1" />
+      <circle id="encoder_hue-face" class="interactive-face" cx="929" cy="125" r="17.3" fill="#3e444d" stroke="#7a838f" stroke-width="1.1" />
+      <text id="encoder_hue-label" class="control-label" x="929" y="163" text-anchor="middle" font-size="7.0" font-weight="600" fill="#cbd1d9">HUE</text>
+    </g>
+    <g id="encoder_lum_mix" class="control control-encoder" data-control-id="encoder_lum_mix" data-control-type="encoder" data-label="LUM MIX" data-selected="false" tabindex="0" role="button" aria-label="Configure LUM MIX">
+      <title>LUM MIX</title>
+      <rect id="encoder_lum_mix-hit" x="979" y="99" width="60" height="65" rx="8" fill="#ffffff" fill-opacity="0" pointer-events="all" />
+      <circle id="encoder_lum_mix-socket" cx="1009" cy="125" r="21" fill="#0d1014" stroke="#41474f" stroke-width="1" />
+      <circle id="encoder_lum_mix-face" class="interactive-face" cx="1009" cy="125" r="17.3" fill="#3e444d" stroke="#7a838f" stroke-width="1.1" />
+      <text id="encoder_lum_mix-label" class="control-label" x="1009" y="163" text-anchor="middle" font-size="7.0" font-weight="600" fill="#cbd1d9">LUM MIX</text>
+    </g>
+    <g id="button_auto_color" class="control control-button" data-control-id="button_auto_color" data-control-type="button" data-label="AUTO COLOR" data-selected="false" tabindex="0" role="button" aria-label="Configure AUTO COLOR">
+      <title>AUTO COLOR</title>
+      <rect id="button_auto_color-face" class="interactive-face" x="48" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_auto_color-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="72.5" y="193.9">AUTO</tspan>
+        <tspan x="72.5" y="201.9">COLOR</tspan>
+      </text>
+    </g>
+    <g id="button_offset" class="control control-button" data-control-id="button_offset" data-control-type="button" data-label="OFFSET" data-selected="false" tabindex="0" role="button" aria-label="Configure OFFSET">
+      <title>OFFSET</title>
+      <rect id="button_offset-face" class="interactive-face" x="107" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_offset-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="131.5" y="197.9">OFFSET</tspan>
+      </text>
+    </g>
+    <g id="button_copy" class="control control-button" data-control-id="button_copy" data-control-type="button" data-label="COPY" data-selected="false" tabindex="0" role="button" aria-label="Configure COPY">
+      <title>COPY</title>
+      <rect id="button_copy-face" class="interactive-face" x="48" y="222" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_copy-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="72.5" y="240.9">COPY</tspan>
+      </text>
+    </g>
+    <g id="button_paste" class="control control-button" data-control-id="button_paste" data-control-type="button" data-label="PASTE" data-selected="false" tabindex="0" role="button" aria-label="Configure PASTE">
+      <title>PASTE</title>
+      <rect id="button_paste-face" class="interactive-face" x="107" y="222" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_paste-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="131.5" y="240.9">PASTE</tspan>
+      </text>
+    </g>
+    <g id="button_undo" class="control control-button" data-control-id="button_undo" data-control-type="button" data-label="UNDO" data-selected="false" tabindex="0" role="button" aria-label="Configure UNDO">
+      <title>UNDO</title>
+      <rect id="button_undo-face" class="interactive-face" x="48" y="266" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_undo-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="72.5" y="284.9">UNDO</tspan>
+      </text>
+    </g>
+    <g id="button_redo" class="control control-button" data-control-id="button_redo" data-control-type="button" data-label="REDO" data-selected="false" tabindex="0" role="button" aria-label="Configure REDO">
+      <title>REDO</title>
+      <rect id="button_redo-face" class="interactive-face" x="107" y="266" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_redo-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="131.5" y="284.9">REDO</tspan>
+      </text>
+    </g>
+    <g id="button_delete" class="control control-button" data-control-id="button_delete" data-control-type="button" data-label="DELETE" data-selected="false" tabindex="0" role="button" aria-label="Configure DELETE">
+      <title>DELETE</title>
+      <rect id="button_delete-face" class="interactive-face" x="48" y="309" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_delete-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="72.5" y="327.9">DELETE</tspan>
+      </text>
+    </g>
+    <g id="button_reset" class="control control-button" data-control-id="button_reset" data-control-type="button" data-label="RESET" data-selected="false" tabindex="0" role="button" aria-label="Configure RESET">
+      <title>RESET</title>
+      <rect id="button_reset-face" class="interactive-face" x="107" y="309" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_reset-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="131.5" y="327.9">RESET</tspan>
+      </text>
+    </g>
+    <g id="button_bypass" class="control control-button" data-control-id="button_bypass" data-control-type="button" data-label="BYPASS" data-selected="false" tabindex="0" role="button" aria-label="Configure BYPASS">
+      <title>BYPASS</title>
+      <rect id="button_bypass-face" class="interactive-face" x="48" y="352" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_bypass-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="72.5" y="370.9">BYPASS</tspan>
+      </text>
+    </g>
+    <g id="button_disable" class="control control-button" data-control-id="button_disable" data-control-type="button" data-label="DISABLE" data-selected="false" tabindex="0" role="button" aria-label="Configure DISABLE">
+      <title>DISABLE</title>
+      <rect id="button_disable-face" class="interactive-face" x="107" y="352" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_disable-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="131.5" y="370.9">DISABLE</tspan>
+      </text>
+    </g>
+    <g id="button_user" class="control control-button" data-control-id="button_user" data-control-type="button" data-label="USER" data-selected="false" tabindex="0" role="button" aria-label="Configure USER">
+      <title>USER</title>
+      <rect id="button_user-face" class="interactive-face" x="48" y="414" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_user-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="72.5" y="432.9">USER</tspan>
+      </text>
+    </g>
+    <g id="button_loop" class="control control-button" data-control-id="button_loop" data-control-type="button" data-label="LOOP" data-selected="false" tabindex="0" role="button" aria-label="Configure LOOP">
+      <title>LOOP</title>
+      <rect id="button_loop-face" class="interactive-face" x="107" y="414" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_loop-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="131.5" y="432.9">LOOP</tspan>
+      </text>
+    </g>
+    <g id="button_corner_upper_left" class="control control-button" data-control-id="button_corner_upper_left" data-control-type="button" data-label="Upper-left triangle" data-selected="false" tabindex="0" role="button" aria-label="Configure Upper-left triangle">
+      <title>Upper-left triangle</title>
+      <rect id="button_corner_upper_left-face" class="interactive-face" x="48" y="457" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <path id="button_corner_upper_left-icon" class="icon" d="M 53 462 H 68 L 53 477 Z" fill="#f1f4f8" />
+    </g>
+    <g id="button_corner_lower_right" class="control control-button" data-control-id="button_corner_lower_right" data-control-type="button" data-label="Lower-right triangle" data-selected="false" tabindex="0" role="button" aria-label="Configure Lower-right triangle">
+      <title>Lower-right triangle</title>
+      <rect id="button_corner_lower_right-face" class="interactive-face" x="107" y="457" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <path id="button_corner_lower_right-icon" class="icon" d="M 151 485 H 136 L 151 470 Z" fill="#f1f4f8" />
+    </g>
+    <g id="button_play_still" class="control control-button" data-control-id="button_play_still" data-control-type="button" data-label="PLAY STILL" data-selected="false" tabindex="0" role="button" aria-label="Configure PLAY STILL">
+      <title>PLAY STILL</title>
+      <rect id="button_play_still-face" class="interactive-face" x="210" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_play_still-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="234.5" y="193.9">PLAY</tspan>
+        <tspan x="234.5" y="201.9">STILL</tspan>
+      </text>
+    </g>
+    <g id="button_wipe_still" class="control control-button" data-control-id="button_wipe_still" data-control-type="button" data-label="WIPE STILL" data-selected="false" tabindex="0" role="button" aria-label="Configure WIPE STILL">
+      <title>WIPE STILL</title>
+      <rect id="button_wipe_still-face" class="interactive-face" x="267" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_wipe_still-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="291.5" y="193.9">WIPE</tspan>
+        <tspan x="291.5" y="201.9">STILL</tspan>
+      </text>
+    </g>
+    <g id="button_grab_still" class="control control-button" data-control-id="button_grab_still" data-control-type="button" data-label="GRAB STILL" data-selected="false" tabindex="0" role="button" aria-label="Configure GRAB STILL">
+      <title>GRAB STILL</title>
+      <rect id="button_grab_still-face" class="interactive-face" x="325" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_grab_still-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="349.5" y="193.9">GRAB</tspan>
+        <tspan x="349.5" y="201.9">STILL</tspan>
+      </text>
+    </g>
+    <g id="button_mute" class="control control-button" data-control-id="button_mute" data-control-type="button" data-label="MUTE" data-selected="false" tabindex="0" role="button" aria-label="Configure MUTE">
+      <title>MUTE</title>
+      <rect id="button_mute-face" class="interactive-face" x="429" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_mute-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="453.5" y="197.9">MUTE</tspan>
+      </text>
+    </g>
+    <g id="button_viewer" class="control control-button" data-control-id="button_viewer" data-control-type="button" data-label="VIEWER" data-selected="false" tabindex="0" role="button" aria-label="Configure VIEWER">
+      <title>VIEWER</title>
+      <rect id="button_viewer-face" class="interactive-face" x="487" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_viewer-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="511.5" y="197.9">VIEWER</tspan>
+      </text>
+    </g>
+    <g id="button_cursor" class="control control-button" data-control-id="button_cursor" data-control-type="button" data-label="CURSOR" data-selected="false" tabindex="0" role="button" aria-label="Configure CURSOR">
+      <title>CURSOR</title>
+      <rect id="button_cursor-face" class="interactive-face" x="545" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_cursor-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="569.5" y="197.9">CURSOR</tspan>
+      </text>
+    </g>
+    <g id="button_select" class="control control-button" data-control-id="button_select" data-control-type="button" data-label="SELECT" data-selected="false" tabindex="0" role="button" aria-label="Configure SELECT">
+      <title>SELECT</title>
+      <rect id="button_select-face" class="interactive-face" x="603" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_select-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="627.5" y="197.9">SELECT</tspan>
+      </text>
+    </g>
+    <g id="button_add_node" class="control control-button" data-control-id="button_add_node" data-control-type="button" data-label="ADD NODE" data-selected="false" tabindex="0" role="button" aria-label="Configure ADD NODE">
+      <title>ADD NODE</title>
+      <rect id="button_add_node-face" class="interactive-face" x="706" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_add_node-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="730.5" y="193.9">ADD</tspan>
+        <tspan x="730.5" y="201.9">NODE</tspan>
+      </text>
+    </g>
+    <g id="button_add_window" class="control control-button" data-control-id="button_add_window" data-control-type="button" data-label="ADD WINDOW" data-selected="false" tabindex="0" role="button" aria-label="Configure ADD WINDOW">
+      <title>ADD WINDOW</title>
+      <rect id="button_add_window-face" class="interactive-face" x="764" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_add_window-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="788.5" y="193.9">ADD</tspan>
+        <tspan x="788.5" y="201.9">WINDOW</tspan>
+      </text>
+    </g>
+    <g id="button_add_keyframe" class="control control-button" data-control-id="button_add_keyframe" data-control-type="button" data-label="ADD KEYFRM" data-selected="false" tabindex="0" role="button" aria-label="Configure ADD KEYFRM">
+      <title>ADD KEYFRM</title>
+      <rect id="button_add_keyframe-face" class="interactive-face" x="822" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_add_keyframe-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="846.5" y="193.9">ADD</tspan>
+        <tspan x="846.5" y="201.9">KEYFRM</tspan>
+      </text>
+    </g>
+    <g id="button_reset_lift" class="control control-button" data-control-id="button_reset_lift" data-control-type="button" data-label="RESET LIFT" data-selected="false" tabindex="0" role="button" aria-label="Configure RESET LIFT">
+      <title>RESET LIFT</title>
+      <rect id="button_reset_lift-face" class="interactive-face" x="458" y="222" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_reset_lift-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="482.5" y="236.9">RESET</tspan>
+        <tspan x="482.5" y="244.9">LIFT</tspan>
+      </text>
+    </g>
+    <g id="button_reset_gamma" class="control control-button" data-control-id="button_reset_gamma" data-control-type="button" data-label="RESET GAMMA" data-selected="false" tabindex="0" role="button" aria-label="Configure RESET GAMMA">
+      <title>RESET GAMMA</title>
+      <rect id="button_reset_gamma-face" class="interactive-face" x="516" y="222" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_reset_gamma-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="540.5" y="236.9">RESET</tspan>
+        <tspan x="540.5" y="244.9">GAMMA</tspan>
+      </text>
+    </g>
+    <g id="button_reset_gain" class="control control-button" data-control-id="button_reset_gain" data-control-type="button" data-label="RESET GAIN" data-selected="false" tabindex="0" role="button" aria-label="Configure RESET GAIN">
+      <title>RESET GAIN</title>
+      <rect id="button_reset_gain-face" class="interactive-face" x="574" y="222" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_reset_gain-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="598.5" y="236.9">RESET</tspan>
+        <tspan x="598.5" y="244.9">GAIN</tspan>
+      </text>
+    </g>
+    <g id="button_previous_still" class="control control-button" data-control-id="button_previous_still" data-control-type="button" data-label="PREV STILL" data-selected="false" tabindex="0" role="button" aria-label="Configure PREV STILL">
+      <title>PREV STILL</title>
+      <rect id="button_previous_still-face" class="interactive-face" x="925" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_previous_still-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="949.5" y="193.9">PREV</tspan>
+        <tspan x="949.5" y="201.9">STILL</tspan>
+      </text>
+    </g>
+    <g id="button_next_still" class="control control-button" data-control-id="button_next_still" data-control-type="button" data-label="NEXT STILL" data-selected="false" tabindex="0" role="button" aria-label="Configure NEXT STILL">
+      <title>NEXT STILL</title>
+      <rect id="button_next_still-face" class="interactive-face" x="984" y="179" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_next_still-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="1008.5" y="193.9">NEXT</tspan>
+        <tspan x="1008.5" y="201.9">STILL</tspan>
+      </text>
+    </g>
+    <g id="button_previous_keyframe" class="control control-button" data-control-id="button_previous_keyframe" data-control-type="button" data-label="PREV KEYFRM" data-selected="false" tabindex="0" role="button" aria-label="Configure PREV KEYFRM">
+      <title>PREV KEYFRM</title>
+      <rect id="button_previous_keyframe-face" class="interactive-face" x="925" y="222" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_previous_keyframe-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="949.5" y="236.9">PREV</tspan>
+        <tspan x="949.5" y="244.9">KEYFRM</tspan>
+      </text>
+    </g>
+    <g id="button_next_keyframe" class="control control-button" data-control-id="button_next_keyframe" data-control-type="button" data-label="NEXT KEYFRM" data-selected="false" tabindex="0" role="button" aria-label="Configure NEXT KEYFRM">
+      <title>NEXT KEYFRM</title>
+      <rect id="button_next_keyframe-face" class="interactive-face" x="984" y="222" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_next_keyframe-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="1008.5" y="236.9">NEXT</tspan>
+        <tspan x="1008.5" y="244.9">KEYFRM</tspan>
+      </text>
+    </g>
+    <g id="button_previous_node" class="control control-button" data-control-id="button_previous_node" data-control-type="button" data-label="PREV NODE" data-selected="false" tabindex="0" role="button" aria-label="Configure PREV NODE">
+      <title>PREV NODE</title>
+      <rect id="button_previous_node-face" class="interactive-face" x="925" y="266" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_previous_node-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="949.5" y="280.9">PREV</tspan>
+        <tspan x="949.5" y="288.9">NODE</tspan>
+      </text>
+    </g>
+    <g id="button_next_node" class="control control-button" data-control-id="button_next_node" data-control-type="button" data-label="NEXT NODE" data-selected="false" tabindex="0" role="button" aria-label="Configure NEXT NODE">
+      <title>NEXT NODE</title>
+      <rect id="button_next_node-face" class="interactive-face" x="984" y="266" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_next_node-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="1008.5" y="280.9">NEXT</tspan>
+        <tspan x="1008.5" y="288.9">NODE</tspan>
+      </text>
+    </g>
+    <g id="button_previous_frame" class="control control-button" data-control-id="button_previous_frame" data-control-type="button" data-label="PREV FRAME" data-selected="false" tabindex="0" role="button" aria-label="Configure PREV FRAME">
+      <title>PREV FRAME</title>
+      <rect id="button_previous_frame-face" class="interactive-face" x="925" y="309" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_previous_frame-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="949.5" y="323.9">PREV</tspan>
+        <tspan x="949.5" y="331.9">FRAME</tspan>
+      </text>
+    </g>
+    <g id="button_next_frame" class="control control-button" data-control-id="button_next_frame" data-control-type="button" data-label="NEXT FRAME" data-selected="false" tabindex="0" role="button" aria-label="Configure NEXT FRAME">
+      <title>NEXT FRAME</title>
+      <rect id="button_next_frame-face" class="interactive-face" x="984" y="309" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_next_frame-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="1008.5" y="323.9">NEXT</tspan>
+        <tspan x="1008.5" y="331.9">FRAME</tspan>
+      </text>
+    </g>
+    <g id="button_previous_clip" class="control control-button" data-control-id="button_previous_clip" data-control-type="button" data-label="PREV CLIP" data-selected="false" tabindex="0" role="button" aria-label="Configure PREV CLIP">
+      <title>PREV CLIP</title>
+      <rect id="button_previous_clip-face" class="interactive-face" x="925" y="352" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_previous_clip-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="949.5" y="366.9">PREV</tspan>
+        <tspan x="949.5" y="374.9">CLIP</tspan>
+      </text>
+    </g>
+    <g id="button_next_clip" class="control control-button" data-control-id="button_next_clip" data-control-type="button" data-label="NEXT CLIP" data-selected="false" tabindex="0" role="button" aria-label="Configure NEXT CLIP">
+      <title>NEXT CLIP</title>
+      <rect id="button_next_clip-face" class="interactive-face" x="984" y="352" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <text id="button_next_clip-label" class="control-label" text-anchor="middle" font-size="7.0" font-weight="600" fill="#e7ebf0">
+        <tspan x="1008.5" y="366.9">NEXT</tspan>
+        <tspan x="1008.5" y="374.9">CLIP</tspan>
+      </text>
+    </g>
+    <g id="button_transport_reverse" class="control control-button" data-control-id="button_transport_reverse" data-control-type="button" data-label="Reverse transport" data-selected="false" tabindex="0" role="button" aria-label="Configure Reverse transport">
+      <title>Reverse transport</title>
+      <rect id="button_transport_reverse-face" class="interactive-face" x="925" y="414" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <path id="button_transport_reverse-icon" class="icon" d="M 953.5 425.5 L 944.5 430.5 L 953.5 435.5 Z" fill="#f1f4f8" />
+    </g>
+    <g id="button_transport_forward" class="control control-button" data-control-id="button_transport_forward" data-control-type="button" data-label="Forward transport" data-selected="false" tabindex="0" role="button" aria-label="Configure Forward transport">
+      <title>Forward transport</title>
+      <rect id="button_transport_forward-face" class="interactive-face" x="984" y="414" width="49" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <path id="button_transport_forward-icon" class="icon" d="M 1004.5 425.5 L 1013.5 430.5 L 1004.5 435.5 Z" fill="#f1f4f8" />
+    </g>
+    <g id="button_transport_stop" class="control control-button" data-control-id="button_transport_stop" data-control-type="button" data-label="Stop transport" data-selected="false" tabindex="0" role="button" aria-label="Configure Stop transport">
+      <title>Stop transport</title>
+      <rect id="button_transport_stop-face" class="interactive-face" x="925" y="457" width="108" height="33" rx="5.5" fill="#30353c" stroke="#626b77" stroke-width="0.9" />
+      <path id="button_transport_stop-icon" class="icon" d="M 974.8 469.3 h 8.4 v 8.4 h -8.4 Z" fill="#f1f4f8" />
+    </g>
+    <g id="ring_left" class="control control-ring" data-control-id="ring_left" data-control-type="ring" data-label="Left outer ring" data-selected="false" tabindex="0" role="button" aria-label="Configure Left outer ring">
+      <title>Left outer ring</title>
+      <path id="ring_left-face" class="interactive-face" d="M 399 381 A 106 106 0 1 0 187 381 A 106 106 0 1 0 399 381 Z M 373 381 A 80 80 0 1 0 213 381 A 80 80 0 1 0 373 381 Z" fill-rule="evenodd" fill="#30363e" stroke="#66717e" stroke-width="1.1" pointer-events="visiblePainted" />
+    </g>
+    <g id="socket_left" pointer-events="none" aria-hidden="true">
+      <circle cx="293" cy="381" r="78.7" fill="#101419" stroke="#343e49" stroke-width="1" />
+    </g>
+    <g id="trackball_left" class="control control-trackball" data-control-id="trackball_left" data-control-type="trackball" data-label="Left trackball" data-selected="false" tabindex="0" role="button" aria-label="Configure Left trackball">
+      <title>Left trackball</title>
+      <circle id="trackball_left-face" class="interactive-face" cx="293" cy="381" r="54.5" fill="#242c35" stroke="#8491a1" stroke-width="1.2" />
+      <circle id="trackball_left-inner-edge" class="detail" cx="293" cy="381" r="49" fill="none" stroke="#333e4a" stroke-width="0.8" />
+    </g>
+    <g id="ring_center" class="control control-ring" data-control-id="ring_center" data-control-type="ring" data-label="Center outer ring" data-selected="false" tabindex="0" role="button" aria-label="Configure Center outer ring">
+      <title>Center outer ring</title>
+      <path id="ring_center-face" class="interactive-face" d="M 646 381 A 106 106 0 1 0 434 381 A 106 106 0 1 0 646 381 Z M 620 381 A 80 80 0 1 0 460 381 A 80 80 0 1 0 620 381 Z" fill-rule="evenodd" fill="#30363e" stroke="#66717e" stroke-width="1.1" pointer-events="visiblePainted" />
+    </g>
+    <g id="socket_center" pointer-events="none" aria-hidden="true">
+      <circle cx="540" cy="381" r="78.7" fill="#101419" stroke="#343e49" stroke-width="1" />
+    </g>
+    <g id="trackball_center" class="control control-trackball" data-control-id="trackball_center" data-control-type="trackball" data-label="Center trackball" data-selected="false" tabindex="0" role="button" aria-label="Configure Center trackball">
+      <title>Center trackball</title>
+      <circle id="trackball_center-face" class="interactive-face" cx="540" cy="381" r="54.5" fill="#242c35" stroke="#8491a1" stroke-width="1.2" />
+      <circle id="trackball_center-inner-edge" class="detail" cx="540" cy="381" r="49" fill="none" stroke="#333e4a" stroke-width="0.8" />
+    </g>
+    <g id="ring_right" class="control control-ring" data-control-id="ring_right" data-control-type="ring" data-label="Right outer ring" data-selected="false" tabindex="0" role="button" aria-label="Configure Right outer ring">
+      <title>Right outer ring</title>
+      <path id="ring_right-face" class="interactive-face" d="M 895 381 A 106 106 0 1 0 683 381 A 106 106 0 1 0 895 381 Z M 869 381 A 80 80 0 1 0 709 381 A 80 80 0 1 0 869 381 Z" fill-rule="evenodd" fill="#30363e" stroke="#66717e" stroke-width="1.1" pointer-events="visiblePainted" />
+    </g>
+    <g id="socket_right" pointer-events="none" aria-hidden="true">
+      <circle cx="789" cy="381" r="78.7" fill="#101419" stroke="#343e49" stroke-width="1" />
+    </g>
+    <g id="trackball_right" class="control control-trackball" data-control-id="trackball_right" data-control-type="trackball" data-label="Right trackball" data-selected="false" tabindex="0" role="button" aria-label="Configure Right trackball">
+      <title>Right trackball</title>
+      <circle id="trackball_right-face" class="interactive-face" cx="789" cy="381" r="54.5" fill="#242c35" stroke="#8491a1" stroke-width="1.2" />
+      <circle id="trackball_right-inner-edge" class="detail" cx="789" cy="381" r="49" fill="none" stroke="#333e4a" stroke-width="0.8" />
+    </g>
+  </g>
+</svg>

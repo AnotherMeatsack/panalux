@@ -1,0 +1,16 @@
+PanaLux Bridge
+
+This Lightroom Classic plugin is a modified version of the MIDI2LR plugin
+6.3.0.1, copyright 2015 Rory Jaffe and contributors, distributed under the
+GNU General Public License version 3 (see LICENSE.txt).
+
+Changes made for PanaLux:
+  - Client.lua no longer launches the MIDI2LR desktop application.
+  - Info.lua uses the name "PanaLux Bridge (based on MIDI2LR)" and the
+    identifier app.panalux.bridge, and drops the Start/Close application menu items.
+  - The MIDI2LR desktop application and its bundled fonts are not included.
+
+The .lua files in this folder are the complete source of this plugin.
+Upstream project and original source: https://github.com/rsjaffe/MIDI2LR
+
+MIDI2LR is not affiliated with PanaLux. Please support the original project.

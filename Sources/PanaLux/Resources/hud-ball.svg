@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 109 109">
+  <!-- Cropped from micro-color-panel.svg trackball_left. -->
+  <circle cx="54.5" cy="54.5" r="54.5" fill="#242c35" stroke="#8491a1" stroke-width="1.2"/>
+  <circle cx="54.5" cy="54.5" r="49" fill="none" stroke="#333e4a" stroke-width="0.8"/>
+  <circle cx="40" cy="40" r="16" fill="#ffffff" fill-opacity="0.07"/>
+</svg>
