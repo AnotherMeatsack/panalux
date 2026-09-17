@@ -24,7 +24,7 @@ public class PhotoshopBridge {
         busyLock.lock()
         if isBusy {
             busyLock.unlock()
-            completion(.failure(makeError(409, "Already sending to Photoshop")))
+            completion(.success("Still sending to Photoshop…"))
             return
         }
         isBusy = true
@@ -70,86 +70,85 @@ public class PhotoshopBridge {
     }
     
     private func sendAndAlign() throws -> String {
-        let beforeDocs = photoshopDocumentCount()
-        try openAsLayers()
-        let layers = waitForLayerStack(beforeDocs: beforeDocs, timeout: 180)
-        guard layers > 0 else {
-            return "Sent to Photoshop. Align by hand if the layers are still arriving"
+        try sendStackOnce()
+        if stackLooksLikeSinglePhotoGlitch() {
+            closeActivePhotoshopDocument()
+            Thread.sleep(forTimeInterval: 0.8)
+            try sendStackOnce()
         }
-        if layers < 2 {
-            return "Opened in Photoshop. Align by hand if only one layer is there yet"
-        }
-        let aligned = try alignLayers()
-        if let folder = sourceFolder, !folder.isEmpty {
-            return "\(aligned) · returns to \(folder)"
-        }
-        return aligned
+        return "Sent to Photoshop"
     }
-    
+
+    private func sendStackOnce() throws {
+        let before = photoshopDocumentWindowCount()
+        try openAsLayers()
+        _ = waitForNewDocument(before: before, timeout: 120)
+    }
+
+    /// First Open as Layers can land one photo while Photoshop is still launching.
+    /// Close that leftover document and send the stack again.
+    private func stackLooksLikeSinglePhotoGlitch() -> Bool {
+        waitForLightroomIdle(timeout: 12)
+        let end = Date().addingTimeInterval(10)
+        while Date() < end {
+            if jsLayerCount() >= 2 { return false }
+            Thread.sleep(forTimeInterval: 1.2)
+        }
+        return jsDocumentCount() > 0 && jsLayerCount() < 2
+    }
+
+    private func waitForLightroomIdle(timeout: TimeInterval) {
+        guard let lr = lightroomApp() else { return }
+        let end = Date().addingTimeInterval(timeout)
+        while Date() < end {
+            if !LightroomAccessibility.isWorkingSheetVisible(pid: lr.processIdentifier) {
+                Thread.sleep(forTimeInterval: 0.6)
+                if !LightroomAccessibility.isWorkingSheetVisible(pid: lr.processIdentifier) { return }
+            }
+            _ = LightroomAccessibility.confirmLayersDialog(pid: lr.processIdentifier)
+            Thread.sleep(forTimeInterval: 0.4)
+        }
+    }
+
+    private func closeActivePhotoshopDocument() {
+        _ = try? photoshopJS("""
+        app.displayDialogs = DialogModes.NO;
+        try { app.activeDocument.close(SaveOptions.DONOTSAVECHANGES); } catch (e) {}
+        'ok';
+        """)
+    }
+
+    /// Accessibility window count — never AppleScript. `tell application` to Photoshop
+    /// launches it and steals the menu bar, so Lightroom’s Photo menu disappears.
+    private func photoshopDocumentWindowCount() -> Int {
+        guard let ps = NSWorkspace.shared.runningApplications.first(where: isPhotoshop) else { return 0 }
+        return LightroomAccessibility.namedWindowCount(
+            pid: ps.processIdentifier,
+            skippingTitles: ["adobe photoshop", "photoshop", "home"]
+        )
+    }
+
     private func openAsLayers() throws {
         guard let lr = lightroomApp() else {
             throw makeError(404, "Lightroom Classic isn’t running")
         }
         bringForward(lr)
-        Thread.sleep(forTimeInterval: 0.4)
-
-        // Never jump to Library Grid here. That drops the filmstrip selection to one
-        // photo, which is how Photoshop only gets a single layer.
-        for step in 0..<8 {
-            if try LightroomAccessibility.openAsLayers(pid: lr.processIdentifier) {
-                return
-            }
-            Thread.sleep(forTimeInterval: step == 0 ? 0.55 : 0.4)
-            bringForward(lr)
-        }
-        throw makeError(409, "Click the Lightroom window, select every frame, then Grab Still again.")
+        Thread.sleep(forTimeInterval: 0.85)
+        try LightroomAccessibility.openAsLayers(pid: lr.processIdentifier)
     }
 
-    /// Do not run Photoshop JavaScript until Lightroom has finished handing off.
-    /// Aligning (or even asking for layer count) while copies are still arriving
-    /// aborts the rest of the stack.
-    private func waitForLayerStack(beforeDocs: Int, timeout: TimeInterval) -> Int {
+    private func waitForNewDocument(before: Int, timeout: TimeInterval) -> Bool {
         let end = Date().addingTimeInterval(timeout)
-        var sawDoc = false
-        while Date() < end, !sawDoc {
-            if let lr = lightroomApp() {
-                _ = LightroomAccessibility.confirmEditDialog(pid: lr.processIdentifier)
-            }
-            if photoshopDocumentCount() > beforeDocs {
-                sawDoc = true
-                break
-            }
-            Thread.sleep(forTimeInterval: 0.5)
-        }
-        guard sawDoc else { return 0 }
-
         while Date() < end {
             if let lr = lightroomApp() {
-                _ = LightroomAccessibility.confirmEditDialog(pid: lr.processIdentifier)
-                if LightroomAccessibility.isWorkingSheetVisible(pid: lr.processIdentifier) {
-                    Thread.sleep(forTimeInterval: 0.5)
-                    continue
-                }
+                _ = LightroomAccessibility.confirmLayersDialog(pid: lr.processIdentifier)
             }
-            break
+            if photoshopDocumentWindowCount() > before {
+                return true
+            }
+            Thread.sleep(forTimeInterval: 0.8)
         }
-        // Extra quiet time so remaining RAWs can land. No Photoshop JS in this gap.
-        Thread.sleep(forTimeInterval: 8.0)
-
-        var last = 0
-        for _ in 0..<6 {
-            if Date() > end { break }
-            last = (try? photoshopJS("var n=0; try{n=app.activeDocument.layers.length;}catch(e){n=0;} n")).flatMap(Int.init) ?? 0
-            if last >= 2 { return last }
-            Thread.sleep(forTimeInterval: 4.0)
-        }
-        return last
-    }
-
-    /// Document windows only. Photoshop’s home screen is not a document.
-    private func photoshopDocumentCount() -> Int {
-        guard let ps = NSWorkspace.shared.runningApplications.first(where: isPhotoshop) else { return 0 }
-        return LightroomAccessibility.namedWindowCount(pid: ps.processIdentifier, skippingTitles: ["adobe photoshop"])
+        return false
     }
     
     /// After flatten+save, hide Photoshop’s home/new-doc screen and put Lightroom in front.
@@ -170,6 +169,9 @@ public class PhotoshopBridge {
             }
             if i == 2, LightroomBridge.shared.isConnected {
                 LightroomBridge.shared.fireAction("ShoVwdevelop_loupe")
+            }
+            if i >= 1, let lr = lightroomApp() {
+                LightroomAccessibility.dismissNoSelectionDialog(pid: lr.processIdentifier)
             }
             if i == steps.count - 1, isPhotoshopFrontmost() {
                 let docs = (try? photoshopJS("app.documents.length")).flatMap(Int.init) ?? -1
@@ -269,6 +271,10 @@ public class PhotoshopBridge {
     /// HUD-only. Do not call Photoshop JavaScript from the button-down path.
     public func isPhotoshopLikelyHoldingDocument() -> Bool {
         isPhotoshopFrontmost()
+    }
+
+    private func jsLayerCount() -> Int {
+        (try? photoshopJS("var n=0; try{n=app.activeDocument.layers.length;}catch(e){n=0;} n")).flatMap(Int.init) ?? 0
     }
 
     private func jsDocumentCount() -> Int {

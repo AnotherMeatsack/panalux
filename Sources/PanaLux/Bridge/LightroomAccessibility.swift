@@ -13,10 +13,9 @@ enum LightroomAccessibility {
         return AXIsProcessTrusted()
     }
     
-    /// Clicks Photo → Edit In → Open as Layers. Returns false if that item is missing or disabled
-    /// (usually one photo selected, or the submenu is still filling in).
-    @discardableResult
-    static func openAsLayers(pid: pid_t) throws -> Bool {
+    /// Clicks Photo → Edit In → Open as Layers from the current module (usually Develop).
+    /// Does not switch to Library Grid — that drops the filmstrip to one photo on the first send.
+    static func openAsLayers(pid: pid_t) throws {
         guard isTrusted(prompt: true) else {
             throw NSError(
                 domain: "PhotoshopBridge",
@@ -27,57 +26,157 @@ enum LightroomAccessibility {
 
         let app = AXUIElementCreateApplication(pid)
         dismissSheets(app)
+        cancelSinglePhotoEdit(pid: pid)
 
+        var lastError: Error = axError("Open as Layers wasn’t in Photo → Edit In.")
+        for attempt in 0..<8 {
+            if let running = NSRunningApplication(processIdentifier: pid) {
+                let apply = {
+                    _ = running.unhide()
+                    NSApp.yieldActivation(to: running)
+                    _ = running.activate(from: NSRunningApplication.current)
+                }
+                if Thread.isMainThread { apply() } else { DispatchQueue.main.sync(execute: apply) }
+            }
+            usleep(UInt32(200_000 + attempt * 80_000))
+            do {
+                try clickOpenAsLayers(app: app, pid: pid)
+                usleep(280_000)
+                _ = confirmLayersDialog(pid: pid)
+                return
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError
+    }
+
+    private static func clickOpenAsLayers(app: AXUIElement, pid: pid_t) throws {
         guard let menuBar = copyAttr(app, kAXMenuBarAttribute as String) else {
             throw axError("Couldn’t read Lightroom’s menu bar. Click the Lightroom window once, then try again.")
         }
-        guard let photo = findChild(menuBar, titleContains: "Photo") else {
+        guard let tops = copyList(menuBar, kAXChildrenAttribute as String),
+              let photo = tops.first(where: {
+                  let t = title(of: $0).trimmingCharacters(in: .whitespaces)
+                  return t.caseInsensitiveCompare("Photo") == .orderedSame
+              }) else {
             throw axError("Couldn’t find Lightroom’s Photo menu.")
         }
         press(photo)
-        usleep(320_000)
+        usleep(450_000)
 
-        guard let photoMenu = firstMenu(from: photo) ?? findChild(photo, role: kAXMenuRole as String) else {
+        guard let photoMenu = firstMenu(from: photo) else {
             cancel(photo)
             throw axError("Photo menu didn’t open.")
         }
-        guard let editIn = findChild(photoMenu, titleContains: "Edit In") else {
+        guard let editIn = menuItem(photoMenu, containing: "Edit In") else {
             cancel(photo)
             throw axError("Couldn’t find Photo → Edit In.")
         }
-        press(editIn)
-        usleep(400_000)
+        showSubmenu(editIn)
+        usleep(550_000)
 
-        guard let editMenu = firstMenu(from: editIn) ?? findChild(editIn, role: kAXMenuRole as String) else {
+        // Lightroom sometimes fires “Edit in Photoshop” (one photo) when Edit In opens.
+        cancelSinglePhotoEdit(pid: pid)
+
+        guard let editMenu = firstMenu(from: editIn) else {
             cancel(photo)
-            return false
+            throw axError("Edit In submenu didn’t open.")
         }
-        guard let openLayers = findChild(editMenu, titleContains: "Open as Layers", excluding: "Smart Object") else {
+        guard let openLayers = menuItem(editMenu, containing: "Open as Layers", excluding: "Smart Object") else {
             cancel(photo)
-            return false
-        }
-        guard isEnabled(openLayers) else {
-            cancel(photo)
-            return false
+            throw axError("Open as Layers wasn’t in Photo → Edit In. Select the photos in the filmstrip.")
         }
         press(openLayers)
-        usleep(250_000)
-        confirmEditDialog(pid: pid)
-        return true
     }
 
-    /// Lightroom’s “Edit Photos with Adobe Photoshop” sheet. Click Edit, never Cancel.
+    /// Confirm only the multi-photo / layers dialog. Never confirm “Edit Photo” (singular).
     @discardableResult
-    static func confirmEditDialog(pid: pid_t) -> Bool {
+    static func confirmLayersDialog(pid: pid_t) -> Bool {
         let app = AXUIElementCreateApplication(pid)
-        if clickSheetButton(app, titles: ["Edit", "Continue", "OK"]) { return true }
-        guard isWorkingSheetVisible(pid: pid) else { return false }
-        let deadline = Date().addingTimeInterval(4.0)
+        let deadline = Date().addingTimeInterval(3.5)
         while Date() < deadline {
-            if clickSheetButton(app, titles: ["Edit", "Continue", "OK"]) { return true }
-            usleep(200_000)
+            if confirmMatchingSheet(app, mustContainAny: ["as layers", "edit photos"]) { return true }
+            usleep(180_000)
         }
         return false
+    }
+
+    /// The leftover Develop alert after coming back from Photoshop.
+    static func dismissNoSelectionDialog(pid: pid_t) {
+        let app = AXUIElementCreateApplication(pid)
+        for _ in 0..<6 {
+            if confirmMatchingSheet(app, mustContainAny: ["no photo selected", "no photos selected"], buttons: ["OK", "Continue"]) {
+                usleep(100_000)
+                continue
+            }
+            break
+        }
+    }
+
+    @discardableResult
+    private static func confirmMatchingSheet(
+        _ app: AXUIElement,
+        mustContainAny needles: [String],
+        buttons: [String] = ["Edit", "Continue"]
+    ) -> Bool {
+        for sheet in sheets(app) {
+            let blob = sheetText(sheet)
+            let hit = needles.contains { blob.contains($0) }
+            guard hit else { continue }
+            for wanted in buttons {
+                if let button = findChild(sheet, titleContains: wanted, role: kAXButtonRole as String),
+                   isEnabled(button) {
+                    let t = title(of: button).lowercased()
+                    if t.contains("cancel") { continue }
+                    press(button)
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    private static func cancelSinglePhotoEdit(pid: pid_t) {
+        let app = AXUIElementCreateApplication(pid)
+        for sheet in sheets(app) {
+            let blob = sheetText(sheet)
+            let isLayers = blob.contains("as layers") || blob.contains("edit photos")
+            let isSingle = (blob.contains("edit photo") && !blob.contains("edit photos")) || blob.contains("too many")
+            guard isSingle, !isLayers else { continue }
+            if let cancel = findChild(sheet, titleContains: "Cancel", role: kAXButtonRole as String) {
+                press(cancel)
+                usleep(120_000)
+            }
+        }
+    }
+
+    private static func sheets(_ app: AXUIElement) -> [AXUIElement] {
+        guard let windows = copyList(app, kAXWindowsAttribute as String) else { return [] }
+        return windows.filter {
+            let r = role(of: $0)
+            return r.contains("Sheet") || r.contains("Dialog")
+        }
+    }
+
+    private static func sheetText(_ sheet: AXUIElement) -> String {
+        var parts = [title(of: sheet)]
+        if let kids = copyList(sheet, kAXChildrenAttribute as String) {
+            for child in kids.prefix(20) {
+                parts.append(title(of: child))
+            }
+        }
+        return parts.joined(separator: " ").lowercased()
+    }
+
+    private static func menuItem(_ menu: AXUIElement, containing needle: String, excluding: String? = nil) -> AXUIElement? {
+        guard let kids = copyList(menu, kAXChildrenAttribute as String) else { return nil }
+        return kids.first { child in
+            let t = title(of: child)
+            guard t.localizedCaseInsensitiveContains(needle) else { return false }
+            if let excluding, t.localizedCaseInsensitiveContains(excluding) { return false }
+            return true
+        }
     }
 
     /// True while Lightroom is still writing copies or handing files to Photoshop.
@@ -184,6 +283,13 @@ enum LightroomAccessibility {
         var value: AnyObject?
         guard AXUIElementCopyAttributeValue(element, kAXEnabledAttribute as CFString, &value) == .success else { return true }
         return (value as? Bool) ?? true
+    }
+
+    private static func showSubmenu(_ element: AXUIElement) {
+        let shown = AXUIElementPerformAction(element, kAXShowMenuAction as CFString)
+        if shown != .success {
+            press(element)
+        }
     }
 
     private static func cancel(_ element: AXUIElement) {
