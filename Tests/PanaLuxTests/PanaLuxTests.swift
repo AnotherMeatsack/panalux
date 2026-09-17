@@ -191,6 +191,36 @@ final class ProfileMigrationTests: XCTestCase {
         let (name, loaded) = try ProfileStore.load(from: url)
         XCTAssertEqual(name, "Test Map")
         XCTAssertEqual(loaded.knobs["Y_LIFT"], KnobBinding(param: "Dehaze", scale: 0.0006))
+        let packet = try ProfileStore.loadPacket(from: url)
+        XCTAssertEqual(packet.format, "panalux-map")
+        XCTAssertEqual(packet.version, 2)
+        XCTAssertNotNil(packet.settings)
+        XCTAssertFalse(packet.readme?.isEmpty ?? true)
+        XCTAssertTrue(packet.readme?.contains(where: { $0.contains("Dehaze") }) == true)
+        XCTAssertNotNil(packet.hardware)
+        XCTAssertEqual(packet.settings?.fine, AppSettings.shared.fineMultiplier)
+    }
+
+    func testV1SharedMapStillLoads() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var profile = Profile.loadDefault()
+        profile.knobs["Y_LIFT"] = KnobBinding(param: "Dehaze", scale: 0.0006)
+        struct V1: Encodable {
+            var format = "panalux-map"
+            var version = 1
+            var name = "Old Share"
+            var profile: Profile
+        }
+        let url = dir.appendingPathComponent("old.panalux.json")
+        let encoder = JSONEncoder()
+        try encoder.encode(V1(profile: profile)).write(to: url)
+        let packet = try ProfileStore.loadPacket(from: url)
+        XCTAssertEqual(packet.name, "Old Share")
+        XCTAssertEqual(packet.profile.knobs["Y_LIFT"]?.param, "Dehaze")
+        XCTAssertNil(packet.settings)
+        XCTAssertNil(packet.hardware)
     }
 
     func testBareProfileImportGetsRepaired() throws {

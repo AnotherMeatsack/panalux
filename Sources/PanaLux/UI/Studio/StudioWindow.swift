@@ -156,6 +156,7 @@ public struct StudioWindowView: View {
                 Button("Save Current Map as My Home") { ProfilePresets.snapshotHome(engine.profile) }
                 Button("Import Map…") { MapImporter.chooseAndImport() }
                 Button("Export Map…") { MapImporter.chooseAndExport() }
+                Button("Copy Map") { MapImporter.copyCurrentMap() }
             } label: {
                 Label("Maps", systemImage: "square.stack.3d.up")
             }
@@ -175,6 +176,8 @@ public struct StudioWindowView: View {
                 Button("Setup Assistant…") { guide.presentSetup() }
                 Button("Quick Reference") { guide.presentQuickReference() }
                 Button("Reference Card") { ReferenceCard.open() }
+                Divider()
+                Button("Report a Bug…") { BugReport.present() }
             } label: {
                 Label("Help", systemImage: "questionmark.circle")
             }

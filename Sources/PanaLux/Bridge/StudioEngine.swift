@@ -697,14 +697,20 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         }
 
         if let psAction = spec.ps {
-            triggerActionDisplay(name: name, label: "Sending to Photoshop…", phase: .working, hold: true)
+            let returning = PhotoshopBridge.shared.isPhotoshopLikelyHoldingDocument()
+            triggerActionDisplay(
+                name: name,
+                label: returning ? "Saving back to Lightroom…" : "Sending to Photoshop…",
+                phase: .working,
+                hold: true
+            )
             PhotoshopBridge.shared.executeAction(psAction) { result in
                 DispatchQueue.main.async {
                     switch result {
                     case .success(let message):
                         self.triggerActionDisplay(name: name, label: message, phase: .done)
                     case .failure(let error):
-                        self.triggerActionDisplay(name: name, label: error.localizedDescription, phase: .failed, duration: 4)
+                        self.triggerActionDisplay(name: name, label: error.localizedDescription, phase: .failed, duration: 8)
                     }
                 }
             }

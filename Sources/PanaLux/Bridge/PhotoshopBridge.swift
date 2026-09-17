@@ -54,19 +54,30 @@ public class PhotoshopBridge {
     }
     
     private func smartRoundtrip() throws -> String {
-        if isPhotoshopFrontmost() {
-            let saved = try flattenAndSave()
-            returnToDevelop()
-            return saved
+        let fromPhotoshop = isPhotoshopFrontmost()
+        if fromPhotoshop {
+            activatePhotoshop()
+            Thread.sleep(forTimeInterval: 0.3)
+            if jsDocumentCount() > 0 {
+                let saved = try flattenAndSave()
+                returnToDevelop()
+                return saved
+            }
+            // Home screen after closing the stack: send the next frames.
+            return try sendAndAlign()
         }
         return try sendAndAlign()
     }
     
     private func sendAndAlign() throws -> String {
-        let before = (try? photoshopJS("app.documents.length")).flatMap(Int.init) ?? 0
+        let beforeDocs = photoshopDocumentCount()
         try openAsLayers()
-        if !waitForNewDocument(before: before, timeout: 180) {
-            return "Sent to Photoshop. timed out waiting to align; align by hand"
+        let layers = waitForLayerStack(beforeDocs: beforeDocs, timeout: 180)
+        guard layers > 0 else {
+            return "Sent to Photoshop. Align by hand if the layers are still arriving"
+        }
+        if layers < 2 {
+            return "Opened in Photoshop. Align by hand if only one layer is there yet"
         }
         let aligned = try alignLayers()
         if let folder = sourceFolder, !folder.isEmpty {
@@ -80,16 +91,65 @@ public class PhotoshopBridge {
             throw makeError(404, "Lightroom Classic isn’t running")
         }
         bringForward(lr)
-        Thread.sleep(forTimeInterval: 0.45)
-        
-        if LightroomBridge.shared.isConnected {
-            LightroomBridge.shared.fireAction("SwToMlibrary")
-            Thread.sleep(forTimeInterval: 0.4)
-            LightroomBridge.shared.fireAction("ShoVwgrid")
-            Thread.sleep(forTimeInterval: 0.4)
+        Thread.sleep(forTimeInterval: 0.4)
+
+        // Never jump to Library Grid here. That drops the filmstrip selection to one
+        // photo, which is how Photoshop only gets a single layer.
+        for step in 0..<8 {
+            if try LightroomAccessibility.openAsLayers(pid: lr.processIdentifier) {
+                return
+            }
+            Thread.sleep(forTimeInterval: step == 0 ? 0.55 : 0.4)
+            bringForward(lr)
         }
-        
-        try LightroomAccessibility.openAsLayers(pid: lr.processIdentifier)
+        throw makeError(409, "Click the Lightroom window, select every frame, then Grab Still again.")
+    }
+
+    /// Do not run Photoshop JavaScript until Lightroom has finished handing off.
+    /// Aligning (or even asking for layer count) while copies are still arriving
+    /// aborts the rest of the stack.
+    private func waitForLayerStack(beforeDocs: Int, timeout: TimeInterval) -> Int {
+        let end = Date().addingTimeInterval(timeout)
+        var sawDoc = false
+        while Date() < end, !sawDoc {
+            if let lr = lightroomApp() {
+                _ = LightroomAccessibility.confirmEditDialog(pid: lr.processIdentifier)
+            }
+            if photoshopDocumentCount() > beforeDocs {
+                sawDoc = true
+                break
+            }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        guard sawDoc else { return 0 }
+
+        while Date() < end {
+            if let lr = lightroomApp() {
+                _ = LightroomAccessibility.confirmEditDialog(pid: lr.processIdentifier)
+                if LightroomAccessibility.isWorkingSheetVisible(pid: lr.processIdentifier) {
+                    Thread.sleep(forTimeInterval: 0.5)
+                    continue
+                }
+            }
+            break
+        }
+        // Extra quiet time so remaining RAWs can land. No Photoshop JS in this gap.
+        Thread.sleep(forTimeInterval: 8.0)
+
+        var last = 0
+        for _ in 0..<6 {
+            if Date() > end { break }
+            last = (try? photoshopJS("var n=0; try{n=app.activeDocument.layers.length;}catch(e){n=0;} n")).flatMap(Int.init) ?? 0
+            if last >= 2 { return last }
+            Thread.sleep(forTimeInterval: 4.0)
+        }
+        return last
+    }
+
+    /// Document windows only. Photoshop’s home screen is not a document.
+    private func photoshopDocumentCount() -> Int {
+        guard let ps = NSWorkspace.shared.runningApplications.first(where: isPhotoshop) else { return 0 }
+        return LightroomAccessibility.namedWindowCount(pid: ps.processIdentifier, skippingTitles: ["adobe photoshop"])
     }
     
     /// After flatten+save, hide Photoshop’s home/new-doc screen and put Lightroom in front.
@@ -146,8 +206,10 @@ public class PhotoshopBridge {
     }
     
     private func flattenAndSave() throws -> String {
+        activatePhotoshop()
+        Thread.sleep(forTimeInterval: 0.2)
         let probe = (try? photoshopJS(
-            "var d=app.activeDocument; var p=''; try{p=d.fullName.fsName;}catch(e){p='';} d.layers.length + '|' + p"
+            "app.displayDialogs=DialogModes.NO; if(app.documents.length<1){'0|';} else { var d=app.activeDocument; var p=''; try{p=d.fullName.fsName;}catch(e){p='';} d.layers.length + '|' + p; }"
         )) ?? ""
         let parts = probe.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)
         let layerCount = Int(parts.first ?? "0") ?? 0
@@ -158,46 +220,59 @@ public class PhotoshopBridge {
         if isRaw && layerCount <= 1 {
             return "\(URL(fileURLWithPath: docPath).lastPathComponent) is a single-layer RAW. open the layered blend first"
         }
-        
+
         let fallback = sourceFolder ?? handoffDir
         try FileManager.default.createDirectory(atPath: fallback, withIntermediateDirectories: true)
         let stamp = Self.timestamp()
+        let fallbackJS = fallback.replacingOccurrences(of: "\\", with: "/").replacingOccurrences(of: "\"", with: "")
         let js = """
-        var d = app.activeDocument;
-        var folder = null, base = d.name.replace(/\\.[^.]+$/, "");
-        try { folder = d.path.fsName; } catch (e) { folder = null; }
-        var writable = false;
-        try { writable = /\\.(psd|psb|tif|tiff|jpg|jpeg|png)$/i.test(d.fullName.fsName); } catch (e) { writable = false; }
-        var o = new TiffSaveOptions();
-        o.imageCompression = TIFFEncoding.TIFFLZW;
-        o.layers = false;
-        d.flatten();
-        var out;
-        if (writable) {
-          d.save();
-          out = d.fullName.fsName;
-        } else {
-          if (folder === null) { folder = "\(fallback.replacingOccurrences(of: "\\", with: "/"))"; }
-          var f = new File(folder + "/" + base + "-blend-\(stamp).tif");
-          d.saveAs(f, o, false, Extension.LOWERCASE);
-          out = f.fsName;
-        }
-        try { d.close(SaveOptions.DONOTSAVECHANGES); } catch (e) {}
-        out;
+        app.displayDialogs = DialogModes.NO;
+        try {
+          if (app.documents.length < 1) { throw "no document"; }
+          var d = app.activeDocument;
+          var folder = null, base = d.name.replace(/\\.[^.]+$/, "");
+          try { folder = d.path.fsName; } catch (e) { folder = null; }
+          var writable = false;
+          try { writable = /\\.(psd|psb|tif|tiff|jpg|jpeg|png)$/i.test(d.fullName.fsName); } catch (e) { writable = false; }
+          var o = new TiffSaveOptions();
+          o.imageCompression = TIFFEncoding.TIFFLZW;
+          o.layers = false;
+          d.flatten();
+          var out;
+          try {
+            if (writable) {
+              d.save();
+              out = d.fullName.fsName;
+            } else {
+              if (folder === null) { folder = "\(fallbackJS)"; }
+              var f = new File(folder + "/" + base + "-blend-\(stamp).tif");
+              d.saveAs(f, o, false, Extension.LOWERCASE);
+              out = f.fsName;
+            }
+          } catch (eSave) {
+            folder = "\(fallbackJS)";
+            var f2 = new File(folder + "/" + base + "-blend-\(stamp).tif");
+            d.saveAs(f2, o, true, Extension.LOWERCASE);
+            out = f2.fsName;
+          }
+          try { d.close(SaveOptions.DONOTSAVECHANGES); } catch (e) {}
+          out;
+        } catch (e) { "ERR:" + e; }
         """
         let out = try photoshopJS(js)
+        if out.hasPrefix("ERR:") {
+            throw makeError(500, "Photoshop couldn’t save: \(out.dropFirst(4))")
+        }
         return "Saved \(out)"
     }
-    
-    private func waitForNewDocument(before: Int, timeout: TimeInterval) -> Bool {
-        let end = Date().addingTimeInterval(timeout)
-        while Date() < end {
-            if let count = (try? photoshopJS("app.documents.length")).flatMap(Int.init), count > before {
-                return true
-            }
-            Thread.sleep(forTimeInterval: 1.0)
-        }
-        return false
+
+    /// HUD-only. Do not call Photoshop JavaScript from the button-down path.
+    public func isPhotoshopLikelyHoldingDocument() -> Bool {
+        isPhotoshopFrontmost()
+    }
+
+    private func jsDocumentCount() -> Int {
+        (try? photoshopJS("app.documents.length")).flatMap(Int.init) ?? 0
     }
     
     private func isPhotoshopFrontmost() -> Bool {
@@ -225,6 +300,14 @@ public class PhotoshopBridge {
         }
     }
     
+    private func activatePhotoshop() {
+        guard let ps = NSWorkspace.shared.runningApplications.first(where: isPhotoshop) else { return }
+        bringForward(ps)
+        if let bid = ps.bundleIdentifier {
+            _ = try? runAppleScript("tell application id \"\(bid)\" to activate")
+        }
+    }
+
     private func activateLightroom() {
         guard let lr = lightroomApp() else { return }
         bringForward(lr)

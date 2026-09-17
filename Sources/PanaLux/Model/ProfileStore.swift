@@ -1,12 +1,48 @@
 import Foundation
 
 /// A map file people can share: `Name.panalux.json`.
+/// Version 2 carries Fine speed, mask-knob layout, key calibration, and a readable guide
+/// so another machine (or a human opening the file) gets the whole setup.
 public struct SharedMap: Codable {
     public var format: String = "panalux-map"
-    public var version: Int = 1
+    public var version: Int = 2
     public var name: String
     public var notes: String?
+    public var app: String?
+    public var build: String?
+    public var exported: String?
+    public var settings: SharedMapSettings?
+    public var hardware: [String: String]?
+    public var readme: [String]?
     public var profile: Profile
+}
+
+public struct SharedMapSettings: Codable, Equatable {
+    public var masksMatchBase: Bool
+    public var fine: Double
+    public var focusDial: String
+
+    enum CodingKeys: String, CodingKey {
+        case masksMatchBase = "masks_match_base"
+        case fine
+        case focusDial = "focus_dial"
+    }
+
+    public static func current() -> SharedMapSettings {
+        let s = AppSettings.shared
+        return SharedMapSettings(
+            masksMatchBase: s.mirrorMaskToBase,
+            fine: s.fineMultiplier,
+            focusDial: s.focusDialControl
+        )
+    }
+
+    public func apply() {
+        let s = AppSettings.shared
+        s.mirrorMaskToBase = masksMatchBase
+        s.fineMultiplier = fine
+        s.focusDialControl = focusDial
+    }
 }
 
 public struct MapFile: Identifiable, Hashable {
@@ -84,22 +120,50 @@ public enum ProfileStore {
     public static func export(_ profile: Profile, name: String, to url: URL) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let file = SharedMap(name: name, notes: "Made with PanaLux. Import from Settings → Maps, or drop this file on the PanaLux window.", profile: profile)
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        let file = SharedMap(
+            format: "panalux-map",
+            version: 2,
+            name: name,
+            notes: "Drop this file on the PanaLux window, or Maps → Import. It is the full setup: every knob, ring, ball, key, and mode, plus Fine speed, mask knob layout, and key calibration.",
+            app: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0",
+            build: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "dev",
+            exported: iso.string(from: Date()),
+            settings: SharedMapSettings.current(),
+            hardware: HardwareMap.shared.exportBits(),
+            readme: MapReadme.lines(for: profile),
+            profile: profile
+        )
         try encoder.encode(file).write(to: url, options: .atomic)
+    }
+
+    /// JSON string for the pasteboard. Same contents as a `.panalux.json` file.
+    public static func exportJSON(_ profile: Profile, name: String) throws -> Data {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("panalux-export.json")
+        try export(profile, name: name, to: url)
+        return try Data(contentsOf: url)
     }
 
     /// Accepts a shared map or a bare profile (older exports, backups).
     public static func load(from url: URL) throws -> (name: String, profile: Profile) {
+        let packet = try loadPacket(from: url)
+        return (packet.name, packet.profile)
+    }
+
+    public static func loadPacket(from url: URL) throws -> SharedMap {
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
         let fallbackName = url.lastPathComponent
             .replacingOccurrences(of: fileSuffix, with: "")
             .replacingOccurrences(of: ".json", with: "")
         if let shared = try? decoder.decode(SharedMap.self, from: data), shared.format == "panalux-map" {
-            return (shared.name, repaired(shared.profile))
+            var packet = shared
+            packet.profile = repaired(shared.profile)
+            return packet
         }
         let bare = try decoder.decode(Profile.self, from: data)
-        return (fallbackName, repaired(bare))
+        return SharedMap(name: fallbackName, profile: repaired(bare))
     }
 
     /// Shared maps may come from older builds: fix renamed command IDs, keep factory layers they lack.
@@ -141,5 +205,108 @@ public enum ProfileStore {
         let bad = CharacterSet(charactersIn: "/\\:?%*|\"<>")
         let cleaned = name.components(separatedBy: bad).joined(separator: "-").trimmingCharacters(in: .whitespaces)
         return cleaned.isEmpty ? "My Map" : cleaned
+    }
+}
+
+/// Plain-language lines stored in a map file so a person can read the setup without running PanaLux.
+public enum MapReadme {
+    public static func lines(for profile: Profile) -> [String] {
+        let db = CommandDatabase.shared
+        var lines: [String] = []
+        lines.append("Base")
+        for (i, id) in PanelLayout.knobs.enumerated() {
+            if let p = profile.knobs[id]?.param {
+                lines.append("  Knob \(i + 1)  \(db.label(for: p))")
+            }
+        }
+        for id in PanelLayout.rings {
+            if let p = profile.rings[id]?.param {
+                lines.append("  \(PanelLayout.shortLabel(forControl: id))  \(db.label(for: p))")
+            }
+        }
+        for id in PanelLayout.balls {
+            lines.append("  \(PanelLayout.shortLabel(forControl: id))  \(ballLine(profile.balls[id], db: db))")
+        }
+        lines.append("Keys")
+        for id in PanelLayout.allButtons {
+            guard let spec = profile.buttons[id], spec.hasAnyAssignment else { continue }
+            let tap = tapLine(spec)
+            let hold = holdLine(spec)
+            var bits: [String] = []
+            if !tap.isEmpty { bits.append("tap \(tap)") }
+            if !hold.isEmpty { bits.append("hold \(hold)") }
+            if bits.isEmpty { continue }
+            lines.append("  \(PanelLayout.label(forControl: id))  \(bits.joined(separator: " · "))")
+        }
+        let order = ["MIXER", "TRANSFORM", "OFFSET", "MASK", "CROP", "CULL", "MULTISELECT", "TONE", "DETAIL", "EFFECTS", "LENS", "PRESETS"]
+        let rest = profile.layers.keys.filter { !order.contains($0) }.sorted()
+        for layerName in order + rest {
+            guard let layer = profile.layers[layerName] else { continue }
+            let title = layer.title ?? LayerNames.defaultTitle(layerName)
+            lines.append(title)
+            if let knobs = layer.knobs {
+                for (i, id) in PanelLayout.knobs.enumerated() {
+                    if let p = knobs[id]?.param {
+                        lines.append("  Knob \(i + 1)  \(db.label(for: p))")
+                    }
+                }
+            }
+            if let rings = layer.rings {
+                for id in PanelLayout.rings {
+                    if let p = rings[id]?.param {
+                        lines.append("  \(PanelLayout.shortLabel(forControl: id))  \(db.label(for: p))")
+                    }
+                }
+            }
+            if let balls = layer.balls {
+                for id in PanelLayout.balls {
+                    if let b = balls[id] {
+                        lines.append("  \(PanelLayout.shortLabel(forControl: id))  \(ballLine(b, db: db))")
+                    }
+                }
+            }
+            if let buttons = layer.buttons {
+                for id in PanelLayout.allButtons {
+                    guard let spec = buttons[id], spec.hasAnyAssignment else { continue }
+                    let tap = tapLine(spec)
+                    let hold = holdLine(spec)
+                    var bits: [String] = []
+                    if !tap.isEmpty { bits.append("tap \(tap)") }
+                    if !hold.isEmpty { bits.append("hold \(hold)") }
+                    if bits.isEmpty { continue }
+                    lines.append("  \(PanelLayout.label(forControl: id))  \(bits.joined(separator: " · "))")
+                }
+            }
+        }
+        return lines
+    }
+
+    private static func ballLine(_ b: BallBinding?, db: CommandDatabase) -> String {
+        guard let b else { return "-" }
+        if let p = b.param, !p.isEmpty {
+            return db.label(for: p)
+        }
+        return "\(db.label(for: b.hue)) / \(db.label(for: b.sat))"
+    }
+
+    private static func tapLine(_ b: ButtonBinding) -> String {
+        let db = CommandDatabase.shared
+        if let a = b.action { return db.label(for: a) }
+        if b.ps != nil { return "Photoshop Open as Layers" }
+        if let l = b.layer { return "toggle \(LayerNames.defaultTitle(l))" }
+        if let v = b.set_variant { return "bank \(v)" }
+        if let prog = b.tapProgram { return prog.summary }
+        if let enter = b.enter_layer { return "enter \(LayerNames.defaultTitle(enter))" }
+        return ""
+    }
+
+    private static func holdLine(_ b: ButtonBinding) -> String {
+        let db = CommandDatabase.shared
+        if let l = b.hold_layer { return LayerNames.defaultTitle(l) }
+        if b.hold_picker != nil { return "mask tool wheel" }
+        if b.modifier != nil { return "Fine" }
+        if let a = b.hold_action { return db.label(for: a) }
+        if let prog = b.holdProgram { return prog.summary }
+        return ""
     }
 }

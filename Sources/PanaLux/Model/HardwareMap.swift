@@ -82,6 +82,23 @@ public class HardwareMap: ObservableObject {
         rebuildReverseMap()
     }
     
+    public func exportBits() -> [String: String] {
+        var out: [String: String] = [:]
+        for (bit, name) in buttonBitToControl {
+            out[String(bit)] = name
+        }
+        return out
+    }
+
+    public func applyShared(_ bits: [String: String]) {
+        for (key, name) in bits {
+            guard let bit = Int(key) else { continue }
+            buttonBitToControl[bit] = name
+        }
+        rebuildReverseMap()
+        saveCustomMap()
+    }
+
     private func saveCustomMap() {
         var stringDict: [String: String] = [:]
         for (bit, name) in buttonBitToControl {

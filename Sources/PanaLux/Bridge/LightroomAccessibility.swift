@@ -13,7 +13,10 @@ enum LightroomAccessibility {
         return AXIsProcessTrusted()
     }
     
-    static func openAsLayers(pid: pid_t) throws {
+    /// Clicks Photo → Edit In → Open as Layers. Returns false if that item is missing or disabled
+    /// (usually one photo selected, or the submenu is still filling in).
+    @discardableResult
+    static func openAsLayers(pid: pid_t) throws -> Bool {
         guard isTrusted(prompt: true) else {
             throw NSError(
                 domain: "PhotoshopBridge",
@@ -21,36 +24,94 @@ enum LightroomAccessibility {
                 userInfo: [NSLocalizedDescriptionKey: "Allow PanaLux in System Settings → Privacy & Security → Accessibility, then press Grab Still once more."]
             )
         }
-        
+
         let app = AXUIElementCreateApplication(pid)
         dismissSheets(app)
-        
+
         guard let menuBar = copyAttr(app, kAXMenuBarAttribute as String) else {
             throw axError("Couldn’t read Lightroom’s menu bar. Click the Lightroom window once, then try again.")
         }
-        
         guard let photo = findChild(menuBar, titleContains: "Photo") else {
             throw axError("Couldn’t find Lightroom’s Photo menu.")
         }
         press(photo)
-        usleep(280_000)
-        
+        usleep(320_000)
+
         guard let photoMenu = firstMenu(from: photo) ?? findChild(photo, role: kAXMenuRole as String) else {
+            cancel(photo)
             throw axError("Photo menu didn’t open.")
         }
         guard let editIn = findChild(photoMenu, titleContains: "Edit In") else {
+            cancel(photo)
             throw axError("Couldn’t find Photo → Edit In.")
         }
         press(editIn)
-        usleep(320_000)
-        
+        usleep(400_000)
+
         guard let editMenu = firstMenu(from: editIn) ?? findChild(editIn, role: kAXMenuRole as String) else {
-            throw axError("Edit In submenu didn’t open.")
+            cancel(photo)
+            return false
         }
         guard let openLayers = findChild(editMenu, titleContains: "Open as Layers", excluding: "Smart Object") else {
-            throw axError("Open as Layers wasn’t in Photo → Edit In. Select the photos in Library first.")
+            cancel(photo)
+            return false
+        }
+        guard isEnabled(openLayers) else {
+            cancel(photo)
+            return false
         }
         press(openLayers)
+        usleep(250_000)
+        confirmEditDialog(pid: pid)
+        return true
+    }
+
+    /// Lightroom’s “Edit Photos with Adobe Photoshop” sheet. Click Edit, never Cancel.
+    @discardableResult
+    static func confirmEditDialog(pid: pid_t) -> Bool {
+        let app = AXUIElementCreateApplication(pid)
+        if clickSheetButton(app, titles: ["Edit", "Continue", "OK"]) { return true }
+        guard isWorkingSheetVisible(pid: pid) else { return false }
+        let deadline = Date().addingTimeInterval(4.0)
+        while Date() < deadline {
+            if clickSheetButton(app, titles: ["Edit", "Continue", "OK"]) { return true }
+            usleep(200_000)
+        }
+        return false
+    }
+
+    /// True while Lightroom is still writing copies or handing files to Photoshop.
+    static func isWorkingSheetVisible(pid: pid_t) -> Bool {
+        let app = AXUIElementCreateApplication(pid)
+        guard let windows = copyList(app, kAXWindowsAttribute as String) else { return false }
+        for window in windows {
+            let r = role(of: window)
+            if r.contains("Sheet") || r.contains("Dialog") { return true }
+            let t = title(of: window).lowercased()
+            if t.contains("photoshop") || t.contains("edit photo") || t.contains("progress") {
+                return true
+            }
+            if hasProgressIndicator(window) { return true }
+        }
+        return false
+    }
+
+    /// Standard windows with a title, ignoring app home screens (title is just the app name).
+    static func namedWindowCount(pid: pid_t, skippingTitles: [String]) -> Int {
+        let app = AXUIElementCreateApplication(pid)
+        guard let windows = copyList(app, kAXWindowsAttribute as String) else { return 0 }
+        return windows.filter { window in
+            let t = title(of: window).trimmingCharacters(in: .whitespacesAndNewlines)
+            if t.isEmpty { return false }
+            let lower = t.lowercased()
+            for skip in skippingTitles {
+                if lower == skip { return false }
+                if lower.hasPrefix(skip), !lower.contains("."), !lower.contains("untitled") {
+                    return false
+                }
+            }
+            return true
+        }.count
     }
     
     /// Press a menu item by title, opening the named top-level menus one at a time.
@@ -91,9 +152,29 @@ enum LightroomAccessibility {
         let app = AXUIElementCreateApplication(pid)
         guard let windows = copyList(app, kAXWindowsAttribute as String) else { return false }
         for window in windows {
-            if let button = findChild(window, titleContains: wanted, role: kAXButtonRole as String) {
+            if let button = findChild(window, titleContains: wanted, role: kAXButtonRole as String), isEnabled(button) {
                 press(button)
                 return true
+            }
+        }
+        return false
+    }
+
+    @discardableResult
+    private static func clickSheetButton(_ app: AXUIElement, titles: [String]) -> Bool {
+        guard let windows = copyList(app, kAXWindowsAttribute as String) else { return false }
+        let sheets = windows.filter {
+            let r = role(of: $0)
+            return r.contains("Sheet") || r.contains("Dialog")
+        }
+        for window in sheets {
+            for wanted in titles {
+                if let button = findChild(window, titleContains: wanted, role: kAXButtonRole as String), isEnabled(button) {
+                    let t = title(of: button).lowercased()
+                    if t.contains("cancel") { continue }
+                    press(button)
+                    return true
+                }
             }
         }
         return false
@@ -103,6 +184,16 @@ enum LightroomAccessibility {
         var value: AnyObject?
         guard AXUIElementCopyAttributeValue(element, kAXEnabledAttribute as CFString, &value) == .success else { return true }
         return (value as? Bool) ?? true
+    }
+
+    private static func cancel(_ element: AXUIElement) {
+        AXUIElementPerformAction(element, kAXCancelAction as CFString)
+    }
+
+    private static func hasProgressIndicator(_ element: AXUIElement) -> Bool {
+        if role(of: element).contains("Progress") { return true }
+        guard let kids = copyList(element, kAXChildrenAttribute as String) else { return false }
+        return kids.prefix(12).contains { hasProgressIndicator($0) }
     }
 
     private static func dismissSheets(_ app: AXUIElement) {

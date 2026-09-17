@@ -75,15 +75,23 @@ struct PanaLuxApp: App {
 public enum MapImporter {
     public static func confirmAndImport(_ url: URL) {
         do {
-            let (name, profile) = try ProfileStore.load(from: url)
+            let packet = try ProfileStore.loadPacket(from: url)
             let alert = NSAlert()
-            alert.messageText = "Use the map “\(name)”?"
-            alert.informativeText = "Your current map is backed up first. You can undo with ⌘Z or restore it from Settings → Maps."
+            alert.messageText = "Use the map “\(packet.name)”?"
+            var info = "Your current map is backed up first. You can undo with ⌘Z or restore it from Settings → Maps."
+            if packet.settings != nil || packet.hardware != nil {
+                info += " Fine speed, mask knob layout, and key calibration in this file are applied too."
+            }
+            alert.informativeText = info
             alert.addButton(withTitle: "Use Map")
             alert.addButton(withTitle: "Cancel")
             guard alert.runModal() == .alertFirstButtonReturn else { return }
-            StudioEngine.shared.replaceProfile(profile, reason: "before import")
-            StudioEngine.shared.mapStatusMessage = "Loaded “\(name)”"
+            StudioEngine.shared.replaceProfile(packet.profile, reason: "before import")
+            packet.settings?.apply()
+            if let bits = packet.hardware {
+                HardwareMap.shared.applyShared(bits)
+            }
+            StudioEngine.shared.mapStatusMessage = "Loaded “\(packet.name)”"
         } catch {
             let alert = NSAlert()
             alert.alertStyle = .warning
@@ -105,9 +113,11 @@ public enum MapImporter {
 
     public static func chooseAndExport() {
         let panel = NSSavePanel()
+        panel.title = "Export Map"
         panel.nameFieldStringValue = "My Map" + ProfileStore.fileSuffix
         panel.allowedContentTypes = [.json]
         panel.canCreateDirectories = true
+        panel.message = "This file is the whole setup. Anyone can drop it on PanaLux to load it."
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let name = url.lastPathComponent
             .replacingOccurrences(of: ProfileStore.fileSuffix, with: "")
@@ -115,6 +125,26 @@ public enum MapImporter {
         do {
             try ProfileStore.export(StudioEngine.shared.profile, name: name, to: url)
             StudioEngine.shared.mapStatusMessage = "Exported “\(name)”"
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        } catch {
+            NSAlert(error: error).runModal()
+        }
+    }
+
+    public static func copyCurrentMap() {
+        do {
+            let name = "PanaLux Map"
+            try FileManager.default.createDirectory(at: AppPaths.mapsDir, withIntermediateDirectories: true)
+            let url = AppPaths.mapsDir.appendingPathComponent(name + ProfileStore.fileSuffix)
+            try ProfileStore.export(StudioEngine.shared.profile, name: name, to: url)
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            pb.writeObjects([url as NSURL])
+            if let data = try? Data(contentsOf: url), let text = String(data: data, encoding: .utf8) {
+                pb.setString(text, forType: .string)
+            }
+            StudioEngine.shared.mapStatusMessage = "Map copied · paste a message or drop the file"
+            NSWorkspace.shared.activateFileViewerSelecting([url])
         } catch {
             NSAlert(error: error).runModal()
         }

@@ -142,11 +142,19 @@ There is also an option to quit Resolve automatically. It is off by default.
 
 ## Share your maps
 
-Export your layout as a file such as `MyMap.panalux.json`. Import it from the app or drop it onto the main window. PanaLux backs up the current map before importing. You can also print a Reference Card for the current map, including every mode.
+**Maps → Export Map** writes a `.panalux.json` file. That file is the whole setup: every knob, ring, ball, key, and mode, plus Fine speed, mask knob layout, and key calibration. It also includes a readable `readme` list of what each control does, so you can open it in a text editor.
+
+Drop a map on the PanaLux window, or choose **Maps → Import**. Importing backs up your current map first. **Copy Map** puts the same file on the clipboard so you can paste it into a message.
+
+You can also print a Reference Card for the current map, including every mode.
 
 Preset, Keywords, Key 1-40, and Command Series slots are defined in Lightroom under **File > Plug-in Extras > General options**. PanaLux triggers those slots. A Command Series such as Auto Tone, then Upright, then Lens Corrections can live on one key.
 
 Post the maps you build. I'd like to see what people put under their hands for different kinds of photography.
+
+## Report a bug
+
+Menu bar or Help → **Report a Bug**. Write what happened. PanaLux opens a GitHub issue with version, connections, and the active mode already filled in, and puts a copy of your map in Finder so you can attach it.
 
 ## Build from source
 

@@ -159,6 +159,7 @@ public struct SettingsView: View {
             HStack {
                 Button("Import Map…") { MapImporter.chooseAndImport(); reload() }
                 Button("Export Map…") { MapImporter.chooseAndExport() }
+                Button("Copy Map") { MapImporter.copyCurrentMap() }
                 Spacer()
                 Button("Show in Finder") {
                     try? FileManager.default.createDirectory(at: AppPaths.mapsDir, withIntermediateDirectories: true)
@@ -193,7 +194,7 @@ public struct SettingsView: View {
         } header: {
             Text("Maps")
         } footer: {
-            Text("Maps are plain JSON files ending in .panalux.json. Share them anywhere. PanaLux backs up your map at launch and before every import, preset, or reset.")
+            Text("A .panalux.json file is the whole setup: every knob, ring, ball, key, and mode, plus Fine speed, mask knob layout, and key calibration. Drop it on the PanaLux window or choose Import. PanaLux backs up your map at launch and before every import, preset, or reset.")
         }
     }
 
@@ -216,6 +217,8 @@ public struct SettingsView: View {
                 dismiss()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { guide.presentQuickReference() }
             }
+            Button("Report a Bug…") { BugReport.present() }
+            Link("GitHub", destination: URL(string: BugReport.github)!)
             Link("MIDI2LR command list", destination: URL(string: "https://github.com/rsjaffe/MIDI2LR/wiki/Commands")!)
         }
     }
