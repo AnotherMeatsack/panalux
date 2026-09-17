@@ -9,7 +9,7 @@ struct IntroShowView: View {
     @State private var sceneStart = Date()
     @FocusState private var focused: Bool
 
-    private let sceneLengths: [TimeInterval] = [5.5, 6.5, 6.5, 7.5, 9.0, 9.0, 8.5, 7.0, 60]
+    private let sceneLengths: [TimeInterval] = [7.0, 8.0, 8.0, 9.5, 18.0, 14.0, 18.0, 9.0, 60]
     private var sceneCount: Int { sceneLengths.count }
 
     var body: some View {
@@ -270,7 +270,7 @@ struct IntroShowView: View {
 
     private func modesScene(_ t: TimeInterval) -> some View {
         let modes = IntroModes.all
-        let index = t < 1.2 ? 0 : min(modes.count - 1, Int((t - 1.2) / 1.55))
+        let index = t < 1.8 ? 0 : min(modes.count - 1, Int((t - 1.8) / 3.2))
         let mode = modes[index]
         return VStack(spacing: 22) {
             headline("Hold a key. Get a new panel.", "While you hold it, every knob changes job, and the readout names all twelve. The screens this panel never had.", t: t)
@@ -291,7 +291,7 @@ struct IntroShowView: View {
                 }
                 .frame(width: 820)
                 .contentTransition(.opacity)
-                .animation(.smooth(duration: 0.35), value: index)
+                .animation(.smooth(duration: 0.55), value: index)
                 PanelStage(
                     t: t,
                     knobLabels: mode.knobs,
@@ -301,17 +301,17 @@ struct IntroShowView: View {
                     keyColor: mode.color
                 )
                 .frame(width: 820, height: 419)
-                .animation(.smooth(duration: 0.45), value: index)
+                .animation(.smooth(duration: 0.7), value: index)
             }
             .opacity(fade(t, from: 0.6))
         }
     }
 
     private func holdToggleScene(_ t: TimeInterval) -> some View {
-        // 0.8–3.0s: User held. 3.0–4.6s: released, back to Base. 5.0s: Cursor tapped, Masks stays on.
-        let userDown = t > 0.8 && t < 3.0
-        let cursorFlash = t > 5.0 && t < 5.35
-        let masksOn = t > 5.0
+        // 1.2–5.0s: User held. 5.0–8.0s: released, back to Base. 8.0s: Cursor tapped, Masks stays on.
+        let userDown = t > 1.2 && t < 5.0
+        let cursorFlash = t > 8.0 && t < 8.5
+        let masksOn = t > 8.0
         let readout: IntroReadout
         if masksOn {
             readout = IntroReadout(title: "MASKS", detail: "Tap Cursor again to leave", badge: "ON", badgeSymbol: "lock.fill",
@@ -320,12 +320,12 @@ struct IntroShowView: View {
             readout = IntroReadout(title: "UPRIGHT & TRANSFORM", detail: "Holding User", badge: "HOLD", badgeSymbol: "hand.point.down.fill",
                                    symbol: "perspective", color: LayerNames.color("TRANSFORM"))
         } else {
-            readout = IntroReadout(title: "BASE", detail: t < 0.8 ? "Nothing held" : "Let go. Back to Base.", badge: "", badgeSymbol: nil,
+            readout = IntroReadout(title: "BASE", detail: t < 1.2 ? "Nothing held" : "Let go. Back to Base.", badge: "", badgeSymbol: nil,
                                    symbol: "square", color: .white)
         }
         let step: String
-        if t < 3.0 { step = "1  Hold User: Upright appears" }
-        else if t < 5.0 { step = "2  Let go: it’s gone" }
+        if t < 5.0 { step = "1  Hold User: Upright appears" }
+        else if t < 8.0 { step = "2  Let go: it’s gone" }
         else { step = "3  Tap Cursor: Masks stays on" }
         var keys: [String] = []
         if userDown { keys.append("button_user") }
@@ -353,9 +353,9 @@ struct IntroShowView: View {
         let sequence: [(Int, MaskCombine)] = [
             (0, .create), (1, .create), (2, .create), (1, .add), (4, .create), (5, .create)
         ]
-        let slot = t < 1.3 ? 0 : min(sequence.count - 1, Int((t - 1.3) / 1.15))
+        let slot = t < 1.8 ? 0 : min(sequence.count - 1, Int((t - 1.8) / 2.5))
         let (index, combine) = sequence[slot]
-        let held = t > 0.55
+        let held = t > 0.9
         return VStack(spacing: 22) {
             headline("Hold Add Node. Pick any mask.",
                      "A circular wheel appears. Spin a ring or roll a ball. The left ring chooses New, Add, Subtract, or Intersect. Let go to create it, then place it with the mouse. Using the balls to place a mask is coming soon.",
@@ -373,16 +373,16 @@ struct IntroShowView: View {
                 )
                 .scaleEffect(held ? 1 : 0.82)
                 .opacity(held ? 1 : 0)
-                .animation(.spring(response: 0.45, dampingFraction: 0.78), value: held)
-                .animation(.smooth(duration: 0.28), value: index)
-                .animation(.smooth(duration: 0.28), value: combine)
+                .animation(.spring(response: 0.7, dampingFraction: 0.82), value: held)
+                .animation(.smooth(duration: 0.5), value: index)
+                .animation(.smooth(duration: 0.5), value: combine)
             }
             .opacity(fade(t, from: 0.4))
             Text(held ? "\(combine.title) \(MaskToolPicker.tool(at: index).title)  ·  release to create" : "Press and hold Add Node")
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundStyle(LayerNames.color("MASK"))
                 .contentTransition(.opacity)
-                .animation(.smooth(duration: 0.25), value: slot)
+                .animation(.smooth(duration: 0.45), value: slot)
         }
     }
 
