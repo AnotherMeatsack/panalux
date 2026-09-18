@@ -73,6 +73,43 @@ public enum PointerCommands {
     public static func isSize(_ id: String) -> Bool { id == size }
 }
 
+/// Rewind is PanaLux's own recorder, not a Lightroom command. These IDs are mapped like any
+/// other command, so the whole gesture stays remappable.
+public enum RewindCommands {
+    public static let prefix = "rewind:"
+    /// Analog: turn to move the playhead through the recording.
+    public static let scrub = "rewind:scrub"
+    /// Analog: how far toward the scrub point, 0–100%.
+    public static let strength = "rewind:strength"
+    public static let tip = "rewind:tip"
+    public static let mark = "rewind:mark"
+    public static let branch = "rewind:branch"
+    public static let previous = "rewind:prev"
+    public static let next = "rewind:next"
+    /// Hold to see the tip without moving the playhead; release goes back to the past.
+    public static let peek = "rewind:peek"
+    public static let unpeek = "rewind:unpeek"
+
+    public static func isRewind(_ id: String) -> Bool { id.hasPrefix(prefix) }
+    /// Knobs and rings drive these; everything else is a key.
+    public static func isAnalog(_ id: String) -> Bool { id == scrub || id == strength }
+
+    public static func title(_ id: String) -> String {
+        switch id {
+        case scrub: return "Scrub the trail"
+        case strength: return "Rewind strength"
+        case tip: return "Back to now"
+        case mark: return "Mark this"
+        case branch: return "Branch here"
+        case previous: return "Previous landmark"
+        case next: return "Next landmark"
+        case peek: return "Peek at now"
+        case unpeek: return "Back to the past"
+        default: return "Rewind"
+        }
+    }
+}
+
 /// "Reset Lift/Gamma/Gain" resets exactly that wheel: the ball's hue and saturation and the ring.
 public enum WheelReset {
     public static let prefix = "reset_wheel:"

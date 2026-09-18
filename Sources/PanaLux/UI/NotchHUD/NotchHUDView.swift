@@ -69,6 +69,7 @@ public struct NotchHUDView: View {
         case .multi(let r): return "multi-\(r.count > 3 ? 2 : 1)"
         case .layerBanner(let layer, _, _, _, _, let grid): return "banner-\(layer)-\(grid.isEmpty)"
         case .action: return "action"
+        case .rewind: return "rewind"
         }
     }
 
@@ -118,6 +119,9 @@ public struct NotchHUDView: View {
 
         case .multi(let readings):
             MultiReadout(readings: readings)
+
+        case .rewind(let state):
+            RewindView(state: state)
         }
     }
 }
@@ -155,6 +159,7 @@ struct MinimalReadout: View {
         case .layerBanner(let layer, _, _, _, _, _): return LayerNames.symbol(layer)
         case .action(_, _, let phase): return PhaseStyle.symbol(phase) ?? "button.programmable"
         case .multi: return "dial.medium"
+        case .rewind: return "gobackward"
         case .idle: return "circle"
         }
     }
@@ -163,6 +168,7 @@ struct MinimalReadout: View {
         switch mode {
         case .layerBanner(let layer, _, _, _, _, _): return LayerNames.color(layer)
         case .action(_, _, let phase): return PhaseStyle.color(phase)
+        case .rewind(let state): return state.branchName == nil ? RewindState.accent : RewindState.branchAccent
         default: return .orange
         }
     }
@@ -174,6 +180,7 @@ struct MinimalReadout: View {
         case .layerBanner(let layer, _, let hint, _, _, _): return hint ?? LayerNames.defaultTitle(layer)
         case .action(_, let label, _): return label
         case .multi(let r): return r.map(\.param).joined(separator: " · ")
+        case .rewind(let state): return state.branchName ?? "Rewind"
         case .idle: return ""
         }
     }
@@ -186,6 +193,7 @@ struct MinimalReadout: View {
         case .layerBanner(_, let variant, _, _, let latched, _):
             return [variant, latched ? "ON" : "HOLD"].compactMap { $0 }.joined(separator: " · ")
         case .multi(let r): return r.map(\.value).joined(separator: " · ")
+        case .rewind(let state): return state.caption
         default: return ""
         }
     }

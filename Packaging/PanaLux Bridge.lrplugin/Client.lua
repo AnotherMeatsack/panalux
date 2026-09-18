@@ -78,6 +78,7 @@ LrTasks.startAsyncTask(
     local Limits          = require 'Limits'
     local LocalPresets    = require 'LocalPresets'
     local Mask            = require 'Mask'
+    local PanaLuxRewind   = require 'PanaLuxRewind' -- PanaLux Bridge: trail recording
     local Presets         = require 'Presets'
     local Profiles        = require 'Profiles'
     local Virtual         = require 'Virtual'
@@ -91,7 +92,6 @@ LrTasks.startAsyncTask(
     MIDI2LR = {PARAM_OBSERVER = {}, SERVER = {}, CLIENT = {}, RUNNING = true, AltOpt = false} --non-local but in MIDI2LR namespace
     --local variables
     local LastParam           = ''
-    local LastSelectionSignature = ''
     local UpdateParamPickup, UpdateParamNoPickup, UpdateParam
     local sendIsConnected = false --tell whether send socket is up or not
     --local constants--may edit these to change program behaviors
@@ -104,32 +104,6 @@ LrTasks.startAsyncTask(
     local MIDIValueToLRValue = Limits.MIDIValueToLRValue
     local getValue = LrDevelopController.getValue
     local setValue = LrDevelopController.setValue
-
-
-
-
-    --[[ PanaLux Bridge addition.
-      Tells the app how many photos are selected and which one is active. Nothing in
-      the original protocol carries this, so an app driving Edit In > Open as Layers
-      had no way to know how many layers were supposed to arrive, and no way to tell a
-      short stack from a finished one. Sent only when it changes.
-    --]]
-    local function ReportSelection()
-      local ok, err = pcall(function()
-          local cat = LrApplication.activeCatalog()
-          local photos = cat:getTargetPhotos()
-          local count = photos and #photos or 0
-          local target = cat:getTargetPhoto()
-          local id = target and tostring(target.localIdentifier) or '0'
-          local module = LrApplicationView.getCurrentModuleName() or 'unknown'
-          local signature = id..'/'..count..'/'..module
-          if signature ~= LastSelectionSignature then
-            LastSelectionSignature = signature
-            MIDI2LR.SERVER:send(string.format('PanaLuxSelection %d %s %s\n', count, id, module))
-          end
-        end)
-      if not ok then LastSelectionSignature = '' end
-    end
 
     local GradeFocusTable = {
       SplitToningShadowHue = 'shadow',
@@ -843,6 +817,12 @@ LrTasks.startAsyncTask(
           UpdateParam = UpdateParamNoPickup
         end
       end,
+      -- PanaLux Bridge: whole develop settings tables, for Rewind's keyframes.
+      PanaLuxSnapshot     = function(value) PanaLuxRewind.SendSnapshot(value) end,
+      PanaLuxRestoreBegin = function() PanaLuxRewind.RestoreBegin() end,
+      PanaLuxRestoreChunk = function(value) PanaLuxRewind.RestoreChunk(value) end,
+      PanaLuxRestoreEnd   = function() PanaLuxRewind.RestoreEnd() end,
+      PanaLuxProbe        = function() PanaLuxRewind.Probe() end,
       ProfileAmount     = CU.ProfileAmount,
       --[[
       For SetRating, if send back sync value to controller, formula is:
@@ -1100,7 +1080,9 @@ LrTasks.startAsyncTask(
         while  MIDI2LR.RUNNING and ((LrApplicationView.getCurrentModuleName() ~= 'develop') or (LrApplication.activeCatalog():getTargetPhoto() == nil)) do
           LrTasks.sleep ( .29 )
           Profiles.checkProfile()
-          ReportSelection() -- Library counts too: that is where photos get multi-selected.
+          -- PanaLux Bridge: tell PanaLux which photo is on screen and how many are selected.
+          -- Runs while in Library too, which is where photos get multi-selected.
+          PanaLuxRewind.PushSelection()
         end --sleep away until ended or until develop module activated
         LrTasks.sleep ( .2 ) --avoid "attempt to index field 'libraryImage' (a nil value) on fast machines: LR bug
         if MIDI2LR.RUNNING then --didn't drop out of loop because of program termination
@@ -1123,7 +1105,7 @@ LrTasks.startAsyncTask(
           while MIDI2LR.RUNNING do --detect halt or reload
             LrTasks.sleep( .29 )
             Profiles.checkProfile()
-            ReportSelection()
+            PanaLuxRewind.PushSelection() -- PanaLux Bridge: which photo, how many, which module
           end
         end
       end

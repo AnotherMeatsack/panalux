@@ -29,7 +29,7 @@ public final class HUDFeed: ObservableObject {
         // Appearing, disappearing, and mode banners show at once; readout values are paced.
         let immediate: Bool
         switch next {
-        case .knob, .ring, .trackball, .multi: immediate = false
+        case .knob, .ring, .trackball, .multi, .rewind: immediate = false
         default: immediate = true
         }
         if immediate || now.timeIntervalSince(lastFlush) >= frameInterval {

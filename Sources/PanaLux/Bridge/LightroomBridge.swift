@@ -4,6 +4,12 @@ import Network
 public protocol LightroomBridgeDelegate: AnyObject {
     func lightroomConnectionStateChanged(isConnected: Bool)
     func lightroomParameterDidUpdate(name: String, value: Double)
+    /// Lightroom put a different photo on screen. The trail is per photo.
+    func lightroomActivePhotoDidChange(id: String?)
+}
+
+public extension LightroomBridgeDelegate {
+    func lightroomActivePhotoDidChange(id: String?) {}
 }
 
 /// Talks to the MIDI2LR plugin running inside Lightroom Classic.
@@ -25,6 +31,12 @@ public class LightroomBridge: ObservableObject {
 
     public weak var delegate: LightroomBridgeDelegate?
 
+    /// Every value change PanaLux knows about, whoever caused it: a knob here, or a mouse in
+    /// Lightroom. This is what the trail records. Always called on the main thread.
+    public var onValueChanged: ((String, Double) -> Void)?
+    /// A settings table came back for a snapshot request, matched by the token that asked.
+    public var onKeyframe: ((String, String) -> Void)?
+
     private var sendConnection: NWConnection?
     private var recvConnection: NWConnection?
     private let queue = DispatchQueue(label: "com.panalux.lrbridge", qos: .userInteractive)
@@ -42,6 +54,8 @@ public class LightroomBridge: ObservableObject {
     private var sendReady = false
     private var recvReady = false
     private var recvBuffer = ""
+    /// Settings tables arrive in pieces, keyed by the token that asked for them.
+    private var keyframeChunks: [String: [String]] = [:]
 
     // Slider updates are coalesced: only the newest value per slider is sent, a few dozen
     // times a second. Lightroom applies each message one at a time, so sending every USB tick
@@ -201,22 +215,19 @@ public class LightroomBridge: ObservableObject {
         var updates: [String: Double] = [:]
         for line in lines {
             // Copy/Paste Settings and Key1…Key40 ask the host app to type a shortcut.
-            if line.hasPrefix("PanaLuxSelection ") {
-                let parts = line.dropFirst("PanaLuxSelection ".count).split(separator: " ")
-                if let count = parts.first.flatMap({ Int($0) }) {
-                    let id = parts.count > 1 ? String(parts[1]) : nil
-                    let module = parts.count > 2 ? String(parts[2]) : nil
-                    DispatchQueue.main.async {
-                        if self.selectedPhotoCount != count { self.selectedPhotoCount = count }
-                        if self.activePhotoID != id { self.activePhotoID = id }
-                        if self.currentModule != module { self.currentModule = module }
-                    }
-                }
-                continue
-            }
             if line.hasPrefix("SendKey ") {
                 let payload = String(line.dropFirst("SendKey ".count))
                 if !isMuted { DispatchQueue.main.async { LightroomKeys.send(payload) } }
+                continue
+            }
+            // Which photo is on screen: "PanaLuxSelection <count> <photoID> <module>".
+            if line.hasPrefix("PanaLuxSelection ") {
+                absorbSelection(String(line.dropFirst("PanaLuxSelection ".count)))
+                continue
+            }
+            // A settings table, in pieces: "PanaLuxKeyframe <token> <seq> <total> <base64>".
+            if line.hasPrefix("PanaLuxKeyframe ") {
+                absorbKeyframe(String(line.dropFirst("PanaLuxKeyframe ".count)))
                 continue
             }
             let parts = line.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
@@ -239,8 +250,47 @@ public class LightroomBridge: ObservableObject {
         DispatchQueue.main.async {
             for (name, val) in updates {
                 self.delegate?.lightroomParameterDidUpdate(name: name, value: val)
+                self.onValueChanged?(name, val)
             }
         }
+    }
+
+    /// "<count> <photoID> <module>". The photo id can be anything the catalog calls it,
+    /// so only the count and the trailing module are split off.
+    private func absorbSelection(_ payload: String) {
+        let parts = payload.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        guard parts.count >= 3 else { return }
+        let count = Int(parts[0]) ?? 0
+        let module = parts[parts.count - 1]
+        let id = parts[1..<(parts.count - 1)].joined(separator: " ")
+        DispatchQueue.main.async {
+            if self.selectedPhotoCount != count { self.selectedPhotoCount = count }
+            if self.currentModule != module { self.currentModule = module }
+            let resolved = id == "-" ? nil : id
+            guard self.activePhotoID != resolved else { return }
+            self.activePhotoID = resolved
+            self.delegate?.lightroomActivePhotoDidChange(id: resolved)
+        }
+    }
+
+    /// "<token> <seq> <total> <base64>". Chunked because a settings table with masks in it is
+    /// far longer than a line either side of this socket wants to carry.
+    private func absorbKeyframe(_ payload: String) {
+        let parts = payload.split(separator: " ", maxSplits: 3, omittingEmptySubsequences: true).map(String.init)
+        guard parts.count == 4, let seq = Int(parts[1]), let total = Int(parts[2]), total > 0 else { return }
+        let token = parts[0]
+        lock.lock()
+        if seq <= 1 { keyframeChunks[token] = [] }
+        keyframeChunks[token, default: []].append(parts[3])
+        let assembled = keyframeChunks[token] ?? []
+        let done = seq >= total && assembled.count == total
+        if done { keyframeChunks[token] = nil }
+        // A request Lightroom never finished answering must not pin memory forever.
+        if keyframeChunks.count > 8 { keyframeChunks.removeAll() }
+        lock.unlock()
+        guard done else { return }
+        let blob = assembled.joined()
+        DispatchQueue.main.async { self.onKeyframe?(token, blob) }
     }
 
     private func sendRaw(_ message: String) {
@@ -373,6 +423,15 @@ public class LightroomBridge: ObservableObject {
         lock.unlock()
 
         queue.async { self.enqueueValue(name, clamped) }
+        // The plugin will not echo this back to us (it is our own move, inside the holdoff),
+        // so the trail has to hear about it here.
+        if let hook = onValueChanged {
+            if Thread.isMainThread {
+                hook(name, clamped)
+            } else {
+                DispatchQueue.main.async { hook(name, clamped) }
+            }
+        }
         return clamped
     }
 
@@ -413,6 +472,38 @@ public class LightroomBridge: ObservableObject {
         return localValues[name] ?? Self.neutralValue(for: name)
     }
 
+    // MARK: - Rewind
+
+    /// Ask the plugin for a whole `getDevelopSettings()` table. The reply comes back on the
+    /// value socket as `PanaLuxKeyframe <token> …` and is matched by this token.
+    public func requestDevelopSnapshot(token: String) {
+        guard !isMuted else { return }
+        queue.async { self.sendRaw("PanaLuxSnapshot \(token)\n") }
+    }
+
+    /// Hand a table back. This is what puts masks and crop back exactly as they were.
+    public func restoreDevelopSnapshot(blob: String) {
+        guard !isMuted, !blob.isEmpty else { return }
+        queue.async {
+            self.sendRaw("PanaLuxRestoreBegin 1.00000\n")
+            var index = blob.startIndex
+            while index < blob.endIndex {
+                let end = blob.index(index, offsetBy: 900, limitedBy: blob.endIndex) ?? blob.endIndex
+                self.sendRaw("PanaLuxRestoreChunk \(blob[index..<end])\n")
+                index = end
+            }
+            self.sendRaw("PanaLuxRestoreEnd 1.00000\n")
+        }
+        markStale()
+        queue.asyncAfter(deadline: .now() + 0.35) { self.requestFullRefresh(force: true) }
+    }
+
+    /// Ask the plugin to log the keys of a settings table. Used once, by hand, to check
+    /// whether masks survive the round trip before anything was designed around it.
+    public func probeDevelopSettings() {
+        queue.async { self.sendRaw("PanaLuxProbe 1.00000\n") }
+    }
+
     /// Best guess when Lightroom has not reported a value yet. Crop edges are not centered.
     public static func neutralValue(for name: String) -> Double {
         switch name {
@@ -421,4 +512,16 @@ public class LightroomBridge: ObservableObject {
         default: return 0.5
         }
     }
+}
+
+extension LightroomBridge: RewindOutput {
+    public func rewindKnownValues() -> [String: Double] { allKnownValues() }
+
+    public func rewindSetParameter(_ name: String, value: Double) {
+        setParameter(name, value: value)
+    }
+
+    public func rewindRequestSnapshot(token: String) { requestDevelopSnapshot(token: token) }
+
+    public func rewindRestore(blob: String) { restoreDevelopSnapshot(blob: blob) }
 }

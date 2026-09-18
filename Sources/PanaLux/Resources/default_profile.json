@@ -109,7 +109,8 @@
       "action": "LRPaste"
     },
     "UNDO": {
-      "action": "Undo"
+      "action": "Undo",
+      "hold_layer": "REWIND"
     },
     "REDO": {
       "action": "Redo"
@@ -234,6 +235,41 @@
     "FINE"
   ],
   "layers": {
+    "REWIND": {
+      "title": "Rewind",
+      "_comment": "Hold Undo (its tap is still Undo). The centre ring scrubs the editing session, the right ring sets how far back the photo is taken, and the keys mark, branch, and step between landmarks.",
+      "rings": {
+        "RING_GAMMA": {
+          "param": "rewind:scrub",
+          "scale": 0.0003
+        },
+        "RING_GAIN": {
+          "param": "rewind:strength",
+          "scale": 0.0003
+        }
+      },
+      "buttons": {
+        "NEXT_STILL": {
+          "action": "rewind:tip"
+        },
+        "ADD_KEYFRM": {
+          "action": "rewind:mark"
+        },
+        "ADD_NODE": {
+          "action": "rewind:branch"
+        },
+        "PREV_KEYFRM": {
+          "action": "rewind:prev"
+        },
+        "NEXT_KEYFRM": {
+          "action": "rewind:next"
+        },
+        "WIPE_STILL": {
+          "hold_action": "rewind:peek",
+          "release_action": "rewind:unpeek"
+        }
+      }
+    },
     "OFFSET": {
       "_comment": "Resolve OFFSET mode: Temp/Tint on the left rings, global Offset wheel on the right ball.",
       "rings": {

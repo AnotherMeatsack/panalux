@@ -174,6 +174,9 @@ public class NotchHUDWindowController: ObservableObject {
         case .multi(let readings):
             // One row fits in the same box as a single readout, so nothing jumps.
             return readings.count > 3 ? 104 : 68
+        case .rewind(let state):
+            // Header, the tape, and two rows of knobs when there are knobs to roll.
+            return state.knobs.isEmpty ? 126 : 180
         default: return 68
         }
     }

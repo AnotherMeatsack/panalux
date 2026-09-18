@@ -36,6 +36,8 @@ public enum ActiveDisplayMode: Equatable {
     case action(name: String, label: String, phase: ActionPhase)
     /// Several controls moving together. two hands, or a knob plus a ball.
     case multi([LiveReading])
+    /// Holding UNDO: the trail, the playhead, and the twelve knobs rolling back.
+    case rewind(RewindState)
 }
 
 public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBridgeDelegate {
@@ -163,6 +165,17 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             self?.triggerActionDisplay(name: "GRAB_STILL", label: message, phase: .done, duration: 5)
         }
 
+        // Rewind records every value change the plugin reports, whether a knob here or a mouse
+        // in Lightroom caused it.
+        let rewind = RewindEngine.shared
+        rewind.output = LightroomBridge.shared
+        LightroomBridge.shared.onValueChanged = { name, value in
+            rewind.record(param: name, value: value)
+        }
+        LightroomBridge.shared.onKeyframe = { token, blob in
+            rewind.acceptSnapshot(token: token, blob: blob)
+        }
+
         PanelManager.shared.start()
         LightroomBridge.shared.connect()
 
@@ -179,6 +192,16 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             .dropFirst()
             .removeDuplicates()
             .sink { [weak self] next in self?.recordHistory(next) }
+            .store(in: &cancellables)
+
+        // The playhead moves far more often than a key is pressed; let it own the readout
+        // for as long as the hold lasts.
+        rewind.changed
+            .sink { [weak self] state in
+                guard let self, RewindEngine.shared.isRewinding else { return }
+                self.collapseTimer?.invalidate()
+                self.currentDisplayMode = .rewind(state)
+            }
             .store(in: &cancellables)
     }
 
@@ -304,7 +327,9 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         buttonDownAt.removeAll()
         for name in engagedHolds {
             if let release = holdBinding(for: name)?.release_action, !outputBlocked {
-                if PointerCommands.isPointer(release) {
+                if RewindCommands.isRewind(release) {
+                    RewindEngine.shared.setPeeking(false)
+                } else if PointerCommands.isPointer(release) {
                     PointerDriver.perform(release)
                 } else {
                     LightroomBridge.shared.fireAction(release)
@@ -313,6 +338,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         }
         cancelPicker(commit: false)
         PointerDriver.cancel()
+        RewindEngine.shared.endRewind(announce: false)
         maskPlacing = false
         engagedHolds.removeAll()
         pressedButtonBits.removeAll()
@@ -747,6 +773,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         if let toggleLayer = spec.layer {
             if toggledLayers.contains(toggleLayer) {
                 if toggleLayer == "MASK" { endMaskPlacing(announce: false) }
+                if toggleLayer == "REWIND" { RewindEngine.shared.endRewind() }
                 toggledLayers.remove(toggleLayer)
                 activeLayers.remove(toggleLayer)
                 collapseToIdle()
@@ -754,7 +781,11 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             } else {
                 toggledLayers.insert(toggleLayer)
                 activeLayers.insert(toggleLayer)
-                triggerLayerBanner(layer: toggleLayer)
+                if toggleLayer == "REWIND" {
+                    beginRewind()
+                } else {
+                    triggerLayerBanner(layer: toggleLayer)
+                }
             }
             updateLeds()
             updateStatusMessage()
@@ -777,6 +808,11 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         if outputBlocked {
             let what = spec.ps != nil ? "Photoshop round-trip" : CommandDatabase.shared.label(for: spec.action ?? "")
             triggerActionDisplay(name: name, label: "\(blockedWord) · \(what)", phase: .blocked)
+            return
+        }
+
+        if let action = spec.action, RewindCommands.isRewind(action) {
+            performRewindKey(action, key: name)
             return
         }
 
@@ -843,6 +879,9 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             for tb in trackballs.values { tb.stopInertia() }
             for tb in overlayTrackballs.values { tb.stopInertia() }
             LightroomBridge.shared.fireAction(action)
+            // A mask, a crop, a preset, a paste: the value stream cannot describe these, so the
+            // trail takes a whole settings table around them instead.
+            RewindEngine.shared.noteStructuralEdit(action, label: label)
             if action == BracketCommands.mark {
                 noteBracketMark()
                 triggerActionDisplay(
@@ -873,8 +912,11 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             runMenuAction(id, key: key)
         } else if id.hasPrefix(WheelReset.prefix) {
             resetWheel(String(id.dropFirst(WheelReset.prefix.count)), key: key)
+        } else if RewindCommands.isRewind(id) {
+            performRewindKey(id, key: key)
         } else {
             LightroomBridge.shared.fireAction(id)
+            RewindEngine.shared.noteStructuralEdit(id, label: CommandDatabase.shared.label(for: id))
             noteMaskCommand(id)
         }
     }
@@ -909,6 +951,11 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         GuideController.shared.hardwareEvent(.holdEngaged(name))
 
         if let press = spec?.hold_action {
+            if RewindCommands.isRewind(press) {
+                performRewindKey(press, key: name)
+                updateStatusMessage()
+                return
+            }
             if outputBlocked {
                 triggerActionDisplay(name: name, label: "Paused · \(CommandDatabase.shared.label(for: press))", phase: .blocked, hold: true)
             } else if PointerCommands.isPointer(press) {
@@ -937,6 +984,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
 
         if let holdLayer = spec?.hold_layer {
             activeLayers.insert(holdLayer)
+            if holdLayer == "REWIND" { beginRewind() }
             presentHoldHUD()
             updateLeds()
             updateStatusMessage()
@@ -956,7 +1004,9 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
 
         if spec?.hold_action != nil {
             if let release = spec?.release_action, !outputBlocked {
-                if PointerCommands.isPointer(release) {
+                if RewindCommands.isRewind(release) {
+                    performRewindKey(release, key: name)
+                } else if PointerCommands.isPointer(release) {
                     PointerDriver.perform(release)
                 } else {
                     LightroomBridge.shared.fireAction(release)
@@ -987,6 +1037,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             if !toggledLayers.contains(holdLayer) {
                 activeLayers.remove(holdLayer)
                 if holdLayer == "MASK" { endMaskPlacing(announce: false) }
+                // Letting go leaves the photo wherever the playhead is. That is the point.
+                if holdLayer == "REWIND" { RewindEngine.shared.endRewind() }
             }
             collapseToIdle()
             updateLeds()
@@ -1108,6 +1160,10 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             notice(name, "Not assigned. set it in Map")
             return
         }
+        if RewindCommands.isRewind(b.param) {
+            driveRewind(b.param, control: name, deltaUnits: deltaUnits)
+            return
+        }
         GuideController.shared.hardwareEvent(.analogMoved(name))
         driveAnalog(control: name, param: b.param, scale: b.scale, deltaUnits: deltaUnits, isFine: isFine, isRing: false, context: context)
     }
@@ -1149,6 +1205,10 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         }
         guard let b = binding else {
             notice(name, "Not assigned. set it in Map")
+            return
+        }
+        if RewindCommands.isRewind(b.param) {
+            driveRewind(b.param, control: name, deltaUnits: deltaUnits)
             return
         }
         if PointerCommands.isSize(b.param) {
@@ -1238,6 +1298,73 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         let newVal = bridge.nudgeParameter(param, delta: step)
         lastAdjustmentTimestamp = Date()
         show(newVal, formatValue(param: param, value: newVal), label)
+    }
+
+    // MARK: - Rewind
+
+    /// A knob or ring mapped to the trail. Like every other binding, this is whatever the
+    /// map says it is — the factory map puts scrub on the centre ring and strength on the right.
+    private func driveRewind(_ command: String, control: String, deltaUnits: Double) {
+        GuideController.shared.hardwareEvent(.analogMoved(control))
+        let rewind = RewindEngine.shared
+        guard rewind.isRewinding else {
+            notice(control, "Hold Undo to rewind")
+            return
+        }
+        guard !outputBlocked else {
+            notice(control, "\(blockedWord) · \(RewindCommands.title(command))")
+            return
+        }
+        switch command {
+        case RewindCommands.strength: rewind.adjustStrength(units: deltaUnits)
+        default: rewind.scrub(units: deltaUnits)
+        }
+    }
+
+    /// Start the hold: the readout takes over and the playhead parks on the tip.
+    private func beginRewind() {
+        let rewind = RewindEngine.shared
+        rewind.knobParams = currentKnobParams()
+        if rewind.photoID == nil, let id = LightroomBridge.shared.activePhotoID {
+            rewind.setActivePhoto(id)
+        }
+        rewind.beginRewind()
+        collapseTimer?.invalidate()
+        guard rewind.isRewinding else {
+            // No trail yet: Lightroom has not said which photo is on screen, which an older
+            // PanaLux Bridge never does.
+            triggerActionDisplay(name: "UNDO", label: "Rewind is waiting for Lightroom", phase: .blocked, hold: true)
+            return
+        }
+        currentDisplayMode = .rewind(rewind.state)
+    }
+
+    /// A key mapped to the trail.
+    private func performRewindKey(_ command: String, key: String) {
+        let rewind = RewindEngine.shared
+        if command == RewindCommands.mark || command == RewindCommands.branch {
+            // Marking and branching are worth doing whether or not the hold is on.
+            if command == RewindCommands.mark {
+                rewind.mark()
+                triggerActionDisplay(name: key, label: "Marked · Rewind snaps here", phase: .done)
+            } else {
+                rewind.startBranch(reason: "Branched")
+                triggerActionDisplay(name: key, label: "New branch · nothing was lost", phase: .done)
+            }
+            return
+        }
+        guard rewind.isRewinding else {
+            triggerActionDisplay(name: key, label: "Hold Undo to rewind", phase: .blocked)
+            return
+        }
+        switch command {
+        case RewindCommands.tip: rewind.jumpToTip()
+        case RewindCommands.previous: rewind.step(forward: false)
+        case RewindCommands.next: rewind.step(forward: true)
+        case RewindCommands.peek: rewind.setPeeking(true)
+        case RewindCommands.unpeek: rewind.setPeeking(false)
+        default: break
+        }
     }
 
     private func driveRepeat(control: String, pair: RepeatCommands.Pair, deltaUnits: Double, isRing: Bool, show: (String) -> Void) {
@@ -1721,6 +1848,10 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     }
 
     private func holdBannerMode() -> ActiveDisplayMode? {
+        // While the trail is being scrubbed, the trail is the readout.
+        if RewindEngine.shared.isRewinding {
+            return .rewind(RewindEngine.shared.state)
+        }
         if let held = heldProgramButton, let program = profile.buttons[held]?.holdProgram {
             return .layerBanner(
                 layer: PanelLayout.label(forControl: held),
@@ -2058,6 +2189,20 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
 
     /// Lightroom changed a value (Undo, Reset, a preset, a new photo). Move the wheels to match
     /// so the next roll continues from what's on screen, not from where the ball used to be.
+    /// A different photo is on screen, so a different trail is being recorded.
+    public func lightroomActivePhotoDidChange(id: String?) {
+        RewindEngine.shared.knobParams = currentKnobParams()
+        RewindEngine.shared.setActivePhoto(id)
+    }
+
+    /// The twelve knobs as they are mapped right now, for the rolling readout.
+    func currentKnobParams() -> [(control: String, param: String)] {
+        PanelLayout.knobs.compactMap { id -> (control: String, param: String)? in
+            guard let binding = profile.knobs[id] else { return nil }
+            return (control: id, param: binding.param)
+        }
+    }
+
     public func lightroomParameterDidUpdate(name: String, value: Double) {
         let bridge = LightroomBridge.shared
         scheduleHoldBannerRefresh()
