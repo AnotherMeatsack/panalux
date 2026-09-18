@@ -150,6 +150,8 @@ public class PhotoshopBridge {
         guard let lr = lightroomApp() else {
             throw makeError(404, "Lightroom Classic isn’t running")
         }
+        // Photoshop first, menus second.
+        //
         // Read the count before touching menus: activating Lightroom and walking its
         // menu bar is exactly when a selection can change underneath us.
         expectedLayers = LightroomBridge.shared.selectedPhotoCount ?? 0
@@ -158,10 +160,12 @@ public class PhotoshopBridge {
         // report the permission missing while never giving macOS the chance to offer it,
         // so the dialog never appeared no matter how many times it was pressed.
         let trusted = LightroomAccessibility.isTrusted(prompt: true)
-        log("SEND  selected=\(expectedLayers)  module=\(module)  bracket=\(fromBracket)  accessibility=\(trusted)")
+        log("SEND  selected=\(expectedLayers)  module=\(module)  bracket=\(fromBracket)  accessibility=\(trusted)  photoshopUp=\(isPhotoshopRunning())")
         guard trusted else {
             throw makeError(403, "Allow PanaLux in System Settings → Privacy & Security → Accessibility, then press Grab Still again.")
         }
+        // Have Photoshop up and answering before Lightroom is asked to hand it a stack.
+        ensurePhotoshopReady()
         if fromBracket {
             try showBracket(pid: lr.processIdentifier)
         }
@@ -268,6 +272,32 @@ public class PhotoshopBridge {
                 self.report("Opened \(layers) layers. Auto-align didn’t run.")
             }
         }
+    }
+
+    /// Launch Photoshop, without stealing the screen, and wait until it answers.
+    /// A cold Photoshop is the condition under which Lightroom hands over one photo
+    /// instead of the whole stack.
+    private func ensurePhotoshopReady(timeout: TimeInterval = 120) {
+        if !isPhotoshopRunning() {
+            log("prewarm: Photoshop is not running, launching it")
+            let bundle = photoshopBundleId()
+            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle) {
+                let config = NSWorkspace.OpenConfiguration()
+                config.activates = false
+                let done = DispatchSemaphore(value: 0)
+                NSWorkspace.shared.openApplication(at: url, configuration: config) { _, _ in done.signal() }
+                _ = done.wait(timeout: .now() + 30)
+            }
+        }
+        let end = Date().addingTimeInterval(timeout)
+        while Date() < end {
+            if isPhotoshopRunning(), (try? photoshopJS("app.documents.length")) != nil {
+                log("prewarm: Photoshop is ready")
+                return
+            }
+            Thread.sleep(forTimeInterval: 0.8)
+        }
+        log("prewarm: Photoshop never answered; sending anyway")
     }
 
     private func isPhotoshopRunning() -> Bool {
@@ -412,7 +442,11 @@ public class PhotoshopBridge {
             if i >= 1, let lr = lightroomApp() {
                 LightroomAccessibility.dismissNoSelectionDialog(pid: lr.processIdentifier)
             }
-            if i == steps.count - 1, isPhotoshopFrontmost() {
+            // Quitting here is what made the next hand-off fail. Lightroom gives a
+            // whole stack to a Photoshop that is already up; to one it has to launch it
+            // often gives only the first photo. Closing the last document and quitting
+            // guaranteed the next send started cold.
+            if i == steps.count - 1, isPhotoshopFrontmost(), AppSettings.shared.quitPhotoshopWhenEmpty {
                 let docs = (try? photoshopJS("app.documents.length")).flatMap(Int.init) ?? -1
                 if docs == 0 {
                     quitPhotoshop()
@@ -498,8 +532,20 @@ public class PhotoshopBridge {
         return isPhotoshop(app)
     }
     
+    /// Photoshop itself, never one of its helpers.
+    ///
+    /// Photoshop runs four WebKit and Safari helper processes, and every one of them is
+    /// named after it — "Adobe Photoshop (Beta) Web Content", "AutoFill (Adobe Photoshop
+    /// (Beta))" and so on. Matching on the name alone could pick one of those out of the
+    /// running-applications list, and then every AppleScript call went to a WebKit
+    /// process instead of Photoshop and quietly failed. Which one came back first was
+    /// not deterministic, which is part of why this behaved differently run to run.
     private func isPhotoshop(_ app: NSRunningApplication) -> Bool {
         let bid = (app.bundleIdentifier ?? "").lowercased()
+        if bid.hasPrefix("com.apple.") { return false }
+        if bid.hasPrefix("com.adobe.photoshop") { return true }
+        // Anything else has to be a real app with a dock presence, not a helper.
+        guard app.activationPolicy == .regular else { return false }
         let name = (app.localizedName ?? "").lowercased()
         return bid.contains("photoshop") || name.contains("photoshop")
     }
@@ -573,10 +619,14 @@ public class PhotoshopBridge {
     }
     
     private func photoshopBundleId() -> String {
-        if let running = NSWorkspace.shared.runningApplications.first(where: { isPhotoshop($0) })?.bundleIdentifier {
-            return running
+        let running = NSWorkspace.shared.runningApplications
+            .filter { isPhotoshop($0) }
+            .compactMap { $0.bundleIdentifier }
+        // Prefer the real application bundle over anything else that slipped through.
+        if let exact = running.first(where: { $0.lowercased().hasPrefix("com.adobe.photoshop") }) {
+            return exact
         }
-        return "com.adobe.Photoshop"
+        return running.first ?? "com.adobe.Photoshop"
     }
     
     private func photoshopJS(_ js: String) throws -> String {

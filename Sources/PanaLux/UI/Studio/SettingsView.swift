@@ -157,6 +157,8 @@ public struct SettingsView: View {
                 Text("1 s").tag(1.0)
             }
             .help("How long a key must be down before it switches modes instead of firing its tap. Longer means an ordinary press never brings a mode up by accident.")
+            Toggle("Quit Photoshop when its last document closes", isOn: $settings.quitPhotoshopWhenEmpty)
+                .help("Off by default. Lightroom hands a whole stack to a Photoshop that is already open; to one it has to launch it often hands over only the first photo.")
             Toggle("Auto-align layers in Photoshop", isOn: $settings.autoAlignLayers)
                 .help("After Open as Layers, PanaLux waits for the stack to finish arriving and runs Auto-Align once. Turn this off to align by hand.")
             Button("Learn Key Positions…") { showCalibration = true }

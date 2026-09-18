@@ -27,6 +27,9 @@ public class AppSettings: ObservableObject {
     @AppStorage("autoAlignLayers") public var autoAlignLayers: Bool = true
     /// How long a key must be down before it counts as held rather than tapped.
     @AppStorage("holdDelay") public var holdDelay: Double = 0.5
+    /// Quitting Photoshop once its last document closes leaves the next hand-off to a
+    /// cold app, which is when a stack arrives short. Off by default.
+    @AppStorage("quitPhotoshopWhenEmpty") public var quitPhotoshopWhenEmpty: Bool = false
     
     private init() {
         migrateHudDurationIfNeeded()
