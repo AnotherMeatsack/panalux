@@ -71,16 +71,48 @@ PLIST
 # Set PANALUX_SIGN_IDENTITY to a "Developer ID Application: …" identity to produce a
 # build that can be notarized. Without it the app is ad-hoc signed and users have to
 # use Open Anyway on first launch.
+# An ad-hoc signature is a hash of the binary, so every rebuild looks like a different
+# app to macOS and the Accessibility grant silently stops applying — the checkbox stays
+# on while AXIsProcessTrusted() returns false. Signing with any Apple-issued identity
+# gives a stable one, so the permission survives rebuilds. Developer ID is preferred
+# because it is also what notarization needs; an Apple Development cert is enough to
+# keep permissions stable locally.
 SIGN_IDENTITY="${PANALUX_SIGN_IDENTITY:-}"
+if [[ "${PANALUX_ADHOC:-0}" == "1" ]]; then
+    SIGN_IDENTITY=""
+elif [[ -z "$SIGN_IDENTITY" ]]; then
+    # Resolve to the certificate's SHA-1, not its name: two certificates can share a
+    # name, and codesign refuses an ambiguous one. Skip revoked certificates.
+    pick_identity() {
+        security find-identity -v -p codesigning 2>/dev/null \
+            | grep -v CSSMERR \
+            | grep "$1" \
+            | head -1 \
+            | awk '{print $2}'
+    }
+    SIGN_IDENTITY="$(pick_identity 'Developer ID Application:' || true)"
+    if [[ -z "$SIGN_IDENTITY" ]]; then
+        SIGN_IDENTITY="$(pick_identity 'Apple Development:' || true)"
+    fi
+    if [[ -n "$SIGN_IDENTITY" ]]; then
+        SIGN_NAME="$(security find-identity -v -p codesigning 2>/dev/null | grep "$SIGN_IDENTITY" | sed 's/.*"\(.*\)".*/\1/' || true)"
+    fi
+fi
+
 if [[ -n "$SIGN_IDENTITY" ]]; then
-    echo "==> Signing with ${SIGN_IDENTITY}"
+    echo "==> Signing with ${SIGN_NAME:-$SIGN_IDENTITY}"
     # Sign inside out: nested code first, then the bundle.
     find "$APP_BUNDLE" -name "*.bundle" -type d -print0 | while IFS= read -r -d '' nested; do
-        codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$nested"
+        codesign --force --sign "$SIGN_IDENTITY" "$nested"
     done
-    codesign --force --options runtime --timestamp \
-        --entitlements Packaging/PanaLux.entitlements \
-        --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
+    if [[ "${SIGN_NAME:-$SIGN_IDENTITY}" == Developer\ ID* ]]; then
+        codesign --force --options runtime --timestamp \
+            --entitlements Packaging/PanaLux.entitlements \
+            --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
+    else
+        codesign --force --entitlements Packaging/PanaLux.entitlements \
+            --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
+    fi
     codesign --verify --strict --verbose=2 "$APP_BUNDLE"
 else
     echo "==> Ad-hoc signing (set PANALUX_SIGN_IDENTITY for a notarizable build)"

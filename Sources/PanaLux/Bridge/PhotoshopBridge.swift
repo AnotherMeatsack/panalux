@@ -96,6 +96,7 @@ public class PhotoshopBridge {
                 }
                 completion(.success(message))
             } catch {
+                self.log("FAIL  \(actionName): \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
@@ -153,7 +154,11 @@ public class PhotoshopBridge {
         // menu bar is exactly when a selection can change underneath us.
         expectedLayers = LightroomBridge.shared.selectedPhotoCount ?? 0
         let module = LightroomBridge.shared.currentModule ?? "unreported"
-        log("SEND  selected=\(expectedLayers)  module=\(module)  bracket=\(fromBracket)  photoshopDocs=\(jsDocumentCount())")
+        let trusted = LightroomAccessibility.isTrusted(prompt: false)
+        log("SEND  selected=\(expectedLayers)  module=\(module)  bracket=\(fromBracket)  accessibility=\(trusted)")
+        guard trusted else {
+            throw makeError(403, "PanaLux has lost Accessibility permission. System Settings → Privacy & Security → Accessibility: switch PanaLux off and on again.")
+        }
         if fromBracket {
             try showBracket(pid: lr.processIdentifier)
         }

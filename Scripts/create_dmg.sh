@@ -43,6 +43,17 @@ hdiutil create -volname "$APP_NAME" -srcfolder "$STAGING" -ov -format UDZO "$DMG
 #   xcrun notarytool store-credentials PanaLux --apple-id <you> --team-id <TEAM> --password <app-specific-password>
 # Then:
 #   PANALUX_SIGN_IDENTITY="Developer ID Application: … (TEAMID)" PANALUX_NOTARY_PROFILE=PanaLux ./Scripts/create_dmg.sh
+# A development certificate carries a personal name. It is fine for local builds,
+# where it keeps macOS permissions stable across rebuilds, but it must never be what
+# ships. Packaging refuses it unless a Developer ID was chosen deliberately.
+DMG_AUTHORITY="$(codesign -dv --verbose=2 "${APP_NAME}.app" 2>&1 | grep '^Authority=' | head -1 || true)"
+if [[ "$DMG_AUTHORITY" == *"Apple Development"* && -z "${PANALUX_SIGN_IDENTITY:-}" ]]; then
+    echo "!! ${APP_NAME}.app is signed with a development certificate, which carries a personal name." >&2
+    echo "   Re-run as: PANALUX_ADHOC=1 ./Scripts/build_app.sh && ./Scripts/create_dmg.sh" >&2
+    echo "   or set PANALUX_SIGN_IDENTITY to a Developer ID certificate." >&2
+    exit 1
+fi
+
 NOTARY_PROFILE="${PANALUX_NOTARY_PROFILE:-}"
 if [[ -n "${PANALUX_SIGN_IDENTITY:-}" && -n "$NOTARY_PROFILE" ]]; then
     echo "==> Signing the disk image"
