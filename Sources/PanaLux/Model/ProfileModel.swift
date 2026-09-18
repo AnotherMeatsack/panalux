@@ -283,7 +283,7 @@ public struct Profile: Codable, Equatable {
     }
 
     /// Bump when the factory map gains something existing users should receive.
-    public static let schemaVersion = 9
+    public static let schemaVersion = 10
 
     public static func loadUserOrDefault() -> Profile {
         let factory = loadDefault()
@@ -505,6 +505,19 @@ public struct Profile: Codable, Equatable {
                     if seen >= 2 { backup() }
                     p.layers["MASK"] = mask
                 }
+            }
+        }
+        if seen < 10 {
+            // v10: holding Undo rewinds the whole editing session. Its tap is still Undo, and
+            // a key the user already gave a hold keeps it.
+            if p.layers["REWIND"] == nil, let rewind = factory.layers["REWIND"] {
+                p.layers["REWIND"] = rewind
+            }
+            var spec = p.buttons["UNDO"] ?? ButtonBinding()
+            if p.layers["REWIND"] != nil, !spec.hasHoldFunctionSet {
+                if seen >= 2 { backup() }
+                spec.hold_layer = "REWIND"
+                p.buttons["UNDO"] = spec
             }
         }
         if seen < schemaVersion {

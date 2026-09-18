@@ -269,7 +269,34 @@ public class CommandCatalog: ObservableObject {
             ]
         ))
 
-        // 13. Modes, holds & special keys
+        // 13. Rewind — PanaLux's own recorder, not Lightroom's history
+        cats.append(CommandCategory(
+            id: "rewind",
+            title: "Rewind",
+            icon: "gobackward",
+            items: [
+                CatalogCommand(id: RewindCommands.scrub, title: "Scrub the Trail",
+                               subtitle: "Turn to move the playhead. Slow is one edit at a time, fast is minutes",
+                               isParameter: true, icon: "backward.circle"),
+                CatalogCommand(id: RewindCommands.strength, title: "Rewind Strength",
+                               subtitle: "How far toward the scrub point the photo is taken, 0–100%",
+                               isParameter: true, icon: "slider.horizontal.below.rectangle"),
+                CatalogCommand(id: RewindCommands.tip, title: "Back to Now",
+                               subtitle: "Jumps the playhead to the newest edit", isParameter: false, icon: "forward.end.fill"),
+                CatalogCommand(id: RewindCommands.mark, title: "Mark This",
+                               subtitle: "Drops a landmark the playhead snaps to. \"I liked it\"", isParameter: false, icon: "bookmark.fill"),
+                CatalogCommand(id: RewindCommands.branch, title: "Branch Here",
+                               subtitle: "Starts a new line of editing. The old one is kept, whole", isParameter: false, icon: "arrow.triangle.branch"),
+                CatalogCommand(id: RewindCommands.previous, title: "Previous Landmark",
+                               subtitle: "Steps back to the last mask, crop, preset, or mark", isParameter: false, icon: "chevron.left.2"),
+                CatalogCommand(id: RewindCommands.next, title: "Next Landmark",
+                               subtitle: "Steps forward to the next landmark", isParameter: false, icon: "chevron.right.2"),
+                CatalogCommand(id: RewindCommands.peek, title: "Peek at Now",
+                               subtitle: "Hold to see the tip without leaving the past", isParameter: false, icon: "eye.fill")
+            ]
+        ))
+
+        // 14. Modes, holds & special keys
         var modeItems: [CatalogCommand] = []
         for (layer, blurb) in Self.modeBlurbs {
             let title = LayerNames.defaultTitle(layer)
@@ -316,7 +343,8 @@ public class CommandCatalog: ObservableObject {
         ("LENS", "Lens corrections and Lens Blur"),
         ("PRESETS", "Step presets, set the amount, fire slots 1–10"),
         ("OFFSET", "Temp and tint on the rings, global color on the right ball"),
-        ("MULTISELECT", "Prev/Next Keyframe add photos to the selection")
+        ("MULTISELECT", "Prev/Next Keyframe add photos to the selection"),
+        ("REWIND", "Hold Undo: the centre ring scrubs the editing session, the right ring sets how far back")
     ]
 
     public func command(for id: String) -> CatalogCommand? {

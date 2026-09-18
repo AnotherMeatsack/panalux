@@ -81,10 +81,57 @@ final class CommandCatalogTests: XCTestCase {
             db.commands[$0] == nil
                 && !$0.hasPrefix(WheelReset.prefix)
                 && !PointerCommands.isPointer($0)
+                && !RewindCommands.isRewind($0)
                 && LightroomMenuActions.item($0) == nil
         }.sorted()
         XCTAssertEqual(missing, [], "Factory map uses commands MIDI2LR doesn't have")
         XCTAssertGreaterThan(factory.layers.count, 10)
+    }
+
+    /// Rewind is PanaLux's own, so it has to be reachable and remappable like everything else.
+    func testFactoryMapWiresRewindToHoldingUndo() {
+        let factory = Profile.loadDefault()
+        XCTAssertEqual(factory.buttons["UNDO"]?.action, "Undo", "the tap is still Undo")
+        XCTAssertEqual(factory.buttons["UNDO"]?.hold_layer, "REWIND")
+        let layer = factory.layers["REWIND"]
+        XCTAssertNotNil(layer)
+        XCTAssertEqual(layer?.rings?["RING_GAMMA"]?.param, RewindCommands.scrub)
+        XCTAssertEqual(layer?.rings?["RING_GAIN"]?.param, RewindCommands.strength)
+        XCTAssertEqual(layer?.buttons?["NEXT_STILL"]?.action, RewindCommands.tip)
+        XCTAssertEqual(layer?.buttons?["ADD_KEYFRM"]?.action, RewindCommands.mark)
+        XCTAssertEqual(layer?.buttons?["ADD_NODE"]?.action, RewindCommands.branch)
+        XCTAssertEqual(layer?.buttons?["PREV_KEYFRM"]?.action, RewindCommands.previous)
+        XCTAssertEqual(layer?.buttons?["NEXT_KEYFRM"]?.action, RewindCommands.next)
+        XCTAssertEqual(layer?.buttons?["WIPE_STILL"]?.hold_action, RewindCommands.peek)
+        XCTAssertEqual(layer?.buttons?["WIPE_STILL"]?.release_action, RewindCommands.unpeek)
+        // Every one of them is a tile the user can drag somewhere else.
+        for id in [RewindCommands.scrub, RewindCommands.strength, RewindCommands.tip,
+                   RewindCommands.mark, RewindCommands.branch, RewindCommands.previous,
+                   RewindCommands.next, RewindCommands.peek] {
+            XCTAssertNotNil(CommandCatalog.shared.command(for: id), id)
+        }
+        XCTAssertTrue(CommandDatabase.shared.catalogCommand(for: RewindCommands.scrub).isParameter,
+                      "scrub has to be droppable on a ring")
+        XCTAssertFalse(CommandDatabase.shared.catalogCommand(for: RewindCommands.tip).isParameter)
+    }
+
+    func testV10GivesUndoARewindHoldWithoutTakingOne() {
+        let name = "panalux-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.set(9, forKey: "profileSchemaVersion")
+        let factory = Profile.loadDefault()
+        var user = factory
+        user.buttons["UNDO"] = ButtonBinding(action: "Undo")
+        let migrated = Profile.migrate(user, factory: factory, defaults: defaults) {}
+        XCTAssertEqual(migrated.buttons["UNDO"]?.hold_layer, "REWIND")
+        XCTAssertEqual(migrated.buttons["UNDO"]?.action, "Undo")
+
+        defaults.set(9, forKey: "profileSchemaVersion")
+        var kept = factory
+        kept.buttons["UNDO"] = ButtonBinding(action: "Undo", hold_layer: "CULL")
+        let skipped = Profile.migrate(kept, factory: factory, defaults: defaults) {}
+        XCTAssertEqual(skipped.buttons["UNDO"]?.hold_layer, "CULL", "a hold the user chose is kept")
+        defaults.removePersistentDomain(forName: name)
     }
 
     func testCuratedTilesUseRealCommands() {

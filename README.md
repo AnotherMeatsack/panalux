@@ -51,6 +51,7 @@ Every key has separate **On tap** and **While held** assignments. The table belo
 | **Hold User** | Upright and Transform. Knobs become perspective controls. Auto Color becomes Upright Auto while User is held. |
 | **Tap or hold Cursor** | Masks. Knobs adjust the selected mask, keeping matching controls in their Base positions. You can turn that behavior off in Settings and build a custom mask layout. |
 | **Hold Add Node** | Opens the circular mask tool wheel. Choose a tool and operation, then release to create it. Place it with the mouse. |
+| **Hold Undo** | Rewind. The centre ring scrubs the whole editing session, the right ring sets how far back the photo is taken. Tap is still Undo. |
 | **Hold Viewer** | Crop and Straighten. Knobs trim edges, the center ring straightens, and keys select aspect presets. |
 | **Hold Select** | Cull in Library. Keys rate, flag, and color-label photos. Rings scroll photos and zoom. |
 | **Tap Offset** | Temperature and tint on the rings, with global color on the right ball. |
@@ -83,6 +84,32 @@ While the wheel is open, the left ring chooses New, Add, Subtract, or Intersect.
 ![The mask wheel with Add Subject selected.](Docs/screenshots/hud-mask-wheel.png)
 
 Once a mask is selected, the matching adjustment knobs stay in familiar positions. Other keys can move between masks, invert, hide, delete, or select subject and sky.
+
+## Hold Undo. Rewind the session.
+
+Undo still undoes on a tap. Hold it and the whole editing session becomes a tape you can scrub.
+
+Turn the **centre ring** and the photo un-edits itself continuously — slowly for one edit at a time, quickly for minutes at a time. The **right ring** sets how far toward that point the photo is actually taken, 0–100%, so you can sit halfway between how it looks now and how it looked twenty minutes ago. Time in one hand, strength in the other.
+
+This is not Lightroom's history panel. PanaLux records every develop value the plugin reports, whether a knob here or the mouse in Lightroom moved it, and captures a whole settings table around anything structural — a mask, a crop, a preset, a paste — so landing on one of those puts it back exactly.
+
+**Nothing is ever destroyed.** Rolling back does not truncate the future: the tip stays, and one key returns to it. Editing from a rolled-back point starts a branch, and the line you left is kept whole. Branch from a branch as often as you like. This is the part Lightroom cannot do, and the reason its history panel is hard to trust.
+
+While Undo is held:
+
+| Control | Job |
+| --- | --- |
+| **Centre ring** | Scrub the trail. Slow is one edit at a time; fast is minutes at a time. |
+| **Right ring** | How far back the photo is taken, 0–100%. |
+| **Next Still** | Back to now. |
+| **Add Keyframe** | Mark this — "I liked it". The playhead snaps to marks. |
+| **Add Node** | Branch here. One press, a new line of editing. |
+| **Prev / Next Keyframe** | Step to the previous or next landmark. |
+| **Wipe Still** | Hold to peek at now without leaving the past. |
+
+Letting go of Undo leaves the photo wherever the playhead is. You can stop anywhere.
+
+The trail is kept per photo, under `~/Library/Application Support/PanaLux/Trails`, and survives quitting. Like every other control on the panel, all of the above is remappable — Rewind's commands are ordinary tiles in the catalog.
 
 ## Make the map yours
 

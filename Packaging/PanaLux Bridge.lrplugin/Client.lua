@@ -78,6 +78,7 @@ LrTasks.startAsyncTask(
     local Limits          = require 'Limits'
     local LocalPresets    = require 'LocalPresets'
     local Mask            = require 'Mask'
+    local PanaLuxRewind   = require 'PanaLuxRewind' -- PanaLux Bridge: trail recording
     local Presets         = require 'Presets'
     local Profiles        = require 'Profiles'
     local Virtual         = require 'Virtual'
@@ -819,6 +820,12 @@ LrTasks.startAsyncTask(
           UpdateParam = UpdateParamNoPickup
         end
       end,
+      -- PanaLux Bridge: whole develop settings tables, for Rewind's keyframes.
+      PanaLuxSnapshot     = function(value) PanaLuxRewind.SendSnapshot(value) end,
+      PanaLuxRestoreBegin = function() PanaLuxRewind.RestoreBegin() end,
+      PanaLuxRestoreChunk = function(value) PanaLuxRewind.RestoreChunk(value) end,
+      PanaLuxRestoreEnd   = function() PanaLuxRewind.RestoreEnd() end,
+      PanaLuxProbe        = function() PanaLuxRewind.Probe() end,
       ProfileAmount     = CU.ProfileAmount,
       --[[
       For SetRating, if send back sync value to controller, formula is:
@@ -1076,6 +1083,7 @@ LrTasks.startAsyncTask(
         while  MIDI2LR.RUNNING and ((LrApplicationView.getCurrentModuleName() ~= 'develop') or (LrApplication.activeCatalog():getTargetPhoto() == nil)) do
           LrTasks.sleep ( .29 )
           Profiles.checkProfile()
+          PanaLuxRewind.PushSelection() -- PanaLux Bridge: tell PanaLux which photo is on screen
         end --sleep away until ended or until develop module activated
         LrTasks.sleep ( .2 ) --avoid "attempt to index field 'libraryImage' (a nil value) on fast machines: LR bug
         if MIDI2LR.RUNNING then --didn't drop out of loop because of program termination
@@ -1095,6 +1103,7 @@ LrTasks.startAsyncTask(
           while MIDI2LR.RUNNING do --detect halt or reload
             LrTasks.sleep( .29 )
             Profiles.checkProfile()
+            PanaLuxRewind.PushSelection() -- PanaLux Bridge: tell PanaLux which photo is on screen
           end
         end
       end

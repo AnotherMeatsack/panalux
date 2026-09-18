@@ -56,6 +56,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         Profile.save(StudioEngine.shared.profile)
+        // The trail has to outlive quitting, so this one waits.
+        RewindEngine.shared.flush(synchronously: true)
         PanelManager.shared.setLEDs(activeBits: [])
     }
 }

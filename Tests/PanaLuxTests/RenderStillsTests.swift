@@ -47,7 +47,12 @@ final class RenderStillsTests: XCTestCase {
                                LiveReading(control: "TB_LIFT", param: "Shadows", value: "210° · 18%"),
                                LiveReading(control: "TB_GAMMA", param: "Midtones", value: "40° · 9%"),
                                LiveReading(control: "RING_GAIN", param: "Highlight Lum", value: "-6")])),
-            ("action", .action(name: "AUTO_COLOR", label: "Auto Tone", phase: .sent))
+            ("action", .action(name: "AUTO_COLOR", label: "Auto Tone", phase: .sent)),
+            ("rewind-now", .rewind(RewindSamples.now)),
+            ("rewind-scrubbing", .rewind(RewindSamples.scrubbing)),
+            ("rewind-peeking", .rewind(RewindSamples.peeking)),
+            ("rewind-branch", .rewind(RewindSamples.branched)),
+            ("rewind-crowded", .rewind(RewindSamples.crowded))
         ]
         for (name, mode) in modes {
             let height = NotchHUDWindowController.height(for: mode)
@@ -70,10 +75,86 @@ final class RenderStillsTests: XCTestCase {
             MultiReadout(readings: r)
         case .action(let n, let l, let ph):
             ButtonFlashView(name: n, label: l, phase: ph)
+        case .rewind(let state):
+            RewindView(state: state)
         default:
             EmptyView()
         }
     }
+}
+
+/// Every state the Rewind readout can be in, so all of them can be rendered and looked at.
+enum RewindSamples {
+    static func knobs(rolledBack: Double) -> [RewindKnobValue] {
+        let row: [(String, String, Double, String)] = [
+            ("Y_LIFT", "Blacks", 0.46, "-8"),
+            ("Y_GAMMA", "Exposure", 0.62, "+1.20 EV"),
+            ("Y_GAIN", "Whites", 0.55, "+10"),
+            ("CONTRAST", "Contrast", 0.68, "+36"),
+            ("PIVOT", "Clarity", 0.52, "+4"),
+            ("MID_DETAIL", "Texture", 0.58, "+16"),
+            ("COL_BOOST", "Vibrance", 0.71, "+42"),
+            ("SHAD", "Shadows", 0.44, "-12"),
+            ("HI_LIGHT", "Highs", 0.39, "-22"),
+            ("SAT", "Sat", 0.5, "0"),
+            ("HUE", "Temp", 0.13, "8200 K"),
+            ("LUM_MIX", "Blending", 0.5, "0")
+        ]
+        return row.enumerated().map { index, entry in
+            let (control, label, value, display) = entry
+            let changed = Double(index) / 12.0 < rolledBack
+            return RewindKnobValue(control: control, label: label,
+                                   value: changed ? 0.5 + (value - 0.5) * 0.3 : value,
+                                   display: changed ? "…" : display, isChanged: changed)
+        }
+    }
+
+    static let marks: [TrailMark] = [
+        TrailMark(id: "open", time: 0, label: "Opened", kind: .open),
+        TrailMark(id: "wb", time: 26, label: "Auto White Balance", kind: .action),
+        TrailMark(id: "mask", time: 58, label: "New Radial Mask", kind: .mask),
+        TrailMark(id: "mark", time: 92, label: "Mark", kind: .mark),
+        TrailMark(id: "crop", time: 140, label: "Crop", kind: .crop)
+    ]
+
+    static let now = RewindState(
+        origin: 0, tip: 180, playhead: 180, window: 200, strength: 1,
+        marks: marks, knobs: knobs(rolledBack: 0), branchName: nil,
+        isPeeking: false, isAtTip: true, caption: "Now", speed: 0
+    )
+
+    static let scrubbing = RewindState(
+        origin: 0, tip: 180, playhead: 74, window: 200, strength: 1,
+        marks: marks, knobs: knobs(rolledBack: 0.7), branchName: nil,
+        isPeeking: false, isAtTip: false, caption: "2 minutes back", speed: 0.75
+    )
+
+    static let peeking = RewindState(
+        origin: 0, tip: 180, playhead: 180, window: 200, strength: 0,
+        marks: marks, knobs: knobs(rolledBack: 0), branchName: nil,
+        isPeeking: true, isAtTip: false, caption: "Now (peek)", speed: 0
+    )
+
+    static let branched = RewindState(
+        origin: 0, tip: 210, playhead: 120, window: 200, strength: 0.45,
+        marks: marks + [TrailMark(id: "fork", time: 92, label: "Take 2", kind: .branch, branchName: "Take 2")],
+        knobs: knobs(rolledBack: 0.35), branchName: "Take 2",
+        isPeeking: false, isAtTip: false, caption: "45% of the way back", speed: 0.2
+    )
+
+    /// Four landmarks inside a few seconds. Their labels must not print on top of each other.
+    static let crowded = RewindState(
+        origin: 0, tip: 120, playhead: 66, window: 200, strength: 1,
+        marks: [
+            TrailMark(id: "a", time: 60, label: "New Radial Mask", kind: .mask),
+            TrailMark(id: "b", time: 63, label: "Paste Settings", kind: .paste),
+            TrailMark(id: "c", time: 66, label: "Mark", kind: .mark),
+            TrailMark(id: "d", time: 70, label: "Crop", kind: .crop),
+            TrailMark(id: "e", time: 74, label: "Take 3", kind: .branch, branchName: "Take 3")
+        ],
+        knobs: knobs(rolledBack: 0.5), branchName: nil,
+        isPeeking: false, isAtTip: false, caption: "Mark", speed: 0.1
+    )
 }
 
 @MainActor

@@ -18,6 +18,7 @@ public enum LayerNames {
         case "PRESETS": return "Presets"
         case "FINE": return "Fine"
         case "FOCUS": return "Focus Dial"
+        case "REWIND": return "Rewind"
         default: return layer.capitalized
         }
     }
@@ -38,6 +39,7 @@ public enum LayerNames {
         case "PRESETS": return "square.stack.3d.up.fill"
         case "FINE": return "scope"
         case "FOCUS": return "dial.medium.fill"
+        case "REWIND": return "gobackward"
         default: return "square.3.layers.3d"
         }
     }
@@ -58,6 +60,7 @@ public enum LayerNames {
         case "PRESETS": return Color(red: 0.95, green: 0.65, blue: 0.35)
         case "FINE": return .yellow
         case "FOCUS": return .cyan
+        case "REWIND": return RewindState.accent
         default: return .orange
         }
     }
