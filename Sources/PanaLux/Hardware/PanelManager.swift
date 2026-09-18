@@ -155,24 +155,50 @@ public class PanelManager: ObservableObject {
         healthCheckTimer = nil
     }
 
-    /// The panel's firmware stops streaming on its own after a short idle, so
-    /// something has to re-arm it or it goes quiet while still looking connected.
-    ///
+    /// What the watchdog should do this tick. Split out from the IOKit call so it can
+    /// be tested without a panel attached: this decision was deleted once already and
+    /// nothing caught it, because the panel layer could not be exercised in a test.
+    enum HealthAction: Equatable {
+        /// Nothing attached. Look for it, so the panel comes back without a replug.
+        case searchForDevice
+        /// Connected and quiet. The firmware stops streaming on its own after an idle,
+        /// so the stream-enable report is sent again or the panel goes silent while
+        /// still looking connected.
+        case rearmStream
+        /// Connected and in use, or re-armed recently. Stay off the bus.
+        case wait
+    }
+
+    static let quietBeforeRearm: TimeInterval = 5.0
+    static let rearmInterval: TimeInterval = 5.0
+
+    static func healthAction(connected: Bool, quietFor: TimeInterval, sinceRearm: TimeInterval) -> HealthAction {
+        guard connected else { return .searchForDevice }
+        guard quietFor >= quietBeforeRearm else { return .wait }
+        guard sinceRearm >= rearmInterval else { return .wait }
+        return .rearmStream
+    }
+
     /// The old watchdog read feature report 0x0a first to decide whether to re-arm.
-    /// That read is what used to tear HID down when it failed, taking the lights
-    /// with it. Re-arming is a write of the same report `wake` already sends at
-    /// connect, so it is sent unconditionally instead: no read, nothing to fail.
+    /// That read is what used to tear HID down when it failed, taking the lights with
+    /// it. Re-arming is a write of the same report `wake` already sends at connect, so
+    /// it goes out unconditionally instead: no read, nothing to fail.
     private func performHealthCheck() {
-        guard let dev = connectedDevice else {
-            // Not connected: pick the panel back up without needing a replug.
+        let now = Date()
+        let action = Self.healthAction(
+            connected: connectedDevice != nil,
+            quietFor: now.timeIntervalSince(lastReportTimestamp),
+            sinceRearm: now.timeIntervalSince(lastRearm)
+        )
+        switch action {
+        case .searchForDevice:
             searchAndAttach()
-            return
+        case .rearmStream:
+            lastRearm = now
+            if let dev = connectedDevice { wake(device: dev) }
+        case .wait:
+            break
         }
-        // Stay off the bus while the panel is actually being used.
-        guard Date().timeIntervalSince(lastReportTimestamp) >= 5.0 else { return }
-        guard Date().timeIntervalSince(lastRearm) >= 5.0 else { return }
-        lastRearm = Date()
-        wake(device: dev)
     }
 
     public func reconnect() {

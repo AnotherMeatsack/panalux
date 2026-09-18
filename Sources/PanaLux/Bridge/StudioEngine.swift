@@ -16,7 +16,15 @@ public enum ActionPhase: Equatable {
 /// One cell of the HUD's knob-row readout.
 public struct KnobCell: Equatable, Hashable {
     public let label: String
+    /// Where that slider is sitting right now, when Lightroom has reported it.
+    public let value: String?
     public let isOverlay: Bool
+
+    public init(label: String, value: String? = nil, isOverlay: Bool) {
+        self.label = label
+        self.value = value
+        self.isOverlay = isOverlay
+    }
 }
 
 public enum ActiveDisplayMode: Equatable {
@@ -462,6 +470,20 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     private let readbackPatience: TimeInterval = 1.5
     private var readbackRetried: Set<String> = []
     private var readbackGaveUp: Set<String> = []
+    /// Turns made while waiting for Lightroom to say where a slider is. They are applied
+    /// from the real value the moment it arrives, so the first turn of an unread slider
+    /// moves it by what you turned instead of jumping to the middle.
+    private var pendingNudges: [String: Double] = [:]
+
+    /// Values arrive in bursts, so the grid is redrawn once after the burst settles.
+    private var holdBannerRefresh: DispatchWorkItem?
+    private func scheduleHoldBannerRefresh() {
+        guard case .layerBanner = currentDisplayMode else { return }
+        holdBannerRefresh?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.refreshHoldBannerIfShowing() }
+        holdBannerRefresh = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
+    }
 
     private var holdWorkItems: [String: DispatchWorkItem] = [:]
     private var engagedHolds: Set<String> = []
@@ -1177,8 +1199,15 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             show(bridge.value(for: param), "…", "\(label) (Updating)")
             return
         }
+        let fineFactor = isFine ? AppSettings.shared.fineMultiplier : 1.0
+        let step = deltaUnits * scale * fineFactor
+
         if !bridge.hasValue(param) {
             let now = Date()
+            // Hold on to the turn rather than dropping it. Nothing is sent until
+            // Lightroom says where the slider is, and then this is applied from there.
+            pendingNudges[param, default: 0] += step
+
             guard let asked = readbackAttempts[param] else {
                 readbackAttempts[param] = now
                 bridge.requestFullRefresh(force: true)
@@ -1196,17 +1225,16 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
                 return
             }
             // Lightroom never reported this one. MIDI2LR only takes absolute positions,
-            // so the only way to move it is to assume the middle — which will jump the
-            // photo. Say so once instead of doing it silently.
+            // so the only way left is to assume the middle. Say so once first.
             if !readbackGaveUp.contains(param) {
                 readbackGaveUp.insert(param)
                 notice(name, "\(label) · Lightroom didn’t report a value. starting from the middle")
                 return
             }
+            pendingNudges[param] = nil
         }
 
-        let fineFactor = isFine ? AppSettings.shared.fineMultiplier : 1.0
-        let newVal = bridge.nudgeParameter(param, delta: deltaUnits * scale * fineFactor)
+        let newVal = bridge.nudgeParameter(param, delta: step)
         lastAdjustmentTimestamp = Date()
         show(newVal, formatValue(param: param, value: newVal), label)
     }
@@ -1677,9 +1705,18 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
 
     private func presentHoldHUD() {
         collapseTimer?.invalidate()
+        // The grid is only worth reading if the numbers are current.
+        LightroomBridge.shared.requestFullRefresh()
         if let mode = holdBannerMode() {
             currentDisplayMode = mode
         }
+    }
+
+    /// Lightroom reported new values while a mode is on screen. Redraw the grid so the
+    /// numbers under your fingers are the numbers in Lightroom.
+    private func refreshHoldBannerIfShowing() {
+        guard case .layerBanner = currentDisplayMode else { return }
+        if let mode = holdBannerMode() { currentDisplayMode = mode }
     }
 
     private func holdBannerMode() -> ActiveDisplayMode? {
@@ -1761,16 +1798,33 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         return (spec.knobs ?? [:]).merging(variantKnobs) { _, v in v }
     }
 
+    /// What a slider reads right now, for the held-mode grid. nil when Lightroom has
+    /// not reported it, so the grid shows the name alone rather than inventing a number.
+    private func liveValue(for param: String) -> String? {
+        guard !PointerCommands.isPointer(param) else { return nil }
+        guard RepeatCommands.pair(for: param) == nil else { return nil }
+        let bridge = LightroomBridge.shared
+        guard bridge.isConnected, bridge.hasValue(param) else { return nil }
+        return formatValue(param: param, value: bridge.value(for: param))
+    }
+
+    private func knobCell(id: String, overlay: [String: KnobBinding]) -> KnobCell {
+        if let b = overlay[id] {
+            return KnobCell(label: CommandDatabase.shared.shortLabel(for: b.param),
+                            value: liveValue(for: b.param), isOverlay: true)
+        }
+        guard let base = profile.knobs[id] else {
+            return KnobCell(label: "-", isOverlay: false)
+        }
+        return KnobCell(label: CommandDatabase.shared.shortLabel(for: base.param),
+                        value: liveValue(for: base.param), isOverlay: false)
+    }
+
     /// Twelve knob names for the HUD row. Overlay names are bright; pass-through names are dim.
     public func knobGrid(forLayer layer: String, variant: String? = nil) -> [KnobCell] {
         let overlay = knobsForLayer(layer, variant: variant) ?? [:]
         guard !overlay.isEmpty else { return [] }
-        return PanelLayout.knobs.map { id in
-            if let b = overlay[id] {
-                return KnobCell(label: CommandDatabase.shared.shortLabel(for: b.param), isOverlay: true)
-            }
-            return KnobCell(label: profile.knobs[id].map { CommandDatabase.shared.shortLabel(for: $0.param) } ?? "-", isOverlay: false)
-        }
+        return PanelLayout.knobs.map { knobCell(id: $0, overlay: overlay) }
     }
 
     private func knobGrid(forProgram program: AnalogProgram) -> [KnobCell] {
@@ -1778,12 +1832,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         if program.scope == "focus" { return [] }
         let overlay = program.knobs ?? [:]
         guard !overlay.isEmpty else { return [] }
-        return PanelLayout.knobs.map { id in
-            if let b = overlay[id] {
-                return KnobCell(label: CommandDatabase.shared.shortLabel(for: b.param), isOverlay: true)
-            }
-            return KnobCell(label: profile.knobs[id].map { CommandDatabase.shared.shortLabel(for: $0.param) } ?? "-", isOverlay: false)
-        }
+        return PanelLayout.knobs.map { knobCell(id: $0, overlay: overlay) }
     }
 
     private func triggerActionDisplay(name: String, label: String, phase: ActionPhase,
@@ -1985,6 +2034,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         readbackAttempts.removeAll()
         readbackRetried.removeAll()
         readbackGaveUp.removeAll()
+        pendingNudges.removeAll()
         if !isConnected {
             // Lightroom forgot any compare view it was showing; don't send a stale restore later.
             for name in engagedHolds where profile.buttons[name]?.hold_action != nil {
@@ -1997,10 +2047,20 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     /// so the next roll continues from what's on screen, not from where the ball used to be.
     public func lightroomParameterDidUpdate(name: String, value: Double) {
         let bridge = LightroomBridge.shared
+        scheduleHoldBannerRefresh()
+        applyPendingNudge(for: name)
         for engine in Array(trackballs.values) + Array(overlayTrackballs.values)
         where (engine.hueParam == name || engine.satParam == name) && engine.isSettled {
             engine.sync(turns: bridge.value(for: engine.hueParam), saturation: bridge.value(for: engine.satParam))
         }
+    }
+
+    /// Lightroom finally reported a slider that was turned while it was unknown. Apply
+    /// that turn from the real value, so nothing ever jumps to the middle first.
+    private func applyPendingNudge(for param: String) {
+        guard let pending = pendingNudges.removeValue(forKey: param), pending != 0 else { return }
+        guard shouldSendToLightroom, LightroomBridge.shared.isConnected else { return }
+        _ = LightroomBridge.shared.nudgeParameter(param, delta: pending)
     }
 
     /// Reset one color wheel. its ball and its ring. for whatever they're mapped to right now.

@@ -9,6 +9,10 @@ Changes made for PanaLux:
   - Info.lua uses the name "PanaLux Bridge (based on MIDI2LR)" and the
     identifier app.panalux.bridge, and drops the Start/Close application menu items.
   - The MIDI2LR desktop application and its bundled fonts are not included.
+  - Client.lua always sets a develop tracking delay. The preference behind it
+    was set from the MIDI2LR application's Options dialog, which is not part of
+    this plugin, so the delay was never applied and a run of panel adjustments
+    landed in Lightroom's history one step at a time.
 
 The .lua files in this folder are the complete source of this plugin.
 Upstream project and original source: https://github.com/rsjaffe/MIDI2LR

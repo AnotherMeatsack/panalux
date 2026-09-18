@@ -38,6 +38,40 @@ final class PanelDecoderTests: XCTestCase {
         XCTAssertEqual(motions.map(\.slot), [24])
     }
 
+    // The panel's firmware stops streaming after an idle. The watchdog that re-arms it
+    // was deleted once and reached a shipping build, because nothing here exercised it.
+    func testWatchdogLooksForAPanelWhenNoneIsAttached() {
+        XCTAssertEqual(
+            PanelManager.healthAction(connected: false, quietFor: 0, sinceRearm: 0),
+            .searchForDevice
+        )
+        XCTAssertEqual(
+            PanelManager.healthAction(connected: false, quietFor: 999, sinceRearm: 999),
+            .searchForDevice
+        )
+    }
+
+    func testWatchdogRearmsAQuietPanel() {
+        XCTAssertEqual(
+            PanelManager.healthAction(connected: true, quietFor: 6, sinceRearm: 6),
+            .rearmStream,
+            "a connected panel that has gone quiet must be re-armed or it stays silent while looking connected"
+        )
+    }
+
+    func testWatchdogStaysOffTheBusWhileThePanelIsInUse() {
+        XCTAssertEqual(
+            PanelManager.healthAction(connected: true, quietFor: 0.1, sinceRearm: 999),
+            .wait,
+            "never interrupt a panel that is actively reporting"
+        )
+        XCTAssertEqual(
+            PanelManager.healthAction(connected: true, quietFor: 999, sinceRearm: 1),
+            .wait,
+            "re-arming is rate limited"
+        )
+    }
+
     func testOnlyEmptyButtonReportsCountAsLEDEcho() {
         // The echo of an LED write is an empty bitmap. Anything with bits set is a
         // real key and must never be filtered out, or the press has to be made twice.

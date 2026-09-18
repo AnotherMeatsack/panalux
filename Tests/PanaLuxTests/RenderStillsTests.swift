@@ -47,7 +47,24 @@ final class RenderStillsTests: XCTestCase {
                                LiveReading(control: "TB_LIFT", param: "Shadows", value: "210° · 18%"),
                                LiveReading(control: "TB_GAMMA", param: "Midtones", value: "40° · 9%"),
                                LiveReading(control: "RING_GAIN", param: "Highlight Lum", value: "-6")])),
-            ("action", .action(name: "AUTO_COLOR", label: "Auto Tone", phase: .sent))
+            ("action", .action(name: "AUTO_COLOR", label: "Auto Tone", phase: .sent)),
+            ("hold-detail", .layerBanner(
+                layer: "DETAIL", variant: nil, hint: "Sharpening and noise reduction",
+                chips: ["12 knobs", "3 keys"], latched: false,
+                grid: [
+                    KnobCell(label: "Sharpen", value: "52", isOverlay: true),
+                    KnobCell(label: "Radius", value: "1.2", isOverlay: true),
+                    KnobCell(label: "Detail", value: "38", isOverlay: true),
+                    KnobCell(label: "Masking", value: "14", isOverlay: true),
+                    KnobCell(label: "Lum NR", value: "20", isOverlay: true),
+                    KnobCell(label: "Lum Det", value: "50", isOverlay: true),
+                    KnobCell(label: "Lum Con", value: "0", isOverlay: true),
+                    KnobCell(label: "Color NR", value: "25", isOverlay: true),
+                    KnobCell(label: "Exposure", value: "+0.35", isOverlay: false),
+                    KnobCell(label: "Contrast", value: "+12", isOverlay: false),
+                    KnobCell(label: "Temp", value: "5200 K", isOverlay: false),
+                    KnobCell(label: "Blending", value: "50", isOverlay: false)
+                ]))
         ]
         for (name, mode) in modes {
             let height = NotchHUDWindowController.height(for: mode)
@@ -70,7 +87,14 @@ final class RenderStillsTests: XCTestCase {
             MultiReadout(readings: r)
         case .action(let n, let l, let ph):
             ButtonFlashView(name: n, label: l, phase: ph)
-        default:
+        case .layerBanner(let layer, let variant, let hint, let chips, let latched, let grid):
+            LayerBannerView(layer: layer, variant: variant, hint: hint,
+                            chips: chips, latched: latched, grid: grid)
+        case .trackball(let n, let st, let f, let c):
+            VectorscopeView(name: n, state: st, isFine: f, companion: c)
+        case .ring(let n, let p, _, let d, let f, let a):
+            RingReadout(name: n, param: p, displayValue: d, isFine: f, angleDegrees: a)
+        case .idle:
             EmptyView()
         }
     }

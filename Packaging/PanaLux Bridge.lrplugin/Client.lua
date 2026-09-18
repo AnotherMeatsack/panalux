@@ -1082,9 +1082,12 @@ LrTasks.startAsyncTask(
           if ProgramPreferences.RevealAdjustedControls then --may be nil or false
             LrDevelopController.revealAdjustedControls( true ) -- reveal affected parameter in panel track
           end
-          if ProgramPreferences.TrackingDelay ~= nil then
-            LrDevelopController.setTrackingDelay(ProgramPreferences.TrackingDelay)
-          end
+          -- PanaLux Bridge: always set a tracking delay. The preference behind it was
+          -- set from the MIDI2LR app's Options dialog, which PanaLux replaces, so it is
+          -- always nil here and the delay was never applied. Tracking groups a run of
+          -- adjustments into one history step; the photo still updates live while you
+          -- turn, so a panel sweep lands as a single Undo instead of dozens.
+          LrDevelopController.setTrackingDelay(ProgramPreferences.TrackingDelay or 0.5)
           LrDevelopController.addAdjustmentChangeObserver(
             context,
             MIDI2LR.PARAM_OBSERVER,

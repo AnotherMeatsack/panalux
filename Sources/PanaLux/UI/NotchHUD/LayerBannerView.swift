@@ -78,8 +78,19 @@ struct KnobRowGrid: View {
                         .font(.system(size: 8.5, weight: cell.isOverlay ? .semibold : .regular, design: .rounded))
                         .foregroundColor(cell.isOverlay ? .white : .white.opacity(0.35))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    Spacer(minLength: 0)
+                        .minimumScaleFactor(0.6)
+                        .layoutPriority(1)
+                    Spacer(minLength: 2)
+                    // Where that slider is sitting, so the mode can be read without
+                    // turning anything first.
+                    if let value = cell.value {
+                        Text(value)
+                            .font(.system(size: 8, weight: .medium, design: .monospaced))
+                            .foregroundColor(cell.isOverlay ? accent : .white.opacity(0.3))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .fixedSize()
+                    }
                 }
                 .padding(.horizontal, 5)
                 .frame(height: 18)
