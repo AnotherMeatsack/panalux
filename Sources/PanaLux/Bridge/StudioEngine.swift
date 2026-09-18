@@ -488,17 +488,18 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     private var holdWorkItems: [String: DispatchWorkItem] = [:]
     private var engagedHolds: Set<String> = []
     private var pendingHoldReleases: [String: DispatchWorkItem] = [:]
-    private let holdThreshold: TimeInterval = 0.28
+    /// A hold that engages too early drops the mode banner on an ordinary press, which
+    /// reads as the panel fighting you. Half a second is a deliberate press.
+    private var holdThreshold: TimeInterval { max(0.2, AppSettings.shared.holdDelay) }
 
     // A hold you engaged but never used is almost always a tap you were slow on.
     // Track when each key went down and whether anything happened while it was
     // held, so the release can still fire the tap instead of silently eating it.
     private var buttonDownAt: [String: Date] = [:]
     private var holdWasUsed: Set<String> = []
-    /// A slow tap runs about a third of a second. A deliberate hold runs longer than
-    /// this, so past it the release only exits the mode — Grab Still must not send a
-    /// stack to Photoshop just because a peek at Lens mode was let go of quickly.
-    private let tapRescueCeiling: TimeInterval = 0.7
+    /// Past this a hold was clearly meant, so the release only exits the mode. It has to
+    /// sit above the hold delay or a press could never be rescued.
+    private var tapRescueCeiling: TimeInterval { holdThreshold + 0.4 }
 
     /// Anything that makes an engaged hold "used": a knob, a ball, a ring, or
     /// another key. After this the release just exits the mode.

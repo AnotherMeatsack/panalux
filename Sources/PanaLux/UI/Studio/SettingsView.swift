@@ -150,6 +150,13 @@ public struct SettingsView: View {
             }
             Toggle("Masks use the same knobs as Base", isOn: $settings.mirrorMaskToBase)
                 .help("Exposure stays on the Exposure knob, Contrast on Contrast, and so on. Turn this off to map Mask knobs yourself.")
+            Picker("Hold a key for", selection: $settings.holdDelay) {
+                Text("0.35 s · quick").tag(0.35)
+                Text("0.5 s").tag(0.5)
+                Text("0.7 s · deliberate").tag(0.7)
+                Text("1 s").tag(1.0)
+            }
+            .help("How long a key must be down before it switches modes instead of firing its tap. Longer means an ordinary press never brings a mode up by accident.")
             Toggle("Auto-align layers in Photoshop", isOn: $settings.autoAlignLayers)
                 .help("After Open as Layers, PanaLux waits for the stack to finish arriving and runs Auto-Align once. Turn this off to align by hand.")
             Button("Learn Key Positions…") { showCalibration = true }

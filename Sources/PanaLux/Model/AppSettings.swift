@@ -25,6 +25,8 @@ public class AppSettings: ObservableObject {
     /// When on, Masks put Exposure on the Exposure knob, Contrast on Contrast, and so on.
     @AppStorage("mirrorMaskToBase") public var mirrorMaskToBase: Bool = true
     @AppStorage("autoAlignLayers") public var autoAlignLayers: Bool = true
+    /// How long a key must be down before it counts as held rather than tapped.
+    @AppStorage("holdDelay") public var holdDelay: Double = 0.5
     
     private init() {
         migrateHudDurationIfNeeded()
