@@ -59,16 +59,25 @@ local function LoadedKeywords()
 end
 
 --Limits.lua
+-- PanaLux Bridge: no default limits. MIDI2LR squeezed Temperature into 3000-9000 K because a
+-- 7-bit MIDI knob cannot address 2000-50000 K usefully. PanaLux sends full-resolution values and
+-- shows Kelvin over Lightroom's whole range, so that window only made the knob stop at 3000 K
+-- and made the readout wrong. Temperature now spans what Lightroom's own slider spans.
 local function UseDefaultsLimits()
   ProgramPreferences.Limits = {}
-  ProgramPreferences.Limits.Temperature = {param = 'Temperature', label = Database.CmdTrans.Temperature[Database.LatestPVSupported], 
-    [50000] = {3000,9000}}
 end
 
 local function LoadedLimits()
   if ProgramPreferences.Limits == nil or type(ProgramPreferences.Limits)~='table' then
     UseDefaultsLimits()
   else --following is just in cases we loaded historic limits, which may have a missing value--no harm in checking carefully
+    -- PanaLux Bridge: drop the old default window if it was saved. A range someone chose
+    -- themselves is left alone.
+    local saved = ProgramPreferences.Limits.Temperature
+    if type(saved) == 'table' and type(saved[50000]) == 'table'
+        and saved[50000][1] == 3000 and saved[50000][2] == 9000 then
+      ProgramPreferences.Limits.Temperature = nil
+    end
     for t,v in pairs(ProgramPreferences.Limits) do--for each Limit type _ (e.g., Temperature) look at v(table) (highlimits)
       local corrupt = false
       for kk,vv in pairs(v) do -- for each highlimittable kk, look at vv(limit values table) 
@@ -78,8 +87,6 @@ local function LoadedLimits()
       end
       if corrupt == true then
         ProgramPreferences.Limits[t] = nil
-        ProgramPreferences.Limits.Temperature = {param = 'Temperature', label = Database.CmdTrans.Temperature[Database.LatestPVSupported], 
-          [50000] = {3000,9000}}
       end
     end
   end

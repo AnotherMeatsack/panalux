@@ -240,6 +240,24 @@ final class CommandCatalogTests: XCTestCase {
         defaults.removePersistentDomain(forName: name)
     }
 
+    /// The plugin used to squeeze Temperature into 3000–9000 K, so the knob stopped at 3000 K and
+    /// the notch's Kelvin number was wrong (it assumed the whole range). Now the whole range is
+    /// real, and a turn is scaled so the knob feels as it did.
+    func testTemperatureSpansTheWholeRangeAndKeepsItsFeel() {
+        // The number on screen and the number in Lightroom agree across the range.
+        XCTAssertEqual(ValueFormatter.format(param: "Temperature", value: 0), "2000 K")
+        XCTAssertEqual(ValueFormatter.format(param: "Temperature", value: 1), "50000 K")
+        XCTAssertEqual(ValueFormatter.format(param: "Temperature", value: 0.0625), "5000 K")
+        XCTAssertEqual(ValueFormatter.format(param: "Temperature", value: 0.02083333), "3000 K")
+        // 1 unit at the factory scale moves Temperature by what it did over the old 6000 K window.
+        let kelvinPerUnit = 0.0003 * ParameterFeel.travel(for: "Temperature") * 48_000
+        XCTAssertEqual(kelvinPerUnit, 0.0003 * 6_000, accuracy: 0.0001)
+        // Nothing else is touched.
+        XCTAssertEqual(ParameterFeel.travel(for: "Exposure"), 1)
+        XCTAssertEqual(ParameterFeel.travel(for: "Tint"), 1)
+        XCTAssertEqual(ParameterFeel.travel(for: "local_Temperature"), 1)
+    }
+
     func testCuratedTilesUseRealCommands() {
         // Local ids come from one list so a new Photoshop action can't quietly
         // slip past this check.

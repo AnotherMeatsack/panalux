@@ -30,6 +30,21 @@ public struct ParameterRange {
     }
 }
 
+/// How far a turn should move a slider, relative to the map's `scale`. Every map's scale was tuned
+/// against a slider that spans 0…1 of *something reasonable*; a slider whose real span is far
+/// wider needs its turns shrunk in proportion, or one click would cross a lot of it.
+public enum ParameterFeel {
+    /// Kelvin. The plugin used to squeeze Temperature into 3000–9000 K, which made the knob stop at
+    /// 3000 K. It now spans Lightroom's whole 2000–50000 K, eight times wider, so a turn is
+    /// eight times smaller: the knob feels exactly as it always did, and no longer has an end.
+    static let temperatureSpan = 48_000.0
+    static let temperatureFeltSpan = 6_000.0
+
+    public static func travel(for param: String) -> Double {
+        param == "Temperature" ? temperatureFeltSpan / temperatureSpan : 1.0
+    }
+}
+
 public enum ParameterRanges {
     /// Ranges as Lightroom's own panels show them. Anything absent falls back to the
     /// bipolar −100…100 default, which is right for most Develop sliders.

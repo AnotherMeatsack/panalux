@@ -2,7 +2,7 @@
 
 # PanaLux
 
-**One panel. Every job.**
+**One panel. Every job.** Now featuring **Rewind+**.
 
 I bought a Micro Color Panel for Resolve. I also edit stills. I wanted the panel I already paid for to do more than one job.
 
@@ -51,7 +51,7 @@ Every key has separate **On tap** and **While held** assignments. The table belo
 | **Hold User** | Upright and Transform. Knobs become perspective controls. Auto Color becomes Upright Auto while User is held. |
 | **Tap or hold Cursor** | Masks. Knobs adjust the selected mask, keeping matching controls in their Base positions. You can turn that behavior off in Settings and build a custom mask layout. |
 | **Hold Add Node** | Opens the circular mask tool wheel. Choose a tool and operation, then release to create it. Place it with the mouse. |
-| **Hold Undo** | Rewind. The centre ring scrubs the whole editing session, the right ring sets how far back the photo is taken. Tap is still Undo. |
+| **Hold Undo** | Rewind+. Scrub your whole editing session one change at a time, replay it, and branch it into takes. Tap is still Undo. |
 | **Hold Viewer** | Crop and Straighten. Knobs trim edges, the center ring straightens, and keys select aspect presets. |
 | **Hold Select** | Cull in Library. Keys rate, flag, and color-label photos. Rings scroll photos and zoom. |
 | **Tap Offset** | Temperature and tint on the rings, with global color on the right ball. |
@@ -86,29 +86,41 @@ While the wheel is open, the left ring chooses New, Add, Subtract, or Intersect.
 
 Once a mask is selected, the matching adjustment knobs stay in familiar positions. Other keys can move between masks, invert, hide, delete, or select subject and sky.
 
-## Hold Undo. Rewind the session.
+## Hold Undo. Rewind+.
 
-Undo still undoes on a tap. Hold it and the whole editing session becomes a tape you can scrub.
+Undo still undoes on a tap. Hold it and the whole editing session becomes a tape you can scrub, replay, and branch. (The plus is a joke. The feature isn't.)
 
-Turn the **centre ring** and the photo un-edits itself continuously — slowly for one edit at a time, quickly for minutes at a time. The **right ring** sets how far toward that point the photo is actually taken, 0–100%, so you can sit halfway between how it looks now and how it looked twenty minutes ago. Time in one hand, strength in the other.
+![Rewind+ with three takes: the tape, every take as a lane, and the twelve knobs at the playhead](Docs/screenshots/hud-rewind-takes.png)
+
+You get lost in an edit. You want to see exactly where it went wrong, stop at the last place you liked, and start again from there without losing the other way you were going. That is what this does.
+
+**The centre ring is a jog wheel.** One click is one thing you changed, so you can stop on the exact number you had, whether the session was thirty seconds or two hours. Turn faster and it accelerates to cross a long session; stop turning and it holds. The notch shows what changed at every step (`Exposure +0.35 EV`), where you are (`212 / 640`), and what all twelve knobs read right there.
+
+**Play it back.** Play and Play Reverse replay your edits as they happened; press the same key again to pause, or use Stop. Long stretches where you were not touching anything play through in half a second. The left ring is a fine speed dial for slow motion and the right ring is a coarse one, from 0.05× to 32×, and both catch at 1×.
+
+**Takes.** Roll back, let go, and edit: that starts a take. The notch says so, and every readout wears that take's badge from then on, so you always know you are on a tangent. The other line is kept whole. Prev / Next Node hop between takes at the same moment, so you can flip between where each one ended up. This is the part Lightroom's history panel cannot do.
 
 This is not Lightroom's history panel. PanaLux records every develop value the plugin reports, whether a knob here or the mouse in Lightroom moved it, and captures a whole settings table around anything structural — a mask, a crop, a preset, a paste — so landing on one of those puts it back exactly.
-
-**Nothing is ever destroyed.** Rolling back does not truncate the future: the tip stays, and one key returns to it. Editing from a rolled-back point starts a branch, and the line you left is kept whole. Branch from a branch as often as you like. This is the part Lightroom cannot do, and the reason its history panel is hard to trust.
 
 While Undo is held:
 
 | Control | Job |
 | --- | --- |
-| **Centre ring** | Scrub the trail. Slow is one edit at a time; fast is minutes at a time. |
-| **Right ring** | How far back the photo is taken, 0–100%. |
-| **Next Still** | Back to now. |
-| **Add Keyframe** | Mark this — "I liked it". The playhead snaps to marks. |
-| **Add Node** | Branch here. One press, a new line of editing. |
+| **Centre ring** | Jog through your changes, one click per step. Faster travels; stop to hold. |
+| **Left ring** | Playback speed, fine. Slow motion. |
+| **Right ring** | Playback speed, coarse. |
+| **Play / Play Reverse** | Replay forward or backward. Same key again pauses. |
+| **Stop** | Pause where you are. |
+| **Prev / Next Node** | Hop to the previous or next take. |
+| **Add Node** | Start a new take here. |
+| **Add Keyframe** | Mark this — "I liked it". |
 | **Prev / Next Keyframe** | Step to the previous or next landmark. |
+| **Next Still** | Back to now. |
 | **Wipe Still** | Hold to peek at now without leaving the past. |
 
-Letting go of Undo leaves the photo wherever the playhead is. You can stop anywhere.
+Letting go of Undo leaves the photo wherever the playhead is, and that take is the one you are editing. You can stop anywhere.
+
+The feel is yours to tune: **Settings > Rewind** has click size and spin speed, and they apply on the next turn.
 
 The trail is kept per photo, under `~/Library/Application Support/PanaLux/Trails`, and survives quitting. Like every other control on the panel, all of the above is remappable — Rewind's commands are ordinary tiles in the catalog.
 

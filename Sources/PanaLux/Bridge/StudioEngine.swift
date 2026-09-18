@@ -1277,7 +1277,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             return
         }
         let fineFactor = isFine ? AppSettings.shared.fineMultiplier : 1.0
-        let step = deltaUnits * scale * fineFactor
+        let step = deltaUnits * scale * fineFactor * ParameterFeel.travel(for: param)
 
         if !bridge.hasValue(param) {
             let now = Date()
