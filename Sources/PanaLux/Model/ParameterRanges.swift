@@ -1,0 +1,113 @@
+import Foundation
+
+/// What a Lightroom slider's 0…1 value means in the numbers Lightroom itself shows.
+///
+/// MIDI2LR normalises every parameter to 0…1, which throws away whether a slider runs
+/// −100…100 or 0…150. Without that, a unipolar slider reads as a large negative number:
+/// Sharpness 52 of 150 is 0.35 normalised, and printing it as bipolar gives "−31".
+public struct ParameterRange {
+    public let low: Double
+    public let high: Double
+    public let decimals: Int
+    public let suffix: String
+
+    /// Sliders that rest at zero in the middle print a sign. Sliders that start at zero don't.
+    public var isBipolar: Bool { low < 0 }
+
+    public init(_ low: Double, _ high: Double, decimals: Int = 0, suffix: String = "") {
+        self.low = low
+        self.high = high
+        self.decimals = decimals
+        self.suffix = suffix
+    }
+
+    public func display(_ normalized: Double) -> String {
+        let real = low + normalized * (high - low)
+        if isBipolar {
+            return ValueFormatter.signed(real, decimals: decimals, suffix: suffix)
+        }
+        return String(format: "%.\(decimals)f", real) + suffix
+    }
+}
+
+public enum ParameterRanges {
+    /// Ranges as Lightroom's own panels show them. Anything absent falls back to the
+    /// bipolar −100…100 default, which is right for most Develop sliders.
+    static let table: [String: ParameterRange] = {
+        var t: [String: ParameterRange] = [:]
+
+        func bipolar(_ names: [String]) { for n in names { t[n] = ParameterRange(-100, 100) } }
+        func unit(_ names: [String]) { for n in names { t[n] = ParameterRange(0, 100) } }
+
+        // Basic
+        bipolar(["Contrast", "Highlights", "Shadows", "Whites", "Blacks",
+                 "Texture", "Clarity", "Dehaze", "Vibrance", "Saturation"])
+
+        // Tone curve. The region sliders are bipolar; the splits between them are not.
+        bipolar(["ParametricShadows", "ParametricDarks", "ParametricLights", "ParametricHighlights"])
+        unit(["ParametricShadowSplit", "ParametricMidtoneSplit", "ParametricHighlightSplit"])
+
+        // Detail. These are the ones the bipolar default got most wrong.
+        t["Sharpness"] = ParameterRange(0, 150)
+        t["SharpenRadius"] = ParameterRange(0.5, 3.0, decimals: 1)
+        unit(["SharpenDetail", "SharpenEdgeMasking",
+              "LuminanceSmoothing", "LuminanceNoiseReductionDetail", "LuminanceNoiseReductionContrast",
+              "ColorNoiseReduction", "ColorNoiseReductionDetail", "ColorNoiseReductionSmoothness"])
+
+        // Effects
+        bipolar(["PostCropVignetteAmount", "PostCropVignetteRoundness", "VignetteAmount"])
+        unit(["PostCropVignetteMidpoint", "PostCropVignetteFeather", "PostCropVignetteHighlightContrast",
+              "VignetteMidpoint", "GrainAmount", "GrainSize", "GrainFrequency"])
+
+        // Colour grading
+        bipolar(["ColorGradeShadowLum", "ColorGradeMidtoneLum", "ColorGradeHighlightLum",
+                 "ColorGradeGlobalLum", "SplitToningBalance"])
+        unit(["ColorGradeBlending"])
+
+        // Lens and transform
+        unit(["DefringePurpleHueLo", "DefringePurpleHueHi", "DefringeGreenHueLo", "DefringeGreenHueHi"])
+        t["DefringePurpleAmount"] = ParameterRange(0, 20)
+        t["DefringeGreenAmount"] = ParameterRange(0, 20)
+        t["LensProfileDistortionScale"] = ParameterRange(0, 200)
+        t["LensProfileVignettingScale"] = ParameterRange(0, 200)
+        t["LensProfileChromaticAberrationScale"] = ParameterRange(0, 200)
+        bipolar(["LensManualDistortionAmount", "PerspectiveVertical", "PerspectiveHorizontal",
+                 "PerspectiveAspect", "PerspectiveX", "PerspectiveY"])
+        t["PerspectiveRotate"] = ParameterRange(-10, 10, decimals: 1, suffix: "°")
+        t["PerspectiveScale"] = ParameterRange(50, 150)
+
+        // Calibration
+        bipolar(["ShadowTintCalibration",
+                 "RedHueCalibration", "RedSaturationCalibration",
+                 "GreenHueCalibration", "GreenSaturationCalibration",
+                 "BlueHueCalibration", "BlueSaturationCalibration"])
+
+        // Masks
+        t["local_Exposure"] = ParameterRange(-4, 4, decimals: 2, suffix: " EV")
+        unit(["local_LuminanceNoise", "local_Moire", "local_Defringe"])
+
+        return t
+    }()
+
+    public static func range(for param: String) -> ParameterRange? {
+        if let exact = table[param] { return exact }
+
+        // Colour Mixer bands: Hue_Red, Saturation_Aqua, Luminance_Magenta…
+        for prefix in ["Hue_", "Saturation_", "Luminance_"] where param.hasPrefix(prefix) {
+            return ParameterRange(-100, 100)
+        }
+        // Colour grading wheels report an angle, not an amount.
+        if param.hasPrefix("ColorGrade"), param.hasSuffix("Hue") {
+            return ParameterRange(0, 360, suffix: "°")
+        }
+        if param.hasPrefix("ColorGrade"), param.hasSuffix("Sat") {
+            return ParameterRange(0, 100)
+        }
+        // A mask slider usually matches its global namesake.
+        if param.hasPrefix("local_") {
+            let base = String(param.dropFirst("local_".count))
+            if let inherited = table[base] { return inherited }
+        }
+        return nil
+    }
+}

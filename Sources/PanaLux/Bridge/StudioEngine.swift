@@ -458,6 +458,11 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
 
     private var pressedButtonBits = Set<Int>()
     private var selectedHardwareButtonBit: Int? = nil
+    /// How long to wait for Lightroom to report a slider before assuming the middle.
+    private let readbackPatience: TimeInterval = 1.5
+    private var readbackRetried: Set<String> = []
+    private var readbackGaveUp: Set<String> = []
+
     private var holdWorkItems: [String: DispatchWorkItem] = [:]
     private var engagedHolds: Set<String> = []
     private var pendingHoldReleases: [String: DispatchWorkItem] = [:]
@@ -1174,15 +1179,28 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         }
         if !bridge.hasValue(param) {
             let now = Date()
-            if let asked = readbackAttempts[param] {
-                if now.timeIntervalSince(asked) < 0.5 {
-                    show(0.5, "…", "\(label) (Reading)")
-                    return
-                }
-            } else {
+            guard let asked = readbackAttempts[param] else {
                 readbackAttempts[param] = now
                 bridge.requestFullRefresh(force: true)
                 show(0.5, "…", "\(label) (Reading)")
+                return
+            }
+            let waited = now.timeIntervalSince(asked)
+            if waited < readbackPatience {
+                // One refresh can be missed while Lightroom is busy importing or rendering.
+                if waited > 0.6, !readbackRetried.contains(param) {
+                    readbackRetried.insert(param)
+                    bridge.requestFullRefresh(force: true)
+                }
+                show(0.5, "…", "\(label) (Reading)")
+                return
+            }
+            // Lightroom never reported this one. MIDI2LR only takes absolute positions,
+            // so the only way to move it is to assume the middle — which will jump the
+            // photo. Say so once instead of doing it silently.
+            if !readbackGaveUp.contains(param) {
+                readbackGaveUp.insert(param)
+                notice(name, "\(label) · Lightroom didn’t report a value. starting from the middle")
                 return
             }
         }
@@ -1965,6 +1983,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     public func lightroomConnectionStateChanged(isConnected: Bool) {
         // New session, new photo, new values. Re-read before anything sends an absolute value.
         readbackAttempts.removeAll()
+        readbackRetried.removeAll()
+        readbackGaveUp.removeAll()
         if !isConnected {
             // Lightroom forgot any compare view it was showing; don't send a stale restore later.
             for name in engagedHolds where profile.buttons[name]?.hold_action != nil {
@@ -2021,6 +2041,11 @@ public enum ValueFormatter {
         case "CropLeft", "CropRight", "CropTop", "CropBottom", "PresetAmount", "local_Amount":
             return String(format: "%.0f%%", value * 100.0)
         default:
+            // A slider whose real range is known prints the number Lightroom shows.
+            // Everything else keeps the bipolar reading, which is right for most of them.
+            if let range = ParameterRanges.range(for: param) {
+                return range.display(value)
+            }
             return signed((value - 0.5) * 200.0, decimals: 0)
         }
     }

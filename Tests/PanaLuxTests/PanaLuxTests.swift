@@ -50,6 +50,36 @@ final class PanelDecoderTests: XCTestCase {
         XCTAssertFalse(PanelManager.isEmptyButtonReport(Data([0x02] + pressed)))
     }
 
+    func testUnipolarSlidersDoNotReadAsNegative() {
+        // Sharpness is 0…150. Read as bipolar, 52 of 150 printed as "-31".
+        XCTAssertEqual(ValueFormatter.format(param: "Sharpness", value: 52.0 / 150.0), "52")
+        XCTAssertEqual(ValueFormatter.format(param: "Sharpness", value: 0), "0")
+        XCTAssertEqual(ValueFormatter.format(param: "Sharpness", value: 1), "150")
+
+        for param in ["SharpenDetail", "LuminanceSmoothing", "ColorNoiseReduction",
+                      "GrainAmount", "PostCropVignetteMidpoint", "ColorGradeBlending"] {
+            XCTAssertEqual(ValueFormatter.format(param: param, value: 0.25), "25", param)
+            XCTAssertFalse(ValueFormatter.format(param: param, value: 0.4).hasPrefix("-"), param)
+        }
+    }
+
+    func testBipolarSlidersStillReadSigned() {
+        XCTAssertEqual(ValueFormatter.format(param: "Contrast", value: 0.5), "0")
+        XCTAssertEqual(ValueFormatter.format(param: "Contrast", value: 0.75), "+50")
+        XCTAssertEqual(ValueFormatter.format(param: "Clarity", value: 0.25), "-50")
+        XCTAssertEqual(ValueFormatter.format(param: "Saturation_Aqua", value: 0.25), "-50")
+        XCTAssertEqual(ValueFormatter.format(param: "PostCropVignetteAmount", value: 0.25), "-50")
+    }
+
+    func testRangesCoverEveryParameterTheFactoryMapDrives() {
+        // Not a coverage requirement, just proof the lookup never crashes and that a
+        // parameter with no entry still formats.
+        XCTAssertNil(ParameterRanges.range(for: "SomeCommandWithNoRange"))
+        XCTAssertEqual(ValueFormatter.format(param: "SomeCommandWithNoRange", value: 0.5), "0")
+        XCTAssertEqual(ParameterRanges.range(for: "local_Clarity")?.low, -100)
+        XCTAssertEqual(ParameterRanges.range(for: "SharpenRadius")?.high, 3.0)
+    }
+
     func testKeyUpFollowsKeyDown() {
         let decoder = PanelDecoder()
         var down = [UInt8](repeating: 0, count: 8)
