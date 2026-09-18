@@ -33,6 +33,12 @@ public class PhotoshopBridge {
     /// why a stack that quietly arrived incomplete had to be spotted and resent by hand.
     private var expectedLayers: Int = 0
     private var resentForShortStack = false
+    /// True while auto-align is running. Saving then would flatten a half-aligned stack.
+    private var aligningValue = false
+    private var aligning: Bool {
+        get { busyLock.lock(); defer { busyLock.unlock() }; return aligningValue }
+        set { busyLock.lock(); aligningValue = newValue; busyLock.unlock() }
+    }
     /// The document this send produced. Photoshop opens an incoming stack behind
     /// whatever is already on screen, so `app.activeDocument` is usually something
     /// else entirely and must never be what gets counted, flattened or closed.
@@ -127,6 +133,7 @@ public class PhotoshopBridge {
             return try sendStack(fromBracket: fromBracket)
 
         case .blending:
+            if aligning { return "Still aligning the layers… press again in a moment" }
             if targetDocumentID.map({ layerCount(ofDocument: $0) > 0 }) ?? (jsDocumentCount() > 0) {
                 let saved = try flattenAndSave()
                 phase = .idle
@@ -171,6 +178,10 @@ public class PhotoshopBridge {
         }
         // Have Photoshop up and answering before Lightroom is asked to hand it a stack.
         ensurePhotoshopReady()
+        // After a save PanaLux hides Photoshop to bring Lightroom back. A hidden Photoshop is the
+        // one that got a single photo of the stack, so show it again, without raising it.
+        let wasHidden = showPhotoshopIfHidden()
+        log("photoshop hidden=\(wasHidden)")
         documentsBeforeSend = openDocumentIDs()
         targetDocumentID = nil
         log("before: \(documentsBeforeSend.count) document(s) already open")
@@ -253,10 +264,24 @@ public class PhotoshopBridge {
                 self.report("Only \(layers) of \(self.expectedLayers) arrived. Sending again…")
                 self.closeActivePhotoshopDocument()
                 Thread.sleep(forTimeInterval: 1.5)
-                if (try? self.sendStack(fromBracket: cameFromBracket)) != nil { return }
+                // The first attempt left Photoshop in front, which is exactly when Lightroom's
+                // Photo menu cannot be reached. Bring Lightroom back and try again rather than
+                // giving up on the first refusal.
+                var lastError = ""
+                for attempt in 1...3 {
+                    self.activateLightroom()
+                    Thread.sleep(forTimeInterval: 1.2)
+                    do {
+                        _ = try self.sendStack(fromBracket: cameFromBracket)
+                        return
+                    } catch {
+                        lastError = error.localizedDescription
+                        self.log("resend attempt \(attempt) failed: \(lastError)")
+                    }
+                }
                 self.phase = .blending
-                self.log("resend failed")
-                self.report("Only \(layers) of \(self.expectedLayers) arrived and the resend failed.")
+                self.log("resend failed: \(lastError)")
+                self.report("Only \(layers) of \(self.expectedLayers) arrived and the resend failed. Press Grab Still again.")
                 return
             }
 
@@ -277,9 +302,12 @@ public class PhotoshopBridge {
                 self.report("Opened \(layers) layer\(layers == 1 ? "" : "s")")
                 return
             }
+            self.aligning = true
+            defer { self.aligning = false }
             do {
                 self.report(try self.alignLayers())
             } catch {
+                self.log("align failed: \(error.localizedDescription)")
                 self.report("Opened \(layers) layers. Auto-align didn’t run.")
             }
         }
@@ -366,9 +394,20 @@ public class PhotoshopBridge {
     private func waitForNewStack(timeout: TimeInterval) -> (Int, Int)? {
         let end = Date().addingTimeInterval(timeout)
         var docID: Int? = nil
+        let began = Date()
+        var lastNote = began
         while Date() < end, docID == nil {
             docID = newDocumentID()
-            if docID == nil { Thread.sleep(forTimeInterval: 1.0) }
+            if docID == nil {
+                Thread.sleep(forTimeInterval: 1.0)
+                if Date().timeIntervalSince(lastNote) >= 20 {
+                    lastNote = Date()
+                    let waited = Int(Date().timeIntervalSince(began))
+                    let hidden = NSWorkspace.shared.runningApplications.first(where: isPhotoshop)?.isHidden ?? false
+                    log("still waiting for the stack: \(waited)s  photoshopHidden=\(hidden)  frontmost=\(isPhotoshopFrontmost() ? "photoshop" : "other")")
+                    if waited >= 40 { report("Still waiting for Lightroom to hand over the stack… (\(waited)s)") }
+                }
+            }
         }
         guard let id = docID else { return nil }
 
@@ -564,16 +603,24 @@ public class PhotoshopBridge {
             d.saveAs(f2, o, true, Extension.LOWERCASE);
             out = f2.fsName;
           }
-          try { d.close(SaveOptions.DONOTSAVECHANGES); } catch (e) {}
           out;
         } catch (e) { "ERR:" + e; }
         """
-        let out = try photoshopJS(js)
+        let out = try photoshopJS(js).trimmingCharacters(in: .whitespacesAndNewlines)
         if out.hasPrefix("ERR:") {
+            log("SAVE FAILED  \(out)")
             throw makeError(500, "Photoshop couldn’t save: \(out.dropFirst(4))")
         }
+        // Trust the disk, not the reply. The blend is only closed once a file with something in
+        // it is really there; until then it is still open and nothing has been lost.
+        let size = (try? FileManager.default.attributesOfItem(atPath: out)[.size] as? NSNumber)?.intValue ?? 0
+        guard !out.isEmpty, size > 0 else {
+            log("SAVE UNCONFIRMED  reply=\"\(out)\"  layers=\(layerCount)  doc=\(docPath.isEmpty ? "unsaved" : docPath)")
+            throw makeError(500, "Photoshop didn’t confirm the save. The blend is still open. Press Grab Still again.")
+        }
+        closeActivePhotoshopDocument()
         targetDocumentID = nil
-        log("SAVED \(out)")
+        log("SAVED \(out)  (\(size / 1024) KB)")
         return "Saved \(out)"
     }
 
@@ -656,6 +703,26 @@ public class PhotoshopBridge {
         }
     }
 
+    /// Make Photoshop visible again if it was hidden, and leave whatever is in front in front.
+    @discardableResult
+    private func showPhotoshopIfHidden() -> Bool {
+        guard let ps = NSWorkspace.shared.runningApplications.first(where: isPhotoshop), ps.isHidden else {
+            return false
+        }
+        let apply = { _ = ps.unhide() }
+        if Thread.isMainThread { apply() } else { DispatchQueue.main.sync(execute: apply) }
+        if let bid = ps.bundleIdentifier {
+            _ = try? runAppleScript("""
+            tell application "System Events"
+              try
+                set visible of (first process whose bundle identifier is "\(bid)") to true
+              end try
+            end tell
+            """)
+        }
+        return true
+    }
+
     private func quitPhotoshop() {
         guard let ps = NSWorkspace.shared.runningApplications.first(where: isPhotoshop) else { return }
         let apply = { _ = ps.terminate() }
@@ -688,8 +755,19 @@ public class PhotoshopBridge {
         return running.first ?? "com.adobe.Photoshop"
     }
     
+    /// Every call to Photoshop goes through here, one at a time, each with a script file of its own.
+    /// It used to write every script to one shared file from whichever thread was calling, and the
+    /// watcher polls Photoshop every second or so while a stack arrives. A save pressed in that
+    /// window could have its script overwritten by a poll's before Photoshop read it, and run the
+    /// wrong thing: a save that logged "SAVED" with no path and wrote no file.
+    private let photoshopCallLock = NSLock()
+
     private func photoshopJS(_ js: String) throws -> String {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("mcs-ps.js")
+        photoshopCallLock.lock()
+        defer { photoshopCallLock.unlock() }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("panalux-ps-\(UUID().uuidString).js")
+        defer { try? FileManager.default.removeItem(at: url) }
         try js.write(to: url, atomically: true, encoding: .utf8)
         let bundle = photoshopBundleId()
         let script = """
