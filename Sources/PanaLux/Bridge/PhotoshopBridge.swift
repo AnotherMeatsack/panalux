@@ -33,6 +33,11 @@ public class PhotoshopBridge {
     /// why a stack that quietly arrived incomplete had to be spotted and resent by hand.
     private var expectedLayers: Int = 0
     private var resentForShortStack = false
+    /// The document this send produced. Photoshop opens an incoming stack behind
+    /// whatever is already on screen, so `app.activeDocument` is usually something
+    /// else entirely and must never be what gets counted, flattened or closed.
+    private var targetDocumentID: Int? = nil
+    private var documentsBeforeSend: Set<Int> = []
     /// After this long, a press means the stack has landed and Lightroom is stuck on
     /// some unrelated dialog. Saving beats being told to wait forever.
     private let sendingGiveUp: TimeInterval = 30
@@ -122,7 +127,7 @@ public class PhotoshopBridge {
             return try sendStack(fromBracket: fromBracket)
 
         case .blending:
-            if jsDocumentCount() > 0 {
+            if targetDocumentID.map({ layerCount(ofDocument: $0) > 0 }) ?? (jsDocumentCount() > 0) {
                 let saved = try flattenAndSave()
                 phase = .idle
                 returnToDevelop()
@@ -166,6 +171,9 @@ public class PhotoshopBridge {
         }
         // Have Photoshop up and answering before Lightroom is asked to hand it a stack.
         ensurePhotoshopReady()
+        documentsBeforeSend = openDocumentIDs()
+        targetDocumentID = nil
+        log("before: \(documentsBeforeSend.count) document(s) already open")
         if fromBracket {
             try showBracket(pid: lr.processIdentifier)
         }
@@ -226,13 +234,16 @@ public class PhotoshopBridge {
                 return
             }
 
-            guard let layers = self.waitForStableStack(timeout: 240), layers > 0 else {
+            guard let (docID, layers) = self.waitForNewStack(timeout: 240) else {
                 self.phase = .blending
-                self.log("RESULT no stack seen in Photoshop; \(self.describeDocument())")
+                self.log("RESULT no new document appeared in Photoshop")
                 self.report("Couldn’t see the stack in Photoshop. Align it yourself, then press Grab Still to save.")
                 return
             }
-            self.log("RESULT \(layers) layer(s), expected \(self.expectedLayers)  \(self.describeDocument())")
+            self.targetDocumentID = docID
+            // Photoshop left it behind the documents that were already open.
+            self.bringDocumentToFront(docID)
+            self.log("RESULT \(layers) layer(s), expected \(self.expectedLayers)  doc id=\(docID)")
 
             // A short stack. This is caught before anything has been blended — the stack
             // has only just landed and PanaLux has not said it is ready — so closing it
@@ -300,6 +311,35 @@ public class PhotoshopBridge {
         log("prewarm: Photoshop never answered; sending anyway")
     }
 
+    // MARK: - Documents by identity
+
+    /// Every open document's id. A stack that has just arrived is the id that is new.
+    private func openDocumentIDs() -> Set<Int> {
+        let raw = (try? photoshopJS(
+            "var a=[]; for(var i=0;i<app.documents.length;i++){a.push(app.documents[i].id);} a.join(',')"
+        )) ?? ""
+        return Set(raw.split(separator: ",").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) })
+    }
+
+    private static func docByIDPrelude() -> String {
+        "function __d(id){for(var i=0;i<app.documents.length;i++){if(app.documents[i].id==id){return app.documents[i];}}return null;}"
+    }
+
+    private func layerCount(ofDocument id: Int) -> Int {
+        let js = Self.docByIDPrelude() + "var d=__d(\(id)); d ? d.layers.length : -1"
+        return (try? photoshopJS(js)).flatMap(Int.init) ?? -1
+    }
+
+    private func bringDocumentToFront(_ id: Int) {
+        let js = Self.docByIDPrelude() + "var d=__d(\(id)); if(d){app.activeDocument=d;} 'ok'"
+        _ = try? photoshopJS(js)
+    }
+
+    /// The document that arrived from this send, or nil while none has.
+    private func newDocumentID() -> Int? {
+        openDocumentIDs().subtracting(documentsBeforeSend).sorted().last
+    }
+
     private func isPhotoshopRunning() -> Bool {
         NSWorkspace.shared.runningApplications.contains(where: isPhotoshop)
     }
@@ -318,35 +358,48 @@ public class PhotoshopBridge {
         return false
     }
 
-    /// Layer count that has stopped changing: the stack has finished arriving.
-    private func waitForStableStack(timeout: TimeInterval) -> Int? {
+    /// Wait for a document that was not open before this send, then for its layer
+    /// count to stop changing. Following the *new* document matters: Photoshop opens an
+    /// incoming stack behind whatever is already on screen, so the active document is
+    /// usually one of the old ones and counting it reported a stale, already-stable
+    /// number as though it were the result.
+    private func waitForNewStack(timeout: TimeInterval) -> (Int, Int)? {
         let end = Date().addingTimeInterval(timeout)
+        var docID: Int? = nil
+        while Date() < end, docID == nil {
+            docID = newDocumentID()
+            if docID == nil { Thread.sleep(forTimeInterval: 1.0) }
+        }
+        guard let id = docID else { return nil }
+
         var previous = -1
         var stableRuns = 0
         while Date() < end {
-            let count = jsLayerCount()
+            let count = layerCount(ofDocument: id)
             if count > 0 && count == previous {
                 stableRuns += 1
-                if stableRuns >= 3 { return count }
+                if stableRuns >= 3 { return (id, count) }
             } else {
                 stableRuns = 0
             }
             previous = count
             Thread.sleep(forTimeInterval: 1.2)
         }
-        return previous > 0 ? previous : nil
+        return previous > 0 ? (id, previous) : nil
     }
 
     /// Select every layer and auto-align. This is what lines the brackets up.
     @discardableResult
     private func alignLayers() throws -> String {
-        let js = """
+        let target = targetDocumentID.map { "__d(\($0))" } ?? "app.activeDocument"
+        let js = Self.docByIDPrelude() + """
         app.displayDialogs = DialogModes.NO;
         var out;
         try {
           if (app.documents.length < 1) { out = "ERR:no document"; }
           else {
-            var d = app.activeDocument;
+            var d = \(target);
+            if (!d) { throw "the document this send produced is no longer open"; }
             if (d.layers.length < 2) { out = "ERR:needs at least 2 layers"; }
             else {
               var r = new ActionReference();
@@ -377,8 +430,9 @@ public class PhotoshopBridge {
 
     private func closeActivePhotoshopDocument() {
         _ = try? photoshopJS(
-            "app.displayDialogs = DialogModes.NO; "
-            + "try { app.activeDocument.close(SaveOptions.DONOTSAVECHANGES); } catch (e) {} 'ok';"
+            Self.docByIDPrelude() + "app.displayDialogs = DialogModes.NO; "
+            + (targetDocumentID.map { "var d=__d(\($0)); if(d){ d.close(SaveOptions.DONOTSAVECHANGES); } 'ok';" }
+               ?? "try { app.activeDocument.close(SaveOptions.DONOTSAVECHANGES); } catch (e) {} 'ok';")
         )
     }
 
@@ -460,8 +514,10 @@ public class PhotoshopBridge {
     private func flattenAndSave() throws -> String {
         activatePhotoshop()
         Thread.sleep(forTimeInterval: 0.2)
+        let saveTarget = targetDocumentID.map { "__d(\($0))" } ?? "app.activeDocument"
         let probe = (try? photoshopJS(
-            "app.displayDialogs=DialogModes.NO; if(app.documents.length<1){'0|';} else { var d=app.activeDocument; var p=''; try{p=d.fullName.fsName;}catch(e){p='';} d.layers.length + '|' + p; }"
+            Self.docByIDPrelude()
+            + "app.displayDialogs=DialogModes.NO; if(app.documents.length<1){'0|';} else { var d=\(saveTarget); if(!d){'0|';} else { var p=''; try{p=d.fullName.fsName;}catch(e){p='';} d.layers.length + '|' + p; } }"
         )) ?? ""
         let parts = probe.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)
         let layerCount = Int(parts.first ?? "0") ?? 0
@@ -477,11 +533,12 @@ public class PhotoshopBridge {
         try FileManager.default.createDirectory(atPath: fallback, withIntermediateDirectories: true)
         let stamp = Self.timestamp()
         let fallbackJS = fallback.replacingOccurrences(of: "\\", with: "/").replacingOccurrences(of: "\"", with: "")
-        let js = """
+        let js = Self.docByIDPrelude() + """
         app.displayDialogs = DialogModes.NO;
         try {
           if (app.documents.length < 1) { throw "no document"; }
-          var d = app.activeDocument;
+          var d = \(saveTarget);
+          if (!d) { throw "the blend this send produced is no longer open"; }
           var folder = null, base = d.name.replace(/\\.[^.]+$/, "");
           try { folder = d.path.fsName; } catch (e) { folder = null; }
           var writable = false;
@@ -515,6 +572,8 @@ public class PhotoshopBridge {
         if out.hasPrefix("ERR:") {
             throw makeError(500, "Photoshop couldn’t save: \(out.dropFirst(4))")
         }
+        targetDocumentID = nil
+        log("SAVED \(out)")
         return "Saved \(out)"
     }
 
