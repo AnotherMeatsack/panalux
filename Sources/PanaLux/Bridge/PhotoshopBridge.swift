@@ -154,10 +154,13 @@ public class PhotoshopBridge {
         // menu bar is exactly when a selection can change underneath us.
         expectedLayers = LightroomBridge.shared.selectedPhotoCount ?? 0
         let module = LightroomBridge.shared.currentModule ?? "unreported"
-        let trusted = LightroomAccessibility.isTrusted(prompt: false)
+        // Ask, don't just check. Checking without prompting meant a key press could
+        // report the permission missing while never giving macOS the chance to offer it,
+        // so the dialog never appeared no matter how many times it was pressed.
+        let trusted = LightroomAccessibility.isTrusted(prompt: true)
         log("SEND  selected=\(expectedLayers)  module=\(module)  bracket=\(fromBracket)  accessibility=\(trusted)")
         guard trusted else {
-            throw makeError(403, "PanaLux has lost Accessibility permission. System Settings → Privacy & Security → Accessibility: switch PanaLux off and on again.")
+            throw makeError(403, "Allow PanaLux in System Settings → Privacy & Security → Accessibility, then press Grab Still again.")
         }
         if fromBracket {
             try showBracket(pid: lr.processIdentifier)
