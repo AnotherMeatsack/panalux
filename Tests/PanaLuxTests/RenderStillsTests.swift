@@ -73,6 +73,52 @@ final class RenderStillsTests: XCTestCase {
                 .background(RoundedRectangle(cornerRadius: 22).fill(Color(white: 0.15)))
             try save(view, size: CGSize(width: 400, height: height), name: "hud-\(name)")
         }
+        // Rewind: the notch while you scrub your own session.
+        let detailKnobs: [KnobCell] = [
+            KnobCell(label: "Blacks", value: "-12", isOverlay: false),
+            KnobCell(label: "Exposure", value: "+0.35", isOverlay: true),
+            KnobCell(label: "Whites", value: "+8", isOverlay: false),
+            KnobCell(label: "Contrast", value: "+24", isOverlay: true),
+            KnobCell(label: "Clarity", value: "+6", isOverlay: false),
+            KnobCell(label: "Texture", value: "0", isOverlay: false),
+            KnobCell(label: "Vibrance", value: "+14", isOverlay: true),
+            KnobCell(label: "Shadows", value: "+31", isOverlay: true),
+            KnobCell(label: "Highlight", value: "-46", isOverlay: true),
+            KnobCell(label: "Sat", value: "+5", isOverlay: false),
+            KnobCell(label: "Temp", value: "5450 K", isOverlay: true),
+            KnobCell(label: "Blending", value: "50", isOverlay: false)
+        ]
+        var edits: [TrailMark] = []
+        for step in stride(from: 4.0, through: 268.0, by: 5.5) {
+            edits.append(TrailMark(ago: step, kind: .edit))
+        }
+        let scrubbing = RewindState(
+            ago: 134, span: 280,
+            marks: edits + [
+                TrailMark(ago: 246, kind: .keyframe("Opened")),
+                TrailMark(ago: 198, kind: .landmark("Auto Tone")),
+                TrailMark(ago: 150, kind: .keyframe("Mask added")),
+                TrailMark(ago: 96, kind: .mark),
+                TrailMark(ago: 52, kind: .landmark("Preset")),
+            ],
+            takeName: "Main", otherTakes: 0, editsBack: 47, knobs: detailKnobs)
+        let branched = RewindState(
+            ago: 62, span: 280,
+            marks: edits + [
+                TrailMark(ago: 246, kind: .keyframe("Opened")),
+                TrailMark(ago: 198, kind: .landmark("Auto Tone")),
+                TrailMark(ago: 150, kind: .keyframe("Mask added")),
+                TrailMark(ago: 134, kind: .fork(takes: 2)),
+                TrailMark(ago: 96, kind: .mark),
+            ],
+            takeName: "Take 3 · warmer", otherTakes: 2, editsBack: 19, knobs: detailKnobs)
+        for (name, st) in [("rewind", scrubbing), ("rewind-branch", branched)] {
+            let v = RewindView(state: st)
+                .frame(width: 400, height: 152)
+                .background(RoundedRectangle(cornerRadius: 22).fill(Color(white: 0.13)))
+            try save(v, size: CGSize(width: 400, height: 152), name: "hud-\(name)")
+        }
+
         ToolWheelSession.shared.present(ownerLabel: "Add Node", index: 4, combine: .add)
         try save(ToolWheelView().background(Color(white: 0.12)), size: CGSize(width: 360, height: 360), name: "hud-mask-wheel")
         ToolWheelSession.shared.hide()
