@@ -264,7 +264,10 @@ public class CommandCatalog: ObservableObject {
             title: "Photoshop Round-Trip",
             icon: "square.stack.3d.forward.dottedline.fill",
             items: [
-                CatalogCommand(id: "smart_roundtrip", title: "Open Selected as Layers in Photoshop", subtitle: "Automates multi-exposure handoff", isParameter: false, icon: "square.stack.3d.up.fill"),
+                CatalogCommand(id: "smart_roundtrip", title: "Open Selected as Layers in Photoshop", subtitle: "Sends, auto-aligns, then saves back on the next press", isParameter: false, icon: "square.stack.3d.up.fill"),
+                CatalogCommand(id: "AddOrRemoveFromTargetColl", title: "Add / Remove from Bracket", subtitle: "Gathers this photo without changing the selection", isParameter: false, icon: "plus.rectangle.on.rectangle"),
+                CatalogCommand(id: "bracket_roundtrip", title: "Send Bracket to Photoshop", subtitle: "Opens everything gathered as aligned layers", isParameter: false, icon: "square.3.layers.3d.top.filled"),
+                CatalogCommand(id: "align_layers", title: "Auto-Align Layers", subtitle: "Lines up the open stack in Photoshop", isParameter: false, icon: "arrow.up.left.and.down.right.magnifyingglass"),
                 CatalogCommand(id: "EditPhotoshop", title: "Edit Copy in Photoshop", subtitle: "Opens single file in Photoshop", isParameter: false, icon: "pencil.circle")
             ]
         ))

@@ -116,7 +116,7 @@ public class PanelDecoder {
     
     /// Report 0x02 is 8 bytes, 0x05 is 36, 0x06 is 64. A leading report-ID byte
     /// makes those 9 / 37 / 65.
-    private static func stripReportID(reportId: UInt8, data: Data) -> Data {
+    static func stripReportID(reportId: UInt8, data: Data) -> Data {
         let expected: Int
         switch reportId {
         case 0x02: expected = 8

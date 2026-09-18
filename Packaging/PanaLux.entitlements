@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- PanaLux drives Lightroom Classic and Photoshop through AppleScript for the
+         Grab Still round-trip. Under the hardened runtime that needs this entitlement. -->
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+    <!-- Photoshop JSX is handed over as a file in the temporary directory. -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>

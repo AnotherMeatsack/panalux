@@ -191,14 +191,17 @@ extension StudioEngine {
 
     public static let holdCompareID = "hold_compare"
 
+    /// Ids that belong on `ButtonBinding.ps`, not on `action`.
+    static let photoshopActionIDs: Set<String> = ["smart_roundtrip", "bracket_roundtrip", "align_layers"]
+
     func applyTapItem(_ spec: inout ButtonBinding, _ item: CatalogCommand) {
         spec.clearTap()
         if item.id.starts(with: "layer:") {
             spec.layer = String(item.id.dropFirst("layer:".count))
         } else if item.id.starts(with: "set_variant:") {
             spec.set_variant = String(item.id.dropFirst("set_variant:".count))
-        } else if item.id == "smart_roundtrip" {
-            spec.ps = "smart_roundtrip"
+        } else if Self.photoshopActionIDs.contains(item.id) {
+            spec.ps = item.id
         } else if item.isParameter {
             spec.tapProgram = AnalogProgram.focused(item.id)
         } else if item.id.starts(with: "hold_layer:") || item.id.starts(with: "modifier:")

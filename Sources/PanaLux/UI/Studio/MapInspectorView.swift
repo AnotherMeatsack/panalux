@@ -582,7 +582,7 @@ public struct MapInspectorView: View {
             if let a = spec.action { out.insert(a) }
             if let l = spec.layer { out.insert("layer:\(l)") }
             if let v = spec.set_variant { out.insert("set_variant:\(v)") }
-            if spec.ps != nil { out.insert("smart_roundtrip") }
+            if let ps = spec.ps { out.insert(ps) }
             if let f = spec.tapProgram?.focusParam { out.insert(f) }
         }
         return out

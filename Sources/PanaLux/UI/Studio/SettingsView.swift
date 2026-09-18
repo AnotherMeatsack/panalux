@@ -150,6 +150,8 @@ public struct SettingsView: View {
             }
             Toggle("Masks use the same knobs as Base", isOn: $settings.mirrorMaskToBase)
                 .help("Exposure stays on the Exposure knob, Contrast on Contrast, and so on. Turn this off to map Mask knobs yourself.")
+            Toggle("Auto-align layers in Photoshop", isOn: $settings.autoAlignLayers)
+                .help("After Open as Layers, PanaLux waits for the stack to finish arriving and runs Auto-Align once. Turn this off to align by hand.")
             Button("Learn Key Positions…") { showCalibration = true }
         }
     }

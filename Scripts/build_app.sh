@@ -68,8 +68,24 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
 </plist>
 PLIST
 
-echo "==> Ad-hoc signing"
-codesign --force --deep --sign - "$APP_BUNDLE"
+# Set PANALUX_SIGN_IDENTITY to a "Developer ID Application: …" identity to produce a
+# build that can be notarized. Without it the app is ad-hoc signed and users have to
+# use Open Anyway on first launch.
+SIGN_IDENTITY="${PANALUX_SIGN_IDENTITY:-}"
+if [[ -n "$SIGN_IDENTITY" ]]; then
+    echo "==> Signing with ${SIGN_IDENTITY}"
+    # Sign inside out: nested code first, then the bundle.
+    find "$APP_BUNDLE" -name "*.bundle" -type d -print0 | while IFS= read -r -d '' nested; do
+        codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$nested"
+    done
+    codesign --force --options runtime --timestamp \
+        --entitlements Packaging/PanaLux.entitlements \
+        --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
+    codesign --verify --strict --verbose=2 "$APP_BUNDLE"
+else
+    echo "==> Ad-hoc signing (set PANALUX_SIGN_IDENTITY for a notarizable build)"
+    codesign --force --deep --sign - "$APP_BUNDLE"
+fi
 
 if strings -a "${CONTENTS}/MacOS/${APP_NAME}" | grep -q "${HOME}"; then
     echo "!! Warning: the binary still contains your home folder path." >&2

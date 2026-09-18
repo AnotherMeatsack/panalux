@@ -3,13 +3,44 @@ import AppKit
 
 /// Lightroom ↔ Photoshop round-trip driven from Grab Still.
 ///
-/// In Lightroom: switch to Library, Photo → Edit In → Open as Layers, then Auto-Align.
-/// In Photoshop: flatten, save (updates the catalog file), and return to Lightroom.
+/// Out: Photo → Edit In → Open as Layers, then auto-align once the stack lands.
+/// Back: flatten, save, and return to Lightroom.
+///
+/// Which of the two a press means is decided by `phase`, not by which app happens
+/// to be in front. Asking the frontmost app meant that pressing Grab Still from
+/// the PanaLux window, or with Lightroom on a second display, sent a second stack
+/// instead of saving the one already open.
 public class PhotoshopBridge {
     public static let shared = PhotoshopBridge()
     private let queue = DispatchQueue(label: "com.panalux.photoshop", qos: .userInitiated)
+    private let watchQueue = DispatchQueue(label: "com.panalux.photoshop.watch", qos: .utility)
     private let busyLock = NSLock()
     private var isBusy = false
+
+    public enum Phase: Equatable {
+        /// Nothing out at Photoshop. A press sends.
+        case idle
+        /// Lightroom is still handing files over. A press waits.
+        case sending
+        /// The stack is open and aligned. A press flattens, saves, and comes home.
+        case blending
+    }
+
+    private var phaseValue: Phase = .idle
+    public private(set) var phase: Phase {
+        get { busyLock.lock(); defer { busyLock.unlock() }; return phaseValue }
+        set { busyLock.lock(); phaseValue = newValue; busyLock.unlock() }
+    }
+
+    /// Late news the HUD should show: the align finishing, or the stack failing to land.
+    public var onProgress: ((String) -> Void)?
+
+    /// Auto-align the stack after Open as Layers. Off means align it yourself.
+    public var autoAlign: Bool = true
+
+    private func report(_ message: String) {
+        DispatchQueue.main.async { self.onProgress?(message) }
+    }
     
     private let lightroomBundleIds = [
         "com.adobe.LightroomClassicCC7",
@@ -24,12 +55,12 @@ public class PhotoshopBridge {
         busyLock.lock()
         if isBusy {
             busyLock.unlock()
-            completion(.success("Still sending to Photoshop…"))
+            completion(.success("Still working…"))
             return
         }
         isBusy = true
         busyLock.unlock()
-        
+
         queue.async {
             defer {
                 self.busyLock.lock()
@@ -40,9 +71,17 @@ public class PhotoshopBridge {
                 let message: String
                 switch actionName {
                 case "smart_roundtrip":
-                    message = try self.smartRoundtrip()
+                    message = try self.smartRoundtrip(fromBracket: false)
+                case "bracket_roundtrip":
+                    message = try self.smartRoundtrip(fromBracket: true)
                 case "open_layers":
-                    message = try self.sendAndAlign()
+                    message = try self.sendStack(fromBracket: false)
+                case "align_layers":
+                    guard self.phase != .sending else {
+                        completion(.success("Still sending to Photoshop…"))
+                        return
+                    }
+                    message = try self.alignLayers()
                 default:
                     throw self.makeError(404, "Unknown Photoshop action: \(actionName)")
                 }
@@ -52,80 +91,183 @@ public class PhotoshopBridge {
             }
         }
     }
-    
-    private func smartRoundtrip() throws -> String {
-        let fromPhotoshop = isPhotoshopFrontmost()
-        if fromPhotoshop {
-            activatePhotoshop()
-            Thread.sleep(forTimeInterval: 0.3)
+
+    private func smartRoundtrip(fromBracket: Bool) throws -> String {
+        switch phase {
+        case .sending:
+            // Lightroom is mid-copy. Talking to Photoshop now steals the Photo menu
+            // and can abort the stack, so say so and leave it alone.
+            return "Still sending to Photoshop…"
+
+        case .blending:
             if jsDocumentCount() > 0 {
+                let saved = try flattenAndSave()
+                phase = .idle
+                returnToDevelop()
+                return saved
+            }
+            // The document was closed by hand. Fall through and send a new stack.
+            phase = .idle
+            return try sendStack(fromBracket: fromBracket)
+
+        case .idle:
+            // A document opened by hand still saves, so the key is never a dead end.
+            if isPhotoshopFrontmost(), jsDocumentCount() > 0 {
                 let saved = try flattenAndSave()
                 returnToDevelop()
                 return saved
             }
-            // Home screen after closing the stack: send the next frames.
-            return try sendAndAlign()
+            return try sendStack(fromBracket: fromBracket)
         }
-        return try sendAndAlign()
-    }
-    
-    private func sendAndAlign() throws -> String {
-        try sendStackOnce()
-        if stackLooksLikeSinglePhotoGlitch() {
-            closeActivePhotoshopDocument()
-            Thread.sleep(forTimeInterval: 0.8)
-            try sendStackOnce()
-        }
-        return "Sent to Photoshop"
     }
 
-    private func sendStackOnce() throws {
-        let before = photoshopDocumentWindowCount()
+    /// Click Open as Layers and return. Lightroom keeps copying in the background,
+    /// so nothing here may talk to Photoshop — AppleScript steals the Photo menu and
+    /// can abort a stack that is still arriving. The watcher picks it up from there.
+    private func sendStack(fromBracket: Bool) throws -> String {
+        guard let lr = lightroomApp() else {
+            throw makeError(404, "Lightroom Classic isn’t running")
+        }
+        if fromBracket {
+            try showBracket(pid: lr.processIdentifier)
+        }
         try openAsLayers()
-        _ = waitForNewDocument(before: before, timeout: 120)
+        for _ in 0..<6 {
+            _ = LightroomAccessibility.confirmLayersDialog(pid: lr.processIdentifier)
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        phase = .sending
+        watchForStack(cameFromBracket: fromBracket)
+        return fromBracket ? "Sending the bracket to Photoshop…" : "Sending to Photoshop…"
     }
 
-    /// First Open as Layers can land one photo while Photoshop is still launching.
-    /// Close that leftover document and send the stack again.
-    private func stackLooksLikeSinglePhotoGlitch() -> Bool {
-        waitForLightroomIdle(timeout: 12)
-        let end = Date().addingTimeInterval(10)
+    /// Show the Quick Collection and select all of it, so Open as Layers picks up
+    /// exactly the photos that were gathered — skipped frames and all.
+    private func showBracket(pid: pid_t) throws {
+        bringForward(NSRunningApplication(processIdentifier: pid) ?? NSRunningApplication.current)
+        Thread.sleep(forTimeInterval: 0.4)
+        let shown = LightroomAccessibility.pressMenuItem(
+            pid: pid, titles: ["Show Quick Collection", "Quick Collection"], menus: ["File", "Library"]
+        ) || LightroomKeys.press("b", flags: [.maskCommand])
+        guard shown else {
+            throw makeError(403, "Couldn’t open the Quick Collection. Allow PanaLux in Privacy & Security → Accessibility.")
+        }
+        Thread.sleep(forTimeInterval: 0.7)
+        _ = LightroomAccessibility.pressMenuItem(pid: pid, titles: ["Select All"], menus: ["Edit"])
+            || LightroomKeys.press("a", flags: [.maskCommand])
+        Thread.sleep(forTimeInterval: 0.4)
+    }
+
+    /// Wait for Lightroom to finish copying, wait for the stack to stop growing in
+    /// Photoshop, then auto-align it once. All of the Lightroom-side waiting uses
+    /// Accessibility only; Photoshop is not spoken to until Lightroom is done.
+    private func watchForStack(cameFromBracket: Bool) {
+        watchQueue.async {
+            guard self.waitForLightroomIdle(timeout: 240) else {
+                self.phase = .blending
+                self.report("Lightroom is still working. Press Grab Still again when the stack is open.")
+                return
+            }
+            guard let layers = self.waitForStableStack(timeout: 120), layers > 0 else {
+                self.phase = .blending
+                self.report("Couldn’t see the stack in Photoshop. Align it yourself, then press Grab Still to save.")
+                return
+            }
+            self.phase = .blending
+            if cameFromBracket, let lr = self.lightroomApp() {
+                _ = LightroomAccessibility.pressMenuItem(
+                    pid: lr.processIdentifier, titles: ["Clear Quick Collection"], menus: ["File", "Library"]
+                )
+            }
+            guard self.autoAlign, layers >= 2 else {
+                self.report("Opened \(layers) layer\(layers == 1 ? "" : "s")")
+                return
+            }
+            do {
+                self.report(try self.alignLayers())
+            } catch {
+                self.report("Opened \(layers) layers. Auto-align didn’t run.")
+            }
+        }
+    }
+
+    /// True once Lightroom has had no sheet or progress bar for two checks running.
+    private func waitForLightroomIdle(timeout: TimeInterval) -> Bool {
+        guard let lr = lightroomApp() else { return false }
+        let pid = lr.processIdentifier
+        let end = Date().addingTimeInterval(timeout)
+        // Give Lightroom a moment to put its progress bar up before believing it is idle.
+        Thread.sleep(forTimeInterval: 1.5)
         while Date() < end {
-            if jsLayerCount() >= 2 { return false }
+            if !LightroomAccessibility.isWorkingSheetVisible(pid: pid) {
+                Thread.sleep(forTimeInterval: 0.8)
+                if !LightroomAccessibility.isWorkingSheetVisible(pid: pid) { return true }
+            }
+            _ = LightroomAccessibility.confirmLayersDialog(pid: pid)
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        return false
+    }
+
+    /// Layer count that has stopped changing: the stack has finished arriving.
+    private func waitForStableStack(timeout: TimeInterval) -> Int? {
+        let end = Date().addingTimeInterval(timeout)
+        var previous = -1
+        var stableRuns = 0
+        while Date() < end {
+            let count = jsLayerCount()
+            if count > 0 && count == previous {
+                stableRuns += 1
+                if stableRuns >= 2 { return count }
+            } else {
+                stableRuns = 0
+            }
+            previous = count
             Thread.sleep(forTimeInterval: 1.2)
         }
-        return jsDocumentCount() > 0 && jsLayerCount() < 2
+        return previous > 0 ? previous : nil
     }
 
-    private func waitForLightroomIdle(timeout: TimeInterval) {
-        guard let lr = lightroomApp() else { return }
-        let end = Date().addingTimeInterval(timeout)
-        while Date() < end {
-            if !LightroomAccessibility.isWorkingSheetVisible(pid: lr.processIdentifier) {
-                Thread.sleep(forTimeInterval: 0.6)
-                if !LightroomAccessibility.isWorkingSheetVisible(pid: lr.processIdentifier) { return }
-            }
-            _ = LightroomAccessibility.confirmLayersDialog(pid: lr.processIdentifier)
-            Thread.sleep(forTimeInterval: 0.4)
-        }
-    }
-
-    private func closeActivePhotoshopDocument() {
-        _ = try? photoshopJS("""
+    /// Select every layer and auto-align. This is what lines the brackets up.
+    @discardableResult
+    private func alignLayers() throws -> String {
+        let js = """
         app.displayDialogs = DialogModes.NO;
-        try { app.activeDocument.close(SaveOptions.DONOTSAVECHANGES); } catch (e) {}
-        'ok';
-        """)
+        var out;
+        try {
+          if (app.documents.length < 1) { out = "ERR:no document"; }
+          else {
+            var d = app.activeDocument;
+            if (d.layers.length < 2) { out = "ERR:needs at least 2 layers"; }
+            else {
+              var r = new ActionReference();
+              r.putEnumerated(stringIDToTypeID("layer"), charIDToTypeID("Ordn"), stringIDToTypeID("targetEnum"));
+              var s = new ActionDescriptor();
+              s.putReference(charIDToTypeID("null"), r);
+              executeAction(stringIDToTypeID("selectAllLayers"), s, DialogModes.NO);
+              var r2 = new ActionReference();
+              r2.putEnumerated(stringIDToTypeID("layer"), charIDToTypeID("Ordn"), stringIDToTypeID("targetEnum"));
+              var a = new ActionDescriptor();
+              a.putReference(charIDToTypeID("null"), r2);
+              a.putEnumerated(stringIDToTypeID("using"), stringIDToTypeID("alignmentType"), stringIDToTypeID("auto"));
+              a.putBoolean(stringIDToTypeID("vignette"), false);
+              a.putBoolean(stringIDToTypeID("radialDistort"), false);
+              executeAction(stringIDToTypeID("align"), a, DialogModes.NO);
+              out = "Aligned " + d.layers.length + " layers";
+            }
+          }
+        } catch (e) { out = "ERR:" + e; }
+        out;
+        """
+        let result = try photoshopJS(js)
+        if result.hasPrefix("ERR:") {
+            throw makeError(500, "Auto-align: \(result.dropFirst(4))")
+        }
+        return result
     }
 
-    /// Accessibility window count — never AppleScript. `tell application` to Photoshop
-    /// launches it and steals the menu bar, so Lightroom’s Photo menu disappears.
-    private func photoshopDocumentWindowCount() -> Int {
-        guard let ps = NSWorkspace.shared.runningApplications.first(where: isPhotoshop) else { return 0 }
-        return LightroomAccessibility.namedWindowCount(
-            pid: ps.processIdentifier,
-            skippingTitles: ["adobe photoshop", "photoshop", "home"]
-        )
+    private func jsLayerCount() -> Int {
+        (try? photoshopJS("var n=0; try{n=app.activeDocument.layers.length;}catch(e){n=0;} n")).flatMap(Int.init) ?? 0
     }
 
     private func openAsLayers() throws {
@@ -135,20 +277,6 @@ public class PhotoshopBridge {
         bringForward(lr)
         Thread.sleep(forTimeInterval: 0.85)
         try LightroomAccessibility.openAsLayers(pid: lr.processIdentifier)
-    }
-
-    private func waitForNewDocument(before: Int, timeout: TimeInterval) -> Bool {
-        let end = Date().addingTimeInterval(timeout)
-        while Date() < end {
-            if let lr = lightroomApp() {
-                _ = LightroomAccessibility.confirmLayersDialog(pid: lr.processIdentifier)
-            }
-            if photoshopDocumentWindowCount() > before {
-                return true
-            }
-            Thread.sleep(forTimeInterval: 0.8)
-        }
-        return false
     }
     
     /// After flatten+save, hide Photoshop’s home/new-doc screen and put Lightroom in front.
@@ -182,29 +310,6 @@ public class PhotoshopBridge {
                 }
             }
         }
-    }
-    
-    private func alignLayers() throws -> String {
-        let js = """
-        var d = app.activeDocument;
-        if (d.layers.length < 2) { "need at least 2 layers"; } else {
-          var r = new ActionReference();
-          r.putEnumerated(stringIDToTypeID("layer"), charIDToTypeID("Ordn"), stringIDToTypeID("targetEnum"));
-          var s = new ActionDescriptor();
-          s.putReference(charIDToTypeID("null"), r);
-          executeAction(stringIDToTypeID("selectAllLayers"), s, DialogModes.NO);
-          var r2 = new ActionReference();
-          r2.putEnumerated(stringIDToTypeID("layer"), charIDToTypeID("Ordn"), stringIDToTypeID("targetEnum"));
-          var a = new ActionDescriptor();
-          a.putReference(charIDToTypeID("null"), r2);
-          a.putEnumerated(stringIDToTypeID("using"), stringIDToTypeID("alignmentType"), stringIDToTypeID("auto"));
-          a.putBoolean(stringIDToTypeID("vignette"), false);
-          a.putBoolean(stringIDToTypeID("radialDistort"), false);
-          executeAction(stringIDToTypeID("align"), a, DialogModes.NO);
-          "Aligned " + d.layers.length + " layers";
-        }
-        """
-        return try photoshopJS(js)
     }
     
     private func flattenAndSave() throws -> String {
@@ -270,11 +375,7 @@ public class PhotoshopBridge {
 
     /// HUD-only. Do not call Photoshop JavaScript from the button-down path.
     public func isPhotoshopLikelyHoldingDocument() -> Bool {
-        isPhotoshopFrontmost()
-    }
-
-    private func jsLayerCount() -> Int {
-        (try? photoshopJS("var n=0; try{n=app.activeDocument.layers.length;}catch(e){n=0;} n")).flatMap(Int.init) ?? 0
+        phase == .blending || (phase == .idle && isPhotoshopFrontmost())
     }
 
     private func jsDocumentCount() -> Int {

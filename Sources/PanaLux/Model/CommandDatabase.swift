@@ -327,7 +327,10 @@ public class CommandDatabase: ObservableObject {
         "LRCopy": "Copy Settings",
         "LRPaste": "Paste Settings",
         "FullRefresh": "Refresh Values from Lightroom",
-        "smart_roundtrip": "Open as Layers in Photoshop"
+        "smart_roundtrip": "Open as Layers in Photoshop",
+        "bracket_roundtrip": "Send Bracket to Photoshop",
+        "align_layers": "Auto-Align Layers",
+        "AddOrRemoveFromTargetColl": "Add / Remove from Bracket"
     ]
     
     private static let shortOverrides: [String: String] = [

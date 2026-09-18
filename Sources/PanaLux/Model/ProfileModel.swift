@@ -283,7 +283,7 @@ public struct Profile: Codable, Equatable {
     }
 
     /// Bump when the factory map gains something existing users should receive.
-    public static let schemaVersion = 9
+    public static let schemaVersion = 10
 
     public static func loadUserOrDefault() -> Profile {
         let factory = loadDefault()
@@ -505,6 +505,17 @@ public struct Profile: Codable, Equatable {
                     if seen >= 2 { backup() }
                     p.layers["MASK"] = mask
                 }
+            }
+        }
+        if seen < 10 {
+            // v10: Previous Still was the one key the factory map left empty. It now
+            // gathers a photo into the bracket. Only fill it if it is still empty.
+            let existing = p.buttons["PREV_STILL"]
+            if existing == nil || (existing?.hasTapAnything == false && existing?.hasHoldFunctionSet == false) {
+                if seen >= 2 { backup() }
+                var spec = existing ?? ButtonBinding()
+                spec.action = factory.buttons["PREV_STILL"]?.action ?? "AddOrRemoveFromTargetColl"
+                p.buttons["PREV_STILL"] = spec
             }
         }
         if seen < schemaVersion {

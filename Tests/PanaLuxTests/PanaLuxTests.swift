@@ -38,6 +38,18 @@ final class PanelDecoderTests: XCTestCase {
         XCTAssertEqual(motions.map(\.slot), [24])
     }
 
+    func testOnlyEmptyButtonReportsCountAsLEDEcho() {
+        // The echo of an LED write is an empty bitmap. Anything with bits set is a
+        // real key and must never be filtered out, or the press has to be made twice.
+        XCTAssertTrue(PanelManager.isEmptyButtonReport(Data(repeating: 0, count: 8)))
+        XCTAssertTrue(PanelManager.isEmptyButtonReport(Data([0x02] + [UInt8](repeating: 0, count: 8))))
+
+        var pressed = [UInt8](repeating: 0, count: 8)
+        pressed[1] = 0x10 // bit 12: Auto Color
+        XCTAssertFalse(PanelManager.isEmptyButtonReport(Data(pressed)))
+        XCTAssertFalse(PanelManager.isEmptyButtonReport(Data([0x02] + pressed)))
+    }
+
     func testKeyUpFollowsKeyDown() {
         let decoder = PanelDecoder()
         var down = [UInt8](repeating: 0, count: 8)
@@ -88,12 +100,43 @@ final class CommandCatalogTests: XCTestCase {
     }
 
     func testCuratedTilesUseRealCommands() {
-        let special: (String) -> Bool = { $0.contains(":") || $0 == "smart_roundtrip" || $0 == "hold_compare" }
+        // Local ids come from one list so a new Photoshop action can't quietly
+        // slip past this check.
+        let special: (String) -> Bool = {
+            $0.contains(":") || StudioEngine.photoshopActionIDs.contains($0) || $0 == "hold_compare"
+        }
         let missing = CommandCatalog.shared.categories
             .flatMap(\.items)
             .map(\.id)
             .filter { !special($0) && db.commands[$0] == nil }
         XCTAssertEqual(missing, [])
+    }
+
+    func testV10GivesPreviousStillTheBracketMarkOnlyWhenFree() {
+        let factory = Profile.loadDefault()
+        XCTAssertEqual(factory.buttons["PREV_STILL"]?.action, BracketCommands.mark)
+
+        // An empty key gets filled.
+        let emptyDefaults = UserDefaults(suiteName: "panalux-tests-\(UUID().uuidString)")!
+        emptyDefaults.set(9, forKey: "profileSchemaVersion")
+        var bare = factory
+        bare.buttons["PREV_STILL"] = nil
+        let filled = Profile.migrate(bare, factory: factory, defaults: emptyDefaults) {}
+        XCTAssertEqual(filled.buttons["PREV_STILL"]?.action, BracketCommands.mark)
+
+        // A key the user already mapped is left alone.
+        let usedDefaults = UserDefaults(suiteName: "panalux-tests-\(UUID().uuidString)")!
+        usedDefaults.set(9, forKey: "profileSchemaVersion")
+        var mine = factory
+        mine.buttons["PREV_STILL"] = ButtonBinding(action: "Prev")
+        let kept = Profile.migrate(mine, factory: factory, defaults: usedDefaults) {}
+        XCTAssertEqual(kept.buttons["PREV_STILL"]?.action, "Prev")
+    }
+
+    func testBracketMarkIsARealLightroomCommand() {
+        XCTAssertNotNil(db.commands[BracketCommands.mark])
+        XCTAssertNotNil(LightroomMenuActions.item(BracketCommands.showAction))
+        XCTAssertNotNil(LightroomMenuActions.item(BracketCommands.clearAction))
     }
 
     func testRenamedCommandsPointAtRealOnes() {

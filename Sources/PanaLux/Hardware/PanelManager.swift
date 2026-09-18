@@ -39,6 +39,11 @@ public class PanelManager: ObservableObject {
     // POSIX advisory lock to prevent multiple processes competing for panel HID
     private var lockFileDescriptor: Int32 = -1
 
+    // IOHIDDeviceSetReport blocks until the USB transfer completes. HID input
+    // arrives on the main run loop, so writing LEDs there stalled the very
+    // keypress that asked for them. Writes go out on their own serial queue.
+    private let outputQueue = DispatchQueue(label: "com.panalux.panel.output", qos: .userInteractive)
+
     // LED output uses the same report ID as the button bitmap (0x02). The
     // panel often echoes that write as an input with empty bits, which used
     // to look like every hold had been released.
@@ -154,32 +159,11 @@ public class PanelManager: ObservableObject {
         healthCheckTimer = nil
     }
 
-    /// Self-healing health check: detects silent disarms, stale handles, and auto-reconnects
+    /// If the panel unplugged, look for it again. Do not poke feature reports
+    /// while it is already connected: a failed GetReport used to tear HID down
+    /// and the lights went out, which looks like the panel died.
     private func performHealthCheck() {
-        if let dev = connectedDevice {
-            // Only perform health check if quiet for at least 5 seconds to avoid bus contention during grading
-            let quiet = Date().timeIntervalSince(lastReportTimestamp)
-            guard quiet >= 5.0 else { return }
-
-            // Interrogate stream-enable flag (Feature report 0x0a)
-            var buf = [UInt8](repeating: 0, count: 2)
-            var length: CFIndex = 2
-            let res = IOHIDDeviceGetReport(dev, kIOHIDReportTypeFeature, CFIndex(0x0a), &buf, &length)
-
-            if res != kIOReturnSuccess {
-                // Device handle went stale or disconnected mid-session
-                print("[PanelManager] Handle dead or re-enumerated (code \(res)). Auto-reattaching…")
-                reconnect()
-                return
-            }
-
-            // Check if panel firmware silently disarmed streaming (common after idle periods)
-            if length >= 2 && buf[1] != 0x01 {
-                print("[PanelManager] Panel silently disarmed (0x0a=\(buf[1])). Re-arming stream in place…")
-                wake(device: dev)
-            }
-        } else {
-            // Not connected: search for device and auto-attach without requiring replug
+        if connectedDevice == nil {
             searchAndAttach()
         }
     }
@@ -311,7 +295,7 @@ public class PanelManager: ObservableObject {
         // Every LED write briefly masks key input (see below). Don't write when nothing changed.
         guard activeBits != lastLEDBits else { return }
         lastLEDBits = activeBits
-        suppressButtonInputUntil = Date().addingTimeInterval(0.08)
+        suppressButtonInputUntil = Date().addingTimeInterval(0.05)
         var payload = [UInt8](repeating: 0, count: 9)
         payload[0] = 0x02 // Output Report ID
         for bit in activeBits {
@@ -321,13 +305,23 @@ public class PanelManager: ObservableObject {
                 payload[byteIdx] |= (1 << bitIdx)
             }
         }
-        _ = IOHIDDeviceSetReport(
-            dev,
-            kIOHIDReportTypeOutput,
-            CFIndex(0x02),
-            &payload,
-            payload.count
-        )
+        outputQueue.async {
+            var buf = payload
+            _ = IOHIDDeviceSetReport(
+                dev,
+                kIOHIDReportTypeOutput,
+                CFIndex(0x02),
+                &buf,
+                buf.count
+            )
+        }
+    }
+
+    /// True when a report 0x02 payload has no button bits set, allowing for the
+    /// leading report-ID byte IOKit sometimes prefixes.
+    static func isEmptyButtonReport(_ data: Data) -> Bool {
+        let payload = PanelDecoder.stripReportID(reportId: 0x02, data: data)
+        return payload.prefix(8).allSatisfy { $0 == 0 }
     }
 
     private func readSerial(device: IOHIDDevice) -> String {
@@ -352,10 +346,15 @@ public class PanelManager: ObservableObject {
     private func handleInputReport(reportID: UInt8, report: UnsafeMutablePointer<UInt8>, length: CFIndex) {
         guard length > 0 else { return }
         lastReportTimestamp = Date()
-        if reportID == 0x02, Date() < suppressButtonInputUntil {
+        let data = Data(bytes: report, count: length)
+        // An LED write on report 0x02 comes back as an input echo with an empty
+        // bitmap, which used to read as "every key released". Ignore that echo,
+        // but never ignore a report with bits set: an echo is always empty, so a
+        // non-empty report inside the window is a real key and dropping it was
+        // why a press sometimes had to be made twice.
+        if reportID == 0x02, Date() < suppressButtonInputUntil, Self.isEmptyButtonReport(data) {
             return
         }
-        let data = Data(bytes: report, count: length)
         let motions = decoder.decode(reportId: reportID, data: data)
         if !motions.isEmpty {
             delegate?.panelDidReceiveMotion(motions)

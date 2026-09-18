@@ -35,6 +35,14 @@ public enum LightroomMenuActions {
              subtitle: "While on, every change applies to all selected photos",
              icon: "arrow.triangle.2.circlepath.circle",
              titles: ["Auto Sync"], menus: ["Settings", "Develop"], key: ("a", 13)),
+        Item(id: "bracket_show", title: "Show Bracket",
+             subtitle: "Switches the filmstrip to the Quick Collection you gathered",
+             icon: "rectangle.stack.badge.person.crop",
+             titles: ["Show Quick Collection", "Quick Collection"], menus: ["File", "Library"], key: ("b", 8)),
+        Item(id: "bracket_clear", title: "Clear Bracket",
+             subtitle: "Empties the Quick Collection and starts a new bracket",
+             icon: "xmark.rectangle.portrait",
+             titles: ["Clear Quick Collection"], menus: ["File", "Library"], key: ("b", 12)),
         Item(id: "match_exposure", title: "Match Total Exposures",
              subtitle: "Evens out exposure across the selected photos",
              icon: "sun.max.trianglebadge.exclamationmark",
@@ -64,6 +72,7 @@ public enum LightroomMenuActions {
             } else if let (key, bits) = item.key {
                 var flags: CGEventFlags = []
                 if bits & 1 != 0 { flags.insert(.maskAlternate) }
+                if bits & 2 != 0 { flags.insert(.maskControl) }
                 if bits & 4 != 0 { flags.insert(.maskShift) }
                 if bits & 8 != 0 { flags.insert(.maskCommand) }
                 result = LightroomKeys.press(key, flags: flags)

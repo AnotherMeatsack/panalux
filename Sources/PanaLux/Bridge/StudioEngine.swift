@@ -102,6 +102,15 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     @Published public var mapEditLayer: String? = nil
     /// Linear / radial / brush is on the photo: balls move the pointer, color stays off.
     @Published public private(set) var maskPlacing: Bool = false
+    /// Photos gathered for the next Photoshop blend. Counted from the marks PanaLux
+    /// sent, so it is a running tally rather than a reading of Lightroom's collection.
+    @Published public private(set) var bracketCount: Int = 0
+
+    public func clearBracketCount() {
+        guard bracketCount != 0 else { return }
+        bracketCount = 0
+    }
+
     /// A copied control assignment for Paste.
     @Published public var clipboard: ControlClipboard? = nil
     /// First control of a swap; the next control selected (on screen or on the panel) completes it.
@@ -130,6 +139,13 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
 
         PanelManager.shared.delegate = self
         LightroomBridge.shared.delegate = self
+
+        // Aligning happens long after the key press that started it, so the bridge
+        // reports back rather than returning a result nobody is waiting for.
+        PhotoshopBridge.shared.autoAlign = AppSettings.shared.autoAlignLayers
+        PhotoshopBridge.shared.onProgress = { [weak self] message in
+            self?.triggerActionDisplay(name: "GRAB_STILL", label: message, phase: .done, duration: 5)
+        }
 
         PanelManager.shared.start()
         LightroomBridge.shared.connect()
@@ -268,6 +284,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         holdWorkItems.removeAll()
         for work in pendingHoldReleases.values { work.cancel() }
         pendingHoldReleases.removeAll()
+        holdWasUsed.removeAll()
+        buttonDownAt.removeAll()
         for name in engagedHolds {
             if let release = holdBinding(for: name)?.release_action, !outputBlocked {
                 if PointerCommands.isPointer(release) {
@@ -408,6 +426,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         let key = "\(m.reportId):\(m.slot)"
         guard let controlName = slotToControl[key] else { return }
 
+        markHoldsUsed()
         setHighlight(controlName)
         if lastAnalogName != controlName { lastAnalogName = controlName }
 
@@ -435,6 +454,34 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     private var engagedHolds: Set<String> = []
     private var pendingHoldReleases: [String: DispatchWorkItem] = [:]
     private let holdThreshold: TimeInterval = 0.28
+
+    // A hold you engaged but never used is almost always a tap you were slow on.
+    // Track when each key went down and whether anything happened while it was
+    // held, so the release can still fire the tap instead of silently eating it.
+    private var buttonDownAt: [String: Date] = [:]
+    private var holdWasUsed: Set<String> = []
+    /// A slow tap runs about a third of a second. A deliberate hold runs longer than
+    /// this, so past it the release only exits the mode — Grab Still must not send a
+    /// stack to Photoshop just because a peek at Lens mode was let go of quickly.
+    private let tapRescueCeiling: TimeInterval = 0.7
+
+    /// Anything that makes an engaged hold "used": a knob, a ball, a ring, or
+    /// another key. After this the release just exits the mode.
+    private func markHoldsUsed(excluding name: String? = nil) {
+        guard !engagedHolds.isEmpty else { return }
+        for held in engagedHolds where held != name {
+            holdWasUsed.insert(held)
+        }
+    }
+
+    /// Only shape-changing holds are rescued. An instant hold (Show Before) and a
+    /// picker (the mask wheel) both do their job on press or release already.
+    private func holdIsRescuable(_ name: String) -> Bool {
+        guard let spec = holdBinding(for: name) else { return false }
+        if spec.hold_action != nil { return false }
+        if spec.hold_picker != nil { return false }
+        return spec.hold_layer != nil || spec.modifier != nil || spec.holdProgram != nil
+    }
     private var overlayTrackballs: [String: TrackballEngine] = [:]
     private var ledWorkItem: DispatchWorkItem?
     private var analogSpinDegrees: [String: Double] = [:]
@@ -503,6 +550,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         setHighlight(isDown ? name : (engagedHolds.contains(name) ? name : nil))
         if isDown {
             if lastButtonName != name { lastButtonName = name }
+            buttonDownAt[name] = Date()
+            markHoldsUsed(excluding: name)
             GuideController.shared.hardwareEvent(.buttonDown(name))
         }
 
@@ -578,6 +627,13 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         }
 
         if engagedHolds.contains(name) {
+            let heldFor = buttonDownAt[name].map { Date().timeIntervalSince($0) } ?? .infinity
+            let unused = !holdWasUsed.contains(name)
+            let rescueTap = unused
+                && heldFor < tapRescueCeiling
+                && holdIsRescuable(name)
+                && (resolvedButtonBinding(for: name)?.hasTapAnything ?? false)
+
             // LED output lives on the same 0x02 report as buttons. The panel can
             // echo an empty bitmap for one frame; wait before dropping the hold.
             let work = DispatchWorkItem { [weak self] in
@@ -587,10 +643,12 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
                     self.pressedButtonBits.remove(bit)
                 }
                 self.disengageHold(name)
+                if rescueTap { self.performTap(name) }
                 self.updateLeds()
             }
             pendingHoldReleases[name] = work
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: work)
+            holdWasUsed.remove(name)
             return
         }
 
@@ -698,13 +756,22 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
 
         if let psAction = spec.ps {
             let returning = PhotoshopBridge.shared.isPhotoshopLikelyHoldingDocument()
+            // Grab Still means "send the bracket" once photos have been gathered, so
+            // the blend workflow needs no second key.
+            let sendsBracket = !returning && bracketCount > 0 && psAction == "smart_roundtrip"
+            let resolved = sendsBracket ? "bracket_roundtrip" : psAction
+            let opening = sendsBracket
+                ? "Sending \(bracketCount) photo\(bracketCount == 1 ? "" : "s") to Photoshop…"
+                : "Sending to Photoshop…"
             triggerActionDisplay(
                 name: name,
-                label: returning ? "Saving back to Lightroom…" : "Sending to Photoshop…",
+                label: returning ? "Saving back to Lightroom…" : opening,
                 phase: .working,
                 hold: true
             )
-            PhotoshopBridge.shared.executeAction(psAction) { result in
+            PhotoshopBridge.shared.autoAlign = AppSettings.shared.autoAlignLayers
+            if sendsBracket { clearBracketCount() }
+            PhotoshopBridge.shared.executeAction(resolved) { result in
                 DispatchQueue.main.async {
                     switch result {
                     case .success(let message):
@@ -740,7 +807,15 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             for tb in trackballs.values { tb.stopInertia() }
             for tb in overlayTrackballs.values { tb.stopInertia() }
             LightroomBridge.shared.fireAction(action)
-            if SlowCommands.isSlow(action) {
+            if action == BracketCommands.mark {
+                bracketCount += 1
+                triggerActionDisplay(
+                    name: name,
+                    label: "Bracket · \(bracketCount) photo\(bracketCount == 1 ? "" : "s") · Grab Still sends them",
+                    phase: .sent,
+                    duration: 3
+                )
+            } else if SlowCommands.isSlow(action) {
                 triggerActionDisplay(name: name, label: "\(label) · Lightroom is working…", phase: .working, duration: 3)
             } else {
                 triggerActionDisplay(name: name, label: label, phase: .sent)
@@ -775,6 +850,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             guard let self else { return }
             switch outcome {
             case .done(let text):
+                if action == BracketCommands.clearAction { self.clearBracketCount() }
                 self.triggerActionDisplay(name: key, label: text, phase: .done)
                 LightroomBridge.shared.markStale()
                 LightroomBridge.shared.requestFullRefresh(force: true)

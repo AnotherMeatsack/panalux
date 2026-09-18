@@ -225,6 +225,9 @@
     },
     "NEXT_CLIP": {
       "action": "Next"
+    },
+    "PREV_STILL": {
+      "action": "AddOrRemoveFromTargetColl"
     }
   },
   "modifiers": [

@@ -1,0 +1,40 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: macOS
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Build
+        run: swift build -v
+
+      - name: Test
+        run: swift test
+
+      # Catches a broken bundle layout, a missing resource, or a Package.swift
+      # change that only shows up in the hand-assembled app.
+      - name: Package the app
+        run: PANALUX_NATIVE_ONLY=1 ./Scripts/build_app.sh
+
+      - name: Check the bundle
+        run: |
+          test -x "PanaLux.app/Contents/MacOS/PanaLux"
+          test -f "PanaLux.app/Contents/Resources/commands.json"
+          test -f "PanaLux.app/Contents/Resources/default_profile.json"
+          test -f "PanaLux.app/Contents/Resources/micro-color-panel.svg"
+          test -d "PanaLux.app/Contents/Resources/PanaLux Bridge.lrplugin"

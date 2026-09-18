@@ -24,6 +24,7 @@ public class AppSettings: ObservableObject {
     @AppStorage("focusDialControl") public var focusDialControl: String = "LUM_MIX"
     /// When on, Masks put Exposure on the Exposure knob, Contrast on Contrast, and so on.
     @AppStorage("mirrorMaskToBase") public var mirrorMaskToBase: Bool = true
+    @AppStorage("autoAlignLayers") public var autoAlignLayers: Bool = true
     
     private init() {
         migrateHudDurationIfNeeded()
