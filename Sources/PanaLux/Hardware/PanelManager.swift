@@ -31,6 +31,7 @@ public class PanelManager: ObservableObject {
     private var healthCheckTimer: Timer?
     private let healthInterval: TimeInterval = 2.0
     private var lastReportTimestamp: Date = Date()
+    private var lastRearm: Date = .distantPast
 
     // Stable heap buffer for IOKit DMA / input reports
     private let reportBufferSize = 128
@@ -38,11 +39,6 @@ public class PanelManager: ObservableObject {
 
     // POSIX advisory lock to prevent multiple processes competing for panel HID
     private var lockFileDescriptor: Int32 = -1
-
-    // IOHIDDeviceSetReport blocks until the USB transfer completes. HID input
-    // arrives on the main run loop, so writing LEDs there stalled the very
-    // keypress that asked for them. Writes go out on their own serial queue.
-    private let outputQueue = DispatchQueue(label: "com.panalux.panel.output", qos: .userInteractive)
 
     // LED output uses the same report ID as the button bitmap (0x02). The
     // panel often echoes that write as an input with empty bits, which used
@@ -110,10 +106,7 @@ public class PanelManager: ObservableObject {
             mySelf.deviceRemoved(device: device)
         }, context)
 
-        // commonModes, not defaultMode: the default mode stops delivering input the
-        // moment the main run loop enters event tracking, so the panel went dead
-        // while a menu was open or a control in the Map was being dragged.
-        IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
+        IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
 
         let openResult = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         if openResult != kIOReturnSuccess {
@@ -142,7 +135,7 @@ public class PanelManager: ObservableObject {
         }
 
         guard let manager = hidManager else { return }
-        IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
+        IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
         IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         self.hidManager = nil
         DispatchQueue.main.async {
@@ -152,12 +145,9 @@ public class PanelManager: ObservableObject {
 
     private func startWatchdog() {
         healthCheckTimer?.invalidate()
-        healthCheckTimer = Timer(timeInterval: healthInterval, repeats: true) { [weak self] _ in
+        healthCheckTimer = Timer.scheduledTimer(withTimeInterval: healthInterval, repeats: true) { [weak self] _ in
             self?.performHealthCheck()
         }
-        // .common, not the default mode: a timer in the default mode stops firing
-        // while a menu is open or a list is being scrolled.
-        if let healthCheckTimer { RunLoop.main.add(healthCheckTimer, forMode: .common) }
     }
 
     private func stopWatchdog() {
@@ -165,13 +155,24 @@ public class PanelManager: ObservableObject {
         healthCheckTimer = nil
     }
 
-    /// If the panel unplugged, look for it again. Do not poke feature reports
-    /// while it is already connected: a failed GetReport used to tear HID down
-    /// and the lights went out, which looks like the panel died.
+    /// The panel's firmware stops streaming on its own after a short idle, so
+    /// something has to re-arm it or it goes quiet while still looking connected.
+    ///
+    /// The old watchdog read feature report 0x0a first to decide whether to re-arm.
+    /// That read is what used to tear HID down when it failed, taking the lights
+    /// with it. Re-arming is a write of the same report `wake` already sends at
+    /// connect, so it is sent unconditionally instead: no read, nothing to fail.
     private func performHealthCheck() {
-        if connectedDevice == nil {
+        guard let dev = connectedDevice else {
+            // Not connected: pick the panel back up without needing a replug.
             searchAndAttach()
+            return
         }
+        // Stay off the bus while the panel is actually being used.
+        guard Date().timeIntervalSince(lastReportTimestamp) >= 5.0 else { return }
+        guard Date().timeIntervalSince(lastRearm) >= 5.0 else { return }
+        lastRearm = Date()
+        wake(device: dev)
     }
 
     public func reconnect() {
@@ -301,7 +302,7 @@ public class PanelManager: ObservableObject {
         // Every LED write briefly masks key input (see below). Don't write when nothing changed.
         guard activeBits != lastLEDBits else { return }
         lastLEDBits = activeBits
-        suppressButtonInputUntil = Date().addingTimeInterval(0.05)
+        suppressButtonInputUntil = Date().addingTimeInterval(0.08)
         var payload = [UInt8](repeating: 0, count: 9)
         payload[0] = 0x02 // Output Report ID
         for bit in activeBits {
@@ -311,16 +312,13 @@ public class PanelManager: ObservableObject {
                 payload[byteIdx] |= (1 << bitIdx)
             }
         }
-        outputQueue.async {
-            var buf = payload
-            _ = IOHIDDeviceSetReport(
-                dev,
-                kIOHIDReportTypeOutput,
-                CFIndex(0x02),
-                &buf,
-                buf.count
-            )
-        }
+        _ = IOHIDDeviceSetReport(
+            dev,
+            kIOHIDReportTypeOutput,
+            CFIndex(0x02),
+            &payload,
+            payload.count
+        )
     }
 
     /// True when a report 0x02 payload has no button bits set, allowing for the
