@@ -20,7 +20,10 @@ The trail is kept per photo under `~/Library/Application Support/PanaLux/Trails`
 ## Fixed
 
 - **Temperature no longer stops at 3000 K.** The Lightroom plugin, inherited from MIDI2LR, squeezed Temperature into a 3000-9000 K window, so after Auto Color the knob could not go warmer than 3000 K. It also made the notch's Kelvin readout wrong. Temperature now spans Lightroom's own 2000-50000 K, the readout matches Lightroom, and the knob feels exactly as it did.
-- **Grab Still round-trip is reliable.** Photoshop is addressed by document id rather than whatever is frontmost, the hand-off waits for every layer before aligning, and the flatten comes back to Lightroom from a real Photoshop document.
+- **Grab Still sends the whole stack, and the save is checked.** Photoshop is shown again before each send (it was left hidden after a save, and Lightroom handed a hidden Photoshop only the first photo), and the automatic resend retries with Lightroom in front instead of giving up on the first refusal.
+- **A save can no longer vanish.** Every call to Photoshop used to share one script file, so a background check could overwrite a save's script before Photoshop read it. Each call now has its own, one at a time. The file is confirmed on disk before the blend is closed; if Photoshop does not confirm it, the blend stays open and the notch says so. Pressing Grab Still while auto-align is running waits instead of flattening a half-aligned stack.
+- **Nothing fails silently.** A stack that never arrives, a refused resend, or an unconfirmed save is now written to the hand-off log and shown on the notch.
+- **Photoshop is addressed by document id** rather than whatever is frontmost, and the hand-off waits for every layer before aligning.
 - **Lightroom stays in front when Grab Still fires.**
 - **Shareable maps.** Export writes the full setup as one `.panalux.json` anyone can drop on PanaLux.
 - **In-app bug reports.**
