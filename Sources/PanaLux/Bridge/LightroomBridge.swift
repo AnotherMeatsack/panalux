@@ -20,6 +20,8 @@ public class LightroomBridge: ObservableObject {
     /// PanaLux Bridge; the stock MIDI2LR plugin does not send it, so this stays nil there.
     @Published public private(set) var selectedPhotoCount: Int? = nil
     @Published public private(set) var activePhotoID: String? = nil
+    /// Which Lightroom module is in front. Open as Layers behaves differently in each.
+    @Published public private(set) var currentModule: String? = nil
 
     public weak var delegate: LightroomBridgeDelegate?
 
@@ -203,9 +205,11 @@ public class LightroomBridge: ObservableObject {
                 let parts = line.dropFirst("PanaLuxSelection ".count).split(separator: " ")
                 if let count = parts.first.flatMap({ Int($0) }) {
                     let id = parts.count > 1 ? String(parts[1]) : nil
+                    let module = parts.count > 2 ? String(parts[2]) : nil
                     DispatchQueue.main.async {
                         if self.selectedPhotoCount != count { self.selectedPhotoCount = count }
                         if self.activePhotoID != id { self.activePhotoID = id }
+                        if self.currentModule != module { self.currentModule = module }
                     }
                 }
                 continue

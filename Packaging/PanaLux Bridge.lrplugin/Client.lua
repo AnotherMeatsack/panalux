@@ -121,10 +121,11 @@ LrTasks.startAsyncTask(
           local count = photos and #photos or 0
           local target = cat:getTargetPhoto()
           local id = target and tostring(target.localIdentifier) or '0'
-          local signature = id..'/'..count
+          local module = LrApplicationView.getCurrentModuleName() or 'unknown'
+          local signature = id..'/'..count..'/'..module
           if signature ~= LastSelectionSignature then
             LastSelectionSignature = signature
-            MIDI2LR.SERVER:send(string.format('PanaLuxSelection %d %s\n', count, id))
+            MIDI2LR.SERVER:send(string.format('PanaLuxSelection %d %s %s\n', count, id, module))
           end
         end)
       if not ok then LastSelectionSignature = '' end
@@ -1099,6 +1100,7 @@ LrTasks.startAsyncTask(
         while  MIDI2LR.RUNNING and ((LrApplicationView.getCurrentModuleName() ~= 'develop') or (LrApplication.activeCatalog():getTargetPhoto() == nil)) do
           LrTasks.sleep ( .29 )
           Profiles.checkProfile()
+          ReportSelection() -- Library counts too: that is where photos get multi-selected.
         end --sleep away until ended or until develop module activated
         LrTasks.sleep ( .2 ) --avoid "attempt to index field 'libraryImage' (a nil value) on fast machines: LR bug
         if MIDI2LR.RUNNING then --didn't drop out of loop because of program termination

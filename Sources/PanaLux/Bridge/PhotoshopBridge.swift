@@ -152,7 +152,8 @@ public class PhotoshopBridge {
         // Read the count before touching menus: activating Lightroom and walking its
         // menu bar is exactly when a selection can change underneath us.
         expectedLayers = LightroomBridge.shared.selectedPhotoCount ?? 0
-        log("send: \(expectedLayers) photo(s) selected, bracket=\(fromBracket)")
+        let module = LightroomBridge.shared.currentModule ?? "unreported"
+        log("SEND  selected=\(expectedLayers)  module=\(module)  bracket=\(fromBracket)  photoshopDocs=\(jsDocumentCount())")
         if fromBracket {
             try showBracket(pid: lr.processIdentifier)
         }
@@ -191,18 +192,21 @@ public class PhotoshopBridge {
     /// Accessibility only; Photoshop is not spoken to until Lightroom is done.
     private func watchForStack(cameFromBracket: Bool) {
         watchQueue.async {
+            let idleStart = Date()
             guard self.waitForLightroomIdle(timeout: 240) else {
                 self.phase = .blending
+                self.log("WAIT  Lightroom never went idle after \(Int(Date().timeIntervalSince(idleStart)))s")
                 self.report("Lightroom is still working. Press Grab Still again when the stack is open.")
                 return
             }
+            self.log("WAIT  Lightroom idle after \(String(format: "%.1f", Date().timeIntervalSince(idleStart)))s")
             guard let layers = self.waitForStableStack(timeout: 120), layers > 0 else {
                 self.phase = .blending
-                self.log("no stack seen in Photoshop")
+                self.log("RESULT no stack seen in Photoshop; docs=\(self.jsDocumentCount()) \(self.describeDocument())")
                 self.report("Couldn’t see the stack in Photoshop. Align it yourself, then press Grab Still to save.")
                 return
             }
-            self.log("stack settled at \(layers) layer(s), expected \(self.expectedLayers)")
+            self.log("RESULT \(layers) layer(s), expected \(self.expectedLayers)  \(self.describeDocument())")
 
             // A short stack. This is caught before anything has been blended — the stack
             // has only just landed and PanaLux has not said it is ready — so closing it
@@ -339,6 +343,15 @@ public class PhotoshopBridge {
             try? FileManager.default.createDirectory(at: AppPaths.supportDir, withIntermediateDirectories: true)
             try? data.write(to: url)
         }
+    }
+
+    /// Names the open document, so the log shows whether Lightroom sent a layered stack
+    /// or opened a single raw file through the wrong menu item.
+    private func describeDocument() -> String {
+        let probe = (try? photoshopJS(
+            "var s='none'; try { var d=app.activeDocument; s=d.name+' ('+d.layers.length+' layers)'; } catch(e) { s='none'; } s"
+        )) ?? "unreachable"
+        return "doc=\(probe)"
     }
 
     private func jsLayerCount() -> Int {
