@@ -193,7 +193,9 @@ enum LightroomAccessibility {
             if t.contains("photoshop") || t.contains("edit photo") || t.contains("progress") {
                 return true
             }
-            if hasProgressIndicator(window) { return true }
+            // Deliberately not scanning for progress indicators. Lightroom keeps a dozen
+            // windows open and nearly always has one somewhere, so that test was true
+            // forever and anything waiting on it waited for its whole timeout.
         }
         return false
     }

@@ -195,22 +195,36 @@ public class PhotoshopBridge {
         Thread.sleep(forTimeInterval: 0.4)
     }
 
-    /// Wait for Lightroom to finish copying, wait for the stack to stop growing in
-    /// Photoshop, then auto-align it once. All of the Lightroom-side waiting uses
-    /// Accessibility only; Photoshop is not spoken to until Lightroom is done.
+    /// Watch the stack land, then check it is all there.
+    ///
+    /// This used to wait for Lightroom to look idle first, by scanning every window for
+    /// a progress indicator. Lightroom keeps sixteen windows open and there is nearly
+    /// always a progress indicator somewhere in one of them, so that check never once
+    /// returned true: the watcher sat for its full timeout, the layer count was never
+    /// compared against the selection, and a short stack was never caught. What actually
+    /// matters is whether the stack has stopped growing in Photoshop, so that is what is
+    /// watched now.
     private func watchForStack(cameFromBracket: Bool) {
         watchQueue.async {
-            let idleStart = Date()
-            guard self.waitForLightroomIdle(timeout: 240) else {
+            // Let Lightroom get the export under way before anything else happens, and
+            // clear the "Edit Photos" dialog if it is waiting for an answer.
+            for _ in 0..<10 {
+                if let lr = self.lightroomApp() {
+                    _ = LightroomAccessibility.confirmLayersDialog(pid: lr.processIdentifier)
+                }
+                if self.isPhotoshopRunning() { break }
+                Thread.sleep(forTimeInterval: 0.6)
+            }
+            guard self.waitForPhotoshop(timeout: 180) else {
                 self.phase = .blending
-                self.log("WAIT  Lightroom never went idle after \(Int(Date().timeIntervalSince(idleStart)))s")
-                self.report("Lightroom is still working. Press Grab Still again when the stack is open.")
+                self.log("RESULT Photoshop never opened")
+                self.report("Photoshop didn’t open. Press Grab Still again when it has.")
                 return
             }
-            self.log("WAIT  Lightroom idle after \(String(format: "%.1f", Date().timeIntervalSince(idleStart)))s")
-            guard let layers = self.waitForStableStack(timeout: 120), layers > 0 else {
+
+            guard let layers = self.waitForStableStack(timeout: 240), layers > 0 else {
                 self.phase = .blending
-                self.log("RESULT no stack seen in Photoshop; docs=\(self.jsDocumentCount()) \(self.describeDocument())")
+                self.log("RESULT no stack seen in Photoshop; \(self.describeDocument())")
                 self.report("Couldn’t see the stack in Photoshop. Align it yourself, then press Grab Still to save.")
                 return
             }
@@ -223,7 +237,7 @@ public class PhotoshopBridge {
                 self.resentForShortStack = true
                 self.report("Only \(layers) of \(self.expectedLayers) arrived. Sending again…")
                 self.closeActivePhotoshopDocument()
-                Thread.sleep(forTimeInterval: 1.2)
+                Thread.sleep(forTimeInterval: 1.5)
                 if (try? self.sendStack(fromBracket: cameFromBracket)) != nil { return }
                 self.phase = .blending
                 self.log("resend failed")
@@ -238,6 +252,7 @@ public class PhotoshopBridge {
                 self.report("\(layers) of \(self.expectedLayers) photos arrived. Close the document and press Grab Still to try again.")
                 return
             }
+
             if cameFromBracket, let lr = self.lightroomApp() {
                 _ = LightroomAccessibility.pressMenuItem(
                     pid: lr.processIdentifier, titles: ["Clear Quick Collection"], menus: ["File", "Library"]
@@ -255,20 +270,20 @@ public class PhotoshopBridge {
         }
     }
 
-    /// True once Lightroom has had no sheet or progress bar for two checks running.
-    private func waitForLightroomIdle(timeout: TimeInterval) -> Bool {
-        guard let lr = lightroomApp() else { return false }
-        let pid = lr.processIdentifier
+    private func isPhotoshopRunning() -> Bool {
+        NSWorkspace.shared.runningApplications.contains(where: isPhotoshop)
+    }
+
+    /// Photoshop has to be up before its document can be counted. Talking to it while it
+    /// is still launching is what used to steal Lightroom's menu bar mid-export.
+    private func waitForPhotoshop(timeout: TimeInterval) -> Bool {
         let end = Date().addingTimeInterval(timeout)
-        // Give Lightroom a moment to put its progress bar up before believing it is idle.
-        Thread.sleep(forTimeInterval: 1.5)
         while Date() < end {
-            if !LightroomAccessibility.isWorkingSheetVisible(pid: pid) {
-                Thread.sleep(forTimeInterval: 0.8)
-                if !LightroomAccessibility.isWorkingSheetVisible(pid: pid) { return true }
+            if isPhotoshopRunning() { return true }
+            if let lr = lightroomApp() {
+                _ = LightroomAccessibility.confirmLayersDialog(pid: lr.processIdentifier)
             }
-            _ = LightroomAccessibility.confirmLayersDialog(pid: pid)
-            Thread.sleep(forTimeInterval: 0.5)
+            Thread.sleep(forTimeInterval: 0.8)
         }
         return false
     }
@@ -282,7 +297,7 @@ public class PhotoshopBridge {
             let count = jsLayerCount()
             if count > 0 && count == previous {
                 stableRuns += 1
-                if stableRuns >= 2 { return count }
+                if stableRuns >= 3 { return count }
             } else {
                 stableRuns = 0
             }
