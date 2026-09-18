@@ -27,6 +27,10 @@ public class PhotoshopBridge {
     }
 
     private var phaseValue: Phase = .idle
+    private var sendStartedAt: Date = .distantPast
+    /// After this long, a press means the stack has landed and Lightroom is stuck on
+    /// some unrelated dialog. Saving beats being told to wait forever.
+    private let sendingGiveUp: TimeInterval = 30
     public private(set) var phase: Phase {
         get { busyLock.lock(); defer { busyLock.unlock() }; return phaseValue }
         set { busyLock.lock(); phaseValue = newValue; busyLock.unlock() }
@@ -96,8 +100,20 @@ public class PhotoshopBridge {
         switch phase {
         case .sending:
             // Lightroom is mid-copy. Talking to Photoshop now steals the Photo menu
-            // and can abort the stack, so say so and leave it alone.
-            return "Still sending to Photoshop…"
+            // and can abort the stack, so normally say so and leave it alone.
+            guard Date().timeIntervalSince(sendStartedAt) > sendingGiveUp else {
+                return "Still sending to Photoshop…"
+            }
+            // Long enough that the watcher is stuck on something else. Save if there
+            // is anything to save, rather than leaving the key dead.
+            if jsDocumentCount() > 0 {
+                let saved = try flattenAndSave()
+                phase = .idle
+                returnToDevelop()
+                return saved
+            }
+            phase = .idle
+            return try sendStack(fromBracket: fromBracket)
 
         case .blending:
             if jsDocumentCount() > 0 {
@@ -136,6 +152,7 @@ public class PhotoshopBridge {
             _ = LightroomAccessibility.confirmLayersDialog(pid: lr.processIdentifier)
             Thread.sleep(forTimeInterval: 0.2)
         }
+        sendStartedAt = Date()
         phase = .sending
         watchForStack(cameFromBracket: fromBracket)
         return fromBracket ? "Sending the bracket to Photoshop…" : "Sending to Photoshop…"

@@ -60,6 +60,7 @@ Every key has separate **On tap** and **While held** assignments. The table belo
 | **Hold H / Lite** | Detail, including sharpening and noise reduction. |
 | **Hold Play Still** | Effects, including vignette, grain, and dehaze. |
 | **Hold Grab Still** | Lens and Optics, including corrections and Lens Blur. Tap instead for the Photoshop round-trip. |
+| **Tap Previous Still** | Gathers this photo into a bracket. Grab Still then sends the gathered frames. |
 | **Hold Play** | Presets. Step through presets, adjust the amount, and trigger slots 1-10. Assign the Lightroom presets to those slots in the plugin options. |
 
 ## Hold Add Node. Pick a mask.
@@ -114,6 +115,8 @@ Choose Full, Minimal, or Hidden. Set the readout to tuck away after 2, 4, 8, 15,
 
 Bypass selects all photos in the filmstrip. Disable opens Sync Settings; press it again to click Synchronize. Copy and Paste handle Develop settings. Undo, Redo, and Reset are available too.
 
+Previous Still gathers photos into a bracket for the Photoshop round-trip. See [Gathering a bracket](#gathering-a-bracket).
+
 These actions use Lightroom's menus and shortcuts, so macOS asks for Accessibility permission.
 
 ## Safety
@@ -130,9 +133,21 @@ At the end of the hands-on tour, choose **Keep Changes** or **Put the Photo Back
 
 ## Photoshop
 
-Tap Grab Still to open the selected photos as layers in Photoshop, auto-align them, flatten, save, and bring Lightroom forward again. This round-trip needs Accessibility permission.
+Tap Grab Still to open the selected photos as layers in Photoshop. PanaLux waits for the whole stack to arrive, then auto-aligns it once. Blend, then tap Grab Still again: it flattens, saves, and brings Lightroom forward. This round-trip needs Accessibility permission.
+
+Auto-align can be turned off in Settings, and **Auto-Align Layers** can be put on its own key.
 
 Holding Grab Still does a different job: it opens the Lens and Optics controls.
+
+### Gathering a bracket
+
+Lightroom's arrow keys always collapse a selection down to one photo, so there is no way to build a scattered selection from the keyboard. Marking photos is different: it never disturbs what is selected.
+
+Walk the filmstrip with Next and Previous. Tap **Previous Still** on each frame you want and skip the ones you don't — one, two, three, skip four, five, six. The readout counts them as you go, and tapping a frame again drops it. Then press Grab Still: only the gathered frames open as layers, aligned, and the bracket empties.
+
+This is useful when a bracket has a frame you don't want, such as one where the camera moved. **Show Bracket** and **Clear Bracket** can go on any key.
+
+Marking uses Lightroom's target collection, which is the Quick Collection unless you have set another one.
 
 ## DaVinci Resolve
 

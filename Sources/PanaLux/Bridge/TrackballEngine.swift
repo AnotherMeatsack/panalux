@@ -91,9 +91,12 @@ public class TrackballEngine {
     private func startInertiaIfNeeded() {
         guard inertiaTimer == nil else { return }
 
-        inertiaTimer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in
+        inertiaTimer = Timer(timeInterval: 0.016, repeats: true) { [weak self] _ in
             self?.stepInertia()
         }
+        // .common, not the default mode: a timer in the default mode stops firing
+        // while a menu is open or a list is being scrolled.
+        if let inertiaTimer { RunLoop.main.add(inertiaTimer, forMode: .common) }
     }
 
     private func stepInertia() {

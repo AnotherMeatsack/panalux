@@ -54,7 +54,15 @@ public struct QuickReferenceView: View {
                     ])
                     section("Grab Still · Photoshop", items: [
                         "Select the frames in Lightroom and press Grab Still. They open as layers in Photoshop and auto-align.",
-                        "Blend in Photoshop, then press Grab Still again. It flattens, saves, and returns to Lightroom."
+                        "Blend in Photoshop, then press Grab Still again. It flattens, saves, and returns to Lightroom.",
+                        "Auto-align can be turned off in Settings. Auto-Align Layers can also go on its own key."
+                    ])
+                    section("Gathering a bracket", items: [
+                        "Arrow keys in Lightroom always collapse a selection to one photo, so scattered frames are gathered instead of selected.",
+                        "Walk the filmstrip with Next and Previous. Tap Previous Still on each frame you want. Skip the ones you don’t.",
+                        "The readout counts them. Tap Previous Still again on a frame to drop it.",
+                        "Press Grab Still. Only the gathered frames open as layers, aligned, and the bracket empties.",
+                        "Clear Bracket and Show Bracket can go on any key if you want them."
                     ])
                     section("Notch HUD", items: [
                         "Slides out under the menu bar when you touch something and tucks away after 4 seconds.",

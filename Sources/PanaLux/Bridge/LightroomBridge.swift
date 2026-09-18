@@ -79,7 +79,7 @@ public class LightroomBridge: ObservableObject {
     /// Lightroom may open after PanaLux, or quit and come back. Keep knocking.
     private func startRetryTimer() {
         retryTimer?.invalidate()
-        retryTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+        retryTimer = Timer(timeInterval: 3.0, repeats: true) { [weak self] _ in
             guard let self else { return }
             self.queue.async {
                 if !self.sendReady || !self.recvReady {
@@ -87,6 +87,9 @@ public class LightroomBridge: ObservableObject {
                 }
             }
         }
+        // .common, not the default mode: a timer in the default mode stops firing
+        // while a menu is open or a list is being scrolled.
+        if let retryTimer { RunLoop.main.add(retryTimer, forMode: .common) }
     }
 
     private func reconnectSockets() {

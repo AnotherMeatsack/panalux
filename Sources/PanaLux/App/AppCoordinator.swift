@@ -35,9 +35,12 @@ public class AppCoordinator: ObservableObject {
 
     public func startMonitoring() {
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+        timer = Timer(timeInterval: 2.0, repeats: true) { [weak self] _ in
             self?.checkRunningApps()
         }
+        // .common, not the default mode: a timer in the default mode stops firing
+        // while a menu is open or a list is being scrolled.
+        if let timer { RunLoop.main.add(timer, forMode: .common) }
     }
 
     private static func matches(_ app: NSRunningApplication, _ needles: [String]) -> Bool {

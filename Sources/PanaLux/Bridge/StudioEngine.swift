@@ -104,7 +104,15 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     @Published public private(set) var maskPlacing: Bool = false
     /// Photos gathered for the next Photoshop blend. Counted from the marks PanaLux
     /// sent, so it is a running tally rather than a reading of Lightroom's collection.
-    @Published public private(set) var bracketCount: Int = 0
+    /// Lightroom keeps the Quick Collection across launches, so this is kept too —
+    /// otherwise quitting PanaLux mid-bracket would silently send the wrong photos.
+    @Published public private(set) var bracketCount: Int = UserDefaults.standard.integer(forKey: "bracketCount") {
+        didSet { UserDefaults.standard.set(bracketCount, forKey: "bracketCount") }
+    }
+
+    func noteBracketMark() {
+        bracketCount += 1
+    }
 
     public func clearBracketCount() {
         guard bracketCount != 0 else { return }
@@ -808,7 +816,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             for tb in overlayTrackballs.values { tb.stopInertia() }
             LightroomBridge.shared.fireAction(action)
             if action == BracketCommands.mark {
-                bracketCount += 1
+                noteBracketMark()
                 triggerActionDisplay(
                     name: name,
                     label: "Bracket · \(bracketCount) photo\(bracketCount == 1 ? "" : "s") · Grab Still sends them",
@@ -1783,11 +1791,14 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         let wait = duration ?? AppSettings.shared.hudDuration
         guard wait < 120 else { return } // 120s represents "Always Visible"
 
-        collapseTimer = Timer.scheduledTimer(withTimeInterval: wait, repeats: false) { [weak self] _ in
+        collapseTimer = Timer(timeInterval: wait, repeats: false) { [weak self] _ in
             DispatchQueue.main.async {
                 self?.collapseToIdle()
             }
         }
+        // .common, not the default mode: a timer in the default mode stops firing
+        // while a menu is open or a list is being scrolled.
+        if let collapseTimer { RunLoop.main.add(collapseTimer, forMode: .common) }
     }
 
     private func collapseToIdle() {

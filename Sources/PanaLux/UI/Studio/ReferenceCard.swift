@@ -27,7 +27,7 @@ public enum ReferenceCard {
         func tapText(_ b: ButtonBinding?) -> String {
             guard let b else { return "" }
             if let a = b.action { return label(a) }
-            if b.ps != nil { return "Open as Layers in Photoshop" }
+            if let ps = b.ps { return label(ps) }
             if let l = b.layer { return "Toggle \(esc(engine.layerTitle(l)))" }
             if let v = b.set_variant { return "Bank: \(esc(v))" }
             if let prog = b.tapProgram { return esc(prog.summary) }

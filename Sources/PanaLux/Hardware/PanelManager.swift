@@ -110,7 +110,10 @@ public class PanelManager: ObservableObject {
             mySelf.deviceRemoved(device: device)
         }, context)
 
-        IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
+        // commonModes, not defaultMode: the default mode stops delivering input the
+        // moment the main run loop enters event tracking, so the panel went dead
+        // while a menu was open or a control in the Map was being dragged.
+        IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
 
         let openResult = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         if openResult != kIOReturnSuccess {
@@ -139,7 +142,7 @@ public class PanelManager: ObservableObject {
         }
 
         guard let manager = hidManager else { return }
-        IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
+        IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
         IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         self.hidManager = nil
         DispatchQueue.main.async {
@@ -149,9 +152,12 @@ public class PanelManager: ObservableObject {
 
     private func startWatchdog() {
         healthCheckTimer?.invalidate()
-        healthCheckTimer = Timer.scheduledTimer(withTimeInterval: healthInterval, repeats: true) { [weak self] _ in
+        healthCheckTimer = Timer(timeInterval: healthInterval, repeats: true) { [weak self] _ in
             self?.performHealthCheck()
         }
+        // .common, not the default mode: a timer in the default mode stops firing
+        // while a menu is open or a list is being scrolled.
+        if let healthCheckTimer { RunLoop.main.add(healthCheckTimer, forMode: .common) }
     }
 
     private func stopWatchdog() {
