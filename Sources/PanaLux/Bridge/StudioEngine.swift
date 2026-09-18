@@ -1891,6 +1891,18 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     }
 
     private func pushLeds() {
+        // Writing LEDs briefly masks key input on this panel, because the lights share
+        // report 0x02 with the button bitmap. The report most likely to land inside that
+        // mask is the *release* of the key being pressed right now — and a swallowed
+        // release leaves the key looking held, so a quick tap turned into a mode.
+        // Hold the write until the keys are up, or until a hold has genuinely engaged.
+        if !pressedButtonBits.isEmpty && engagedHolds.isEmpty && latchedProgramButton == nil {
+            ledWorkItem?.cancel()
+            let retry = DispatchWorkItem { [weak self] in self?.pushLeds() }
+            ledWorkItem = retry
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.09, execute: retry)
+            return
+        }
         let mode = AppSettings.shared.ledMode
         var bits = Set<Int>()
 

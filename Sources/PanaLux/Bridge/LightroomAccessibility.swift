@@ -73,19 +73,22 @@ enum LightroomAccessibility {
             cancel(photo)
             throw axError("Couldn’t find Photo → Edit In.")
         }
-        showSubmenu(editIn)
-        usleep(550_000)
+        guard let editMenu = openSubmenu(editIn) else {
+            cancelSinglePhotoEdit(pid: pid)
+            cancel(photo)
+            throw axError("Edit In submenu didn’t open.")
+        }
 
         // Lightroom sometimes fires “Edit in Photoshop” (one photo) when Edit In opens.
         cancelSinglePhotoEdit(pid: pid)
 
-        guard let editMenu = firstMenu(from: editIn) else {
-            cancel(photo)
-            throw axError("Edit In submenu didn’t open.")
-        }
         guard let openLayers = menuItem(editMenu, containing: "Open as Layers", excluding: "Smart Object") else {
             cancel(photo)
             throw axError("Open as Layers wasn’t in Photo → Edit In. Select the photos in the filmstrip.")
+        }
+        guard isEnabled(openLayers) else {
+            cancel(photo)
+            throw axError("Open as Layers is greyed out. Lightroom needs two or more photos selected in the filmstrip.")
         }
         press(openLayers)
     }
@@ -285,11 +288,24 @@ enum LightroomAccessibility {
         return (value as? Bool) ?? true
     }
 
-    private static func showSubmenu(_ element: AXUIElement) {
-        let shown = AXUIElementPerformAction(element, kAXShowMenuAction as CFString)
-        if shown != .success {
-            press(element)
+    /// Opens a submenu and waits until it actually has items in it.
+    ///
+    /// This must never fall back to pressing the parent. Pressing “Edit In” *activates*
+    /// it, and activating a submenu parent runs its first item — which is “Edit in
+    /// Adobe Photoshop”, the single-photo command. That is why the first Grab Still of
+    /// a session sent one photo and the second one, with the menu already built and
+    /// cached by Lightroom, sent the whole stack.
+    private static func openSubmenu(_ element: AXUIElement) -> AXUIElement? {
+        for attempt in 0..<14 {
+            if let menu = firstMenu(from: element),
+               let items = copyList(menu, kAXChildrenAttribute as String),
+               !items.isEmpty {
+                return menu
+            }
+            _ = AXUIElementPerformAction(element, kAXShowMenuAction as CFString)
+            usleep(UInt32(120_000 + attempt * 30_000))
         }
+        return nil
     }
 
     private static func cancel(_ element: AXUIElement) {
