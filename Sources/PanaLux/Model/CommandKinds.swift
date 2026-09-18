@@ -79,8 +79,14 @@ public enum RewindCommands {
     public static let prefix = "rewind:"
     /// Analog: turn to move the playhead through the recording.
     public static let scrub = "rewind:scrub"
-    /// Analog: how far toward the scrub point, 0–100%.
-    public static let strength = "rewind:strength"
+    /// Analog: the playback speed dial. The fine one is for slow motion, the coarse one for
+    /// getting anywhere quickly. Clockwise is faster on both.
+    public static let speedFine = "rewind:speed_fine"
+    public static let speed = "rewind:speed"
+    /// Keys: play forward, play backward, and stop where it is.
+    public static let play = "rewind:play"
+    public static let playReverse = "rewind:play_rev"
+    public static let pause = "rewind:pause"
     public static let tip = "rewind:tip"
     public static let mark = "rewind:mark"
     public static let branch = "rewind:branch"
@@ -92,12 +98,16 @@ public enum RewindCommands {
 
     public static func isRewind(_ id: String) -> Bool { id.hasPrefix(prefix) }
     /// Knobs and rings drive these; everything else is a key.
-    public static func isAnalog(_ id: String) -> Bool { id == scrub || id == strength }
+    public static func isAnalog(_ id: String) -> Bool { id == scrub || id == speed || id == speedFine }
 
     public static func title(_ id: String) -> String {
         switch id {
         case scrub: return "Scrub the trail"
-        case strength: return "Rewind strength"
+        case speed: return "Playback speed"
+        case speedFine: return "Playback speed, fine"
+        case play: return "Play"
+        case playReverse: return "Play backward"
+        case pause: return "Pause"
         case tip: return "Back to now"
         case mark: return "Mark this"
         case branch: return "Branch here"

@@ -49,6 +49,39 @@ final class EditTrailTests: XCTestCase {
         XCTAssertEqual(playback.value(of: "Exposure", at: 31.0) ?? 0, 0.2, accuracy: 0.0001)
     }
 
+    func testEveryChangeIsAStepAndTheEndsAreAlwaysPlacesToStand() {
+        var trail = EditTrail(photoID: "cat:1")
+        // A trackball's hue and saturation land a few milliseconds apart: one move, one step.
+        trail.record(param: "GradeHue", value: 0.30, at: 2.000)
+        trail.record(param: "GradeSat", value: 0.40, at: 2.010)
+        trail.record(param: "Exposure", value: 0.60, at: 5.0)
+        trail.record(param: "Exposure", value: 0.70, at: 9.0)
+        let steps = trail.playback().stepTimes
+        XCTAssertEqual(steps.count, 4, "start, the trackball move, two exposure changes")
+        XCTAssertEqual(steps.first ?? -1, trail.playback().start, accuracy: 0.0001)
+        XCTAssertEqual(steps.last ?? -1, 9.0, accuracy: 0.0001, "the last step is where it ends up")
+    }
+
+    func testOneClickIsOneStepAndBackAgainLandsOnTheSameSpot() {
+        var trail = EditTrail(photoID: "cat:1")
+        for (i, v) in [0.51, 0.52, 0.53, 0.54, 0.55].enumerated() {
+            trail.record(param: "Exposure", value: v, at: 10.0 + Double(i) * 2.0)   // 10, 12, 14, 16, 18
+        }
+        let playback = trail.playback()
+        let steps = playback.stepTimes
+        let last = steps.count - 1
+        XCTAssertEqual(playback.step(from: steps[last], by: -1), steps[last - 1], accuracy: 0.0001)
+        XCTAssertEqual(playback.step(from: steps[last], by: -3), steps[last - 3], accuracy: 0.0001)
+        XCTAssertEqual(playback.step(from: steps[last - 3], by: 3), steps[last], accuracy: 0.0001)
+        // From between two steps, forward lands ahead and back lands behind: neither skips one.
+        let between = (steps[2] + steps[3]) / 2
+        XCTAssertEqual(playback.step(from: between, by: 1), steps[3], accuracy: 0.0001)
+        XCTAssertEqual(playback.step(from: between, by: -1), steps[2], accuracy: 0.0001)
+        // The ends park; they do not wrap.
+        XCTAssertEqual(playback.step(from: steps[0], by: -5), steps[0], accuracy: 0.0001)
+        XCTAssertEqual(playback.step(from: steps[last], by: 99), steps[last], accuracy: 0.0001)
+    }
+
     func testKeyframeSeedsParametersTheStreamNeverSaw() {
         var trail = EditTrail(photoID: "cat:1")
         _ = trail.addKeyframe(TrailKeyframe(t: 0, kind: .open, label: "Opened",
@@ -321,24 +354,6 @@ final class RewindEngineTests: XCTestCase {
         engine.jumpToTip()
         XCTAssertEqual(lightroom.values["Exposure"] ?? 0, 0.9, accuracy: 0.0001)
         XCTAssertTrue(engine.state.isAtTip)
-        XCTAssertEqual(engine.state.strength, 1.0, accuracy: 0.0001)
-    }
-
-    func testStrengthTakesThePhotoPartOfTheWayBack() {
-        start()
-        edit("Exposure", 1.0, secondsFromStart: 4.0)
-        engine.beginRewind()
-        engine.scrub(units: -600, now: Date())
-        XCTAssertEqual(lightroom.values["Exposure"] ?? 0, 0.5, accuracy: 0.05)
-
-        // Half strength is half way between now and the scrub point.
-        engine.adjustStrength(units: -125)
-        XCTAssertEqual(engine.state.strength, 0.5, accuracy: 0.02)
-        XCTAssertEqual(lightroom.values["Exposure"] ?? 0, 0.75, accuracy: 0.05)
-
-        engine.adjustStrength(units: -1000)
-        XCTAssertEqual(engine.state.strength, 0.0, accuracy: 0.0001, "strength stops at 0")
-        XCTAssertEqual(lightroom.values["Exposure"] ?? 0, 1.0, accuracy: 0.0001)
     }
 
     func testPeekShowsNowWithoutLeavingThePast() {
@@ -542,5 +557,253 @@ final class TrailTrackTests: XCTestCase {
         XCTAssertEqual(faraway, 0.0, accuracy: 0.0001, "a landmark far from the playhead has no label at all")
         // Symmetric: coming and going look the same.
         XCTAssertEqual(TrailTrack.nearness(of: headX - 60, to: headX), nearby, accuracy: 0.0001)
+    }
+}
+
+
+/// The feel of Rewind: exact steps at a crawl, smooth travel at speed, and a transport that
+/// replays a session at a pace you set. None of these need a panel or a socket.
+final class RewindTransportTests: XCTestCase {
+    private var dir: URL!
+    private var lightroom: FakeLightroom!
+    private var engine: RewindEngine!
+
+    override func setUp() {
+        super.setUp()
+        dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        lightroom = FakeLightroom()
+        engine = RewindEngine()
+        engine.storeDirectory = dir
+        engine.output = lightroom
+        engine.knobParams = [(control: "Y_GAMMA", param: "Exposure")]
+        engine.clickUnits = 40
+        engine.acceleration = 0.5
+        lightroom.values = ["Exposure": 0.5]
+        engine.setActivePhoto("cat:1")
+    }
+
+    override func tearDown() {
+        engine.endRewind(announce: false)
+        engine.setActivePhoto(nil)          // writes what is pending, so nothing lands on a deleted folder
+        try? FileManager.default.removeItem(at: dir)
+        super.tearDown()
+    }
+
+    private func edit(_ value: Double, at seconds: TimeInterval, param: String = "Exposure") {
+        lightroom.values[param] = value
+        let branch = engine.trail!.activeBranch
+        engine.record(param: param, value: value,
+                      at: branch.clockOrigin.addingTimeInterval(seconds - branch.forkTime))
+    }
+
+    /// Ten separate edits, ten seconds apart.
+    private func tenEdits() {
+        for i in 1...10 { edit(0.5 + Double(i) * 0.03, at: Double(i) * 10.0) }
+    }
+
+    func testOneClickOfTheRingIsExactlyOneStep() {
+        tenEdits()
+        engine.beginRewind()
+        let steps = engine.trail!.playback().stepTimes
+        XCTAssertEqual(engine.state.playhead, steps.last ?? -1, accuracy: 0.0001)
+
+        engine.scrub(units: -40, now: Date())
+        XCTAssertEqual(engine.state.playhead, steps[steps.count - 2], accuracy: 0.0001)
+        engine.scrub(units: -40, now: Date().addingTimeInterval(0.6))
+        XCTAssertEqual(engine.state.playhead, steps[steps.count - 3], accuracy: 0.0001)
+        // Forward again lands where it was: the same numbers, not something close to them.
+        engine.scrub(units: 40, now: Date().addingTimeInterval(1.2))
+        XCTAssertEqual(engine.state.playhead, steps[steps.count - 2], accuracy: 0.0001)
+        XCTAssertEqual(lightroom.values["Exposure"] ?? 0, 0.5 + 9 * 0.03, accuracy: 0.0001,
+                       "the photo is exactly the edit you stopped on")
+    }
+
+    func testASlowTurnNeverSkipsAStep() {
+        tenEdits()
+        engine.beginRewind()
+        let steps = engine.trail!.playback().stepTimes
+        // Ten small packets, a quarter second apart: a careful hand. 10 × 12 units = 3 clicks.
+        var now = Date()
+        for _ in 0..<10 {
+            now = now.addingTimeInterval(0.25)
+            engine.scrub(units: -12, now: now)
+        }
+        XCTAssertEqual(engine.state.playhead, steps[steps.count - 1 - 3], accuracy: 0.0001)
+    }
+
+    func testTurningBackTheOtherWayStartsAFreshClick() {
+        tenEdits()
+        engine.beginRewind()
+        let steps = engine.trail!.playback().stepTimes
+        var now = Date()
+        now = now.addingTimeInterval(0.3); engine.scrub(units: -30, now: now)   // nearly a click back
+        now = now.addingTimeInterval(0.3); engine.scrub(units: 30, now: now)    // and reverse
+        XCTAssertEqual(engine.state.playhead, steps.last ?? -1, accuracy: 0.0001,
+                       "wobbling the ring at a click's edge does not move the playhead")
+    }
+
+    func testTheRingStepsToWhatChangedAndSaysSo() {
+        tenEdits()
+        engine.beginRewind()
+        engine.scrub(units: -40, now: Date())
+        XCTAssertTrue(engine.state.caption.contains("Exposure"), engine.state.caption)
+        XCTAssertEqual(engine.state.stepCount, engine.trail!.playback().stepTimes.count)
+        XCTAssertEqual(engine.state.stepNumber, engine.state.stepCount - 1)
+    }
+
+    func testSlowIsAlwaysOneStepAndTravelGrowsSmoothlyWithSpeed() {
+        for steps in [40, 640, 5_000, 40_000] {
+            XCTAssertEqual(RewindEngine.jogMultiplier(rate: 0, stepCount: steps, acceleration: 0.5), 1)
+            XCTAssertEqual(RewindEngine.jogMultiplier(rate: 10, stepCount: steps, acceleration: 1), 1,
+                           "a deliberate turn is one step per click at any length")
+            var previous = 1
+            for rate in stride(from: 0.0, through: 120.0, by: 5.0) {
+                let m = RewindEngine.jogMultiplier(rate: rate, stepCount: steps, acceleration: 0.5)
+                XCTAssertGreaterThanOrEqual(m, previous, "faster never means slower")
+                previous = m
+            }
+        }
+        // A hard spin covers a long session in a couple of dozen clicks; a short one stays fine.
+        let long = RewindEngine.jogMultiplier(rate: 90, stepCount: 40_000, acceleration: 0.5)
+        XCTAssertGreaterThan(long, 400)
+        XCTAssertLessThanOrEqual(long, 40_000 / 40 * 2)
+        let short = RewindEngine.jogMultiplier(rate: 90, stepCount: 40, acceleration: 0.5)
+        XCTAssertLessThanOrEqual(short, 2, "thirty seconds of editing does not need to be crossed at speed")
+        // The dial changes the top, never the bottom.
+        XCTAssertLessThan(RewindEngine.jogMultiplier(rate: 90, stepCount: 5_000, acceleration: 0),
+                          RewindEngine.jogMultiplier(rate: 90, stepCount: 5_000, acceleration: 1))
+    }
+
+    func testPlayReplaysAtTheDialsSpeedAndPauseHoldsThePhoto() {
+        // A burst of editing, then a real pause, then another burst.
+        for i in 0...20 { edit(0.5 + Double(i) * 0.01, at: 2.0 + Double(i) * 0.05) }
+        engine.beginRewind()
+        engine.scrub(units: -40_000, now: Date())                       // all the way to the start
+        XCTAssertEqual(engine.state.playhead, engine.trail!.playback().start, accuracy: 0.0001)
+
+        engine.play(forward: true)
+        XCTAssertTrue(engine.isPlaying)
+        engine.advancePlayback(by: 1.0)                                 // 1× : a second passes
+        XCTAssertEqual(engine.state.playhead, 1.0, accuracy: 0.001)
+
+        // Halve it: half the time passes in the same second.
+        engine.adjustSpeed(units: -154, fine: false)                    // exp(-154 × 0.0045) ≈ 0.5
+        XCTAssertEqual(engine.state.rate, 0.5, accuracy: 0.02)
+        let before = engine.state.playhead
+        engine.advancePlayback(by: 1.0)
+        XCTAssertEqual(engine.state.playhead - before, engine.state.rate, accuracy: 0.05)
+
+        engine.pausePlayback()
+        XCTAssertFalse(engine.isPlaying)
+        let held = engine.state.playhead
+        let photo = lightroom.values["Exposure"]
+        engine.advancePlayback(by: 5.0)
+        XCTAssertEqual(engine.state.playhead, held, accuracy: 0.0001, "paused means paused")
+        XCTAssertEqual(lightroom.values["Exposure"], photo)
+    }
+
+    func testAQuietStretchPlaysThroughInAFractionOfItsLength() {
+        edit(0.6, at: 1.0)
+        edit(0.9, at: 601.0)                                            // ten minutes later
+        engine.beginRewind()
+        engine.scrub(units: -40_000, now: Date())
+        // Stand just after the first edit and play: the ten minutes must not take ten minutes.
+        engine.scrub(units: 40, now: Date().addingTimeInterval(1))      // one click: onto the first edit
+        let start = engine.state.playhead
+        XCTAssertEqual(start, 1.0, accuracy: 0.0001)
+        engine.play(forward: true)
+        engine.advancePlayback(by: 0.6)
+        XCTAssertGreaterThan(engine.state.playhead - start, 300, "the quiet is compressed")
+        XCTAssertLessThanOrEqual(engine.state.playhead, 601.0 + 0.0001)
+    }
+
+    func testPlayStopsAtNowAndPressingTheSameDirectionPauses() {
+        edit(0.6, at: 1.0)
+        edit(0.7, at: 2.0)
+        engine.beginRewind()
+        engine.scrub(units: -40_000, now: Date())
+        engine.play(forward: true)
+        engine.play(forward: true)                                      // same key again
+        XCTAssertFalse(engine.isPlaying, "one key starts it and stops it")
+
+        engine.play(forward: true)
+        engine.advancePlayback(by: 30)                                  // far more than there is
+        XCTAssertFalse(engine.isPlaying, "it stops on its own at now")
+        XCTAssertTrue(engine.state.isAtTip)
+        XCTAssertEqual(lightroom.values["Exposure"] ?? 0, 0.7, accuracy: 0.0001)
+
+        // At now there is nowhere further forward to play.
+        engine.play(forward: true)
+        XCTAssertFalse(engine.isPlaying)
+    }
+
+    func testPlayBackwardWalksTheEditsBackOut() {
+        for i in 1...5 { edit(0.5 + Double(i) * 0.05, at: Double(i)) }
+        engine.beginRewind()
+        engine.play(forward: false)
+        XCTAssertTrue(engine.state.isReverse)
+        engine.advancePlayback(by: 2.0)
+        XCTAssertLessThan(engine.state.playhead, engine.state.tip)
+        XCTAssertLessThan(lightroom.values["Exposure"] ?? 1, 0.5 + 5 * 0.05)
+    }
+
+    func testTakingHoldOfTheRingStopsPlayback() {
+        tenEdits()
+        engine.beginRewind()
+        engine.scrub(units: -40_000, now: Date())
+        engine.play(forward: true)
+        XCTAssertTrue(engine.isPlaying)
+        engine.scrub(units: 40, now: Date().addingTimeInterval(1))
+        XCTAssertFalse(engine.isPlaying, "your hand on the ring wins over the replay")
+    }
+
+    func testLettingGoOfUndoStopsPlayback() {
+        tenEdits()
+        engine.beginRewind()
+        engine.scrub(units: -40_000, now: Date())
+        engine.play(forward: true)
+        engine.endRewind()
+        XCTAssertFalse(engine.isPlaying)
+        let held = engine.state.playhead
+        engine.advancePlayback(by: 5)
+        XCTAssertEqual(engine.state.playhead, held, accuracy: 0.0001)
+    }
+
+    func testTheSpeedDialCatchesAtNormalSpeedAndLeavesWithAFirmerTurn() {
+        tenEdits()
+        engine.beginRewind()
+        engine.adjustSpeed(units: -300, fine: false)
+        XCTAssertLessThan(engine.state.rate, 1)
+        engine.adjustSpeed(units: 600, fine: false)                     // sweeps straight through 1×
+        XCTAssertEqual(engine.state.rate, 1.0, accuracy: 0.0001, "it lands on 1× instead of overshooting")
+        engine.adjustSpeed(units: 10, fine: false)                      // a nudge is not enough to leave
+        XCTAssertEqual(engine.state.rate, 1.0, accuracy: 0.0001)
+        engine.adjustSpeed(units: 100, fine: false)
+        XCTAssertGreaterThan(engine.state.rate, 1.2)
+    }
+
+    func testTheDialSpansSlowMotionToFastForwardAndStopsAtTheEnds() {
+        tenEdits()
+        engine.beginRewind()
+        engine.adjustSpeed(units: -100_000, fine: false)
+        XCTAssertEqual(engine.state.rate, RewindEngine.minSpeed, accuracy: 0.0001)
+        engine.adjustSpeed(units: 100_000, fine: false)
+        engine.adjustSpeed(units: 100_000, fine: false)
+        XCTAssertEqual(engine.state.rate, RewindEngine.maxSpeed, accuracy: 0.0001)
+        XCTAssertEqual(RewindState.rateText(1), "1×")
+        XCTAssertEqual(RewindState.rateText(0.25), "0.25×")
+        XCTAssertEqual(RewindState.rateText(12.4), "12×")
+    }
+
+    func testTheFineDialMovesSlowerThanTheCoarseOne() {
+        tenEdits()
+        engine.beginRewind()
+        engine.adjustSpeed(units: -150, fine: true)
+        let fine = engine.state.rate
+        engine.adjustSpeed(units: 150, fine: true)                      // back to 1×
+        engine.adjustSpeed(units: -150, fine: false)
+        let coarse = engine.state.rate
+        XCTAssertGreaterThan(fine, coarse, "the same turn moves the fine dial less")
     }
 }

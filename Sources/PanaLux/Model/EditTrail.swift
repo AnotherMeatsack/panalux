@@ -287,6 +287,13 @@ public struct TrailPlayback: Equatable {
     public let tip: TimeInterval
     /// Where each branch left this path, for the readout's forks.
     public let forks: [(time: TimeInterval, name: String, id: String)]
+    /// Every moment something changed, oldest first, with the start and the tip as the two ends.
+    /// One step is one thing you did, so the ring can walk them one at a time and any value you
+    /// ever had is somewhere it can stop, whether the session was thirty seconds or two hours.
+    public let stepTimes: [TimeInterval]
+    /// Samples closer together than this are one step: a trackball's hue and saturation land a
+    /// few milliseconds apart and are a single move.
+    public static let stepMerge: TimeInterval = 0.03
 
     public static func == (lhs: TrailPlayback, rhs: TrailPlayback) -> Bool {
         lhs.series == rhs.series && lhs.keyframes == rhs.keyframes
@@ -319,10 +326,33 @@ public struct TrailPlayback: Equatable {
         }
         marks.sort { $0.t < $1.t }
 
+        let startTime = chain.first?.forkTime ?? 0
         self.series = grouped
         self.keyframes = marks
-        self.start = chain.first?.forkTime ?? 0
+        self.start = startTime
         self.tip = latest
+
+        var moments = marks.map(\.t)
+        for events in grouped.values { for e in events { moments.append(e.t) } }
+        moments.sort()
+        var steps: [TimeInterval] = []
+        for t in moments {
+            if let last = steps.last, t - last < TrailPlayback.stepMerge { continue }
+            steps.append(t)
+        }
+        // The two ends are always places to stand. A landmark that opened the session a moment
+        // after the clock started is the start, not a step of its own.
+        if let first = steps.first, first - startTime < TrailPlayback.stepMerge {
+            steps[0] = min(first, startTime)
+        } else {
+            steps.insert(startTime, at: 0)
+        }
+        if let last = steps.last, latest - last < TrailPlayback.stepMerge {
+            steps[steps.count - 1] = max(last, latest)
+        } else {
+            steps.append(latest)
+        }
+        self.stepTimes = steps
         self.forks = trail.forks(of: branchID)
             .sorted { $0.forkTime < $1.forkTime }
             .map { (time: $0.forkTime, name: $0.name, id: $0.id) }
@@ -421,6 +451,40 @@ public struct TrailPlayback: Equatable {
             previous = t
         }
         return merged
+    }
+
+    /// Index of the last step at or before `t`; -1 when `t` is before all of them.
+    public func stepIndex(atOrBefore t: TimeInterval) -> Int {
+        var low = 0
+        var high = stepTimes.count - 1
+        var found = -1
+        while low <= high {
+            let mid = (low + high) / 2
+            if stepTimes[mid] <= t + 1e-9 {
+                found = mid
+                low = mid + 1
+            } else {
+                high = mid - 1
+            }
+        }
+        return found
+    }
+
+    /// The step `clicks` away from `t`, parking on the ends rather than wrapping. Forward from
+    /// between two steps lands on the next one; back from between two lands on the one behind.
+    public func step(from t: TimeInterval, by clicks: Int) -> TimeInterval {
+        guard !stepTimes.isEmpty, clicks != 0 else { return t }
+        let i = stepIndex(atOrBefore: t)
+        let onStep = i >= 0 && abs(stepTimes[i] - t) < 1e-6
+        let target = clicks > 0 ? i + clicks : (onStep ? i + clicks : i + clicks + 1)
+        return stepTimes[min(stepTimes.count - 1, max(0, target))]
+    }
+
+    /// How long the stretch of quiet around `t` is, when `t` sits inside one.
+    public func surroundingGap(at t: TimeInterval) -> TimeInterval? {
+        let i = stepIndex(atOrBefore: t)
+        guard i >= 0, i + 1 < stepTimes.count else { return nil }
+        return stepTimes[i + 1] - stepTimes[i]
     }
 
     /// The nearest edit before or after `from`, for one-edit-at-a-time scrubbing.

@@ -283,7 +283,7 @@ public struct Profile: Codable, Equatable {
     }
 
     /// Bump when the factory map gains something existing users should receive.
-    public static let schemaVersion = 11
+    public static let schemaVersion = 12
 
     public static func loadUserOrDefault() -> Profile {
         let factory = loadDefault()
@@ -529,6 +529,16 @@ public struct Profile: Codable, Equatable {
                 if seen >= 2 { backup() }
                 spec.hold_layer = "REWIND"
                 p.buttons["UNDO"] = spec
+            }
+        }
+        if seen < 12 {
+            // v12: Rewind grew a transport. Play, Play Reverse and Stop run the session back, and
+            // the outer rings became the speed dials that replace the old strength blend. Only a
+            // layer still carrying that blend is replaced; one the user rearranged is theirs.
+            if p.layers["REWIND"]?.rings?["RING_GAIN"]?.param == "rewind:strength",
+               let rewind = factory.layers["REWIND"] {
+                if seen >= 2 { backup() }
+                p.layers["REWIND"] = rewind
             }
         }
         if seen < schemaVersion {

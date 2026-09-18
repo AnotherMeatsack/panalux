@@ -172,7 +172,13 @@ final class CommandCatalogTests: XCTestCase {
         let layer = factory.layers["REWIND"]
         XCTAssertNotNil(layer)
         XCTAssertEqual(layer?.rings?["RING_GAMMA"]?.param, RewindCommands.scrub)
-        XCTAssertEqual(layer?.rings?["RING_GAIN"]?.param, RewindCommands.strength)
+        XCTAssertEqual(layer?.rings?["RING_LIFT"]?.param, RewindCommands.speedFine)
+        XCTAssertEqual(layer?.rings?["RING_GAIN"]?.param, RewindCommands.speed)
+        // The transport row is the transport: play, play backward, stop.
+        XCTAssertEqual(layer?.buttons?["PLAY"]?.action, RewindCommands.play)
+        XCTAssertEqual(layer?.buttons?["PLAY_REV"]?.action, RewindCommands.playReverse)
+        XCTAssertEqual(layer?.buttons?["STOP"]?.action, RewindCommands.pause)
+        XCTAssertNil(layer?.buttons?["PLAY"]?.hold_layer, "no hold, so the key fires the moment it goes down")
         XCTAssertEqual(layer?.buttons?["NEXT_STILL"]?.action, RewindCommands.tip)
         XCTAssertEqual(layer?.buttons?["ADD_KEYFRM"]?.action, RewindCommands.mark)
         XCTAssertEqual(layer?.buttons?["ADD_NODE"]?.action, RewindCommands.branch)
@@ -181,9 +187,10 @@ final class CommandCatalogTests: XCTestCase {
         XCTAssertEqual(layer?.buttons?["WIPE_STILL"]?.hold_action, RewindCommands.peek)
         XCTAssertEqual(layer?.buttons?["WIPE_STILL"]?.release_action, RewindCommands.unpeek)
         // Every one of them is a tile the user can drag somewhere else.
-        for id in [RewindCommands.scrub, RewindCommands.strength, RewindCommands.tip,
-                   RewindCommands.mark, RewindCommands.branch, RewindCommands.previous,
-                   RewindCommands.next, RewindCommands.peek] {
+        for id in [RewindCommands.scrub, RewindCommands.speed, RewindCommands.speedFine,
+                   RewindCommands.play, RewindCommands.playReverse, RewindCommands.pause,
+                   RewindCommands.tip, RewindCommands.mark, RewindCommands.branch,
+                   RewindCommands.previous, RewindCommands.next, RewindCommands.peek] {
             XCTAssertNotNil(CommandCatalog.shared.command(for: id), id)
         }
         XCTAssertTrue(CommandDatabase.shared.catalogCommand(for: RewindCommands.scrub).isParameter,
@@ -207,6 +214,29 @@ final class CommandCatalogTests: XCTestCase {
         kept.buttons["UNDO"] = ButtonBinding(action: "Undo", hold_layer: "CULL")
         let skipped = Profile.migrate(kept, factory: factory, defaults: defaults) {}
         XCTAssertEqual(skipped.buttons["UNDO"]?.hold_layer, "CULL", "a hold the user chose is kept")
+        defaults.removePersistentDomain(forName: name)
+    }
+
+    func testV12GivesRewindItsTransportWithoutTakingOverACustomOne() {
+        let name = "panalux-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        let factory = Profile.loadDefault()
+
+        // The layer as it shipped a few hours earlier, with the strength blend on the right ring.
+        defaults.set(11, forKey: "profileSchemaVersion")
+        var old = factory
+        old.layers["REWIND"]?.rings?["RING_GAIN"] = RingBinding(param: "rewind:strength")
+        old.layers["REWIND"]?.buttons?["PLAY"] = nil
+        let moved = Profile.migrate(old, factory: factory, defaults: defaults) {}
+        XCTAssertEqual(moved.layers["REWIND"]?.rings?["RING_GAIN"]?.param, RewindCommands.speed)
+        XCTAssertEqual(moved.layers["REWIND"]?.buttons?["PLAY"]?.action, RewindCommands.play)
+
+        // One the user rearranged is theirs.
+        defaults.set(11, forKey: "profileSchemaVersion")
+        var mine = factory
+        mine.layers["REWIND"]?.rings?["RING_GAIN"] = RingBinding(param: "Exposure")
+        let kept = Profile.migrate(mine, factory: factory, defaults: defaults) {}
+        XCTAssertEqual(kept.layers["REWIND"]?.rings?["RING_GAIN"]?.param, "Exposure")
         defaults.removePersistentDomain(forName: name)
     }
 

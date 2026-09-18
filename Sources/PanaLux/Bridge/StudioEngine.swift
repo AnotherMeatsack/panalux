@@ -1303,7 +1303,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     // MARK: - Rewind
 
     /// A knob or ring mapped to the trail. Like every other binding, this is whatever the
-    /// map says it is — the factory map puts scrub on the centre ring and strength on the right.
+    /// map says it is — the factory map puts scrub on the centre ring and the speed dials on the others.
     private func driveRewind(_ command: String, control: String, deltaUnits: Double) {
         GuideController.shared.hardwareEvent(.analogMoved(control))
         let rewind = RewindEngine.shared
@@ -1315,8 +1315,12 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             notice(control, "\(blockedWord) · \(RewindCommands.title(command))")
             return
         }
+        // The feel is a setting, so it is read every turn: change it and the next click obeys.
+        rewind.clickUnits = AppSettings.shared.rewindClickUnits
+        rewind.acceleration = AppSettings.shared.rewindAcceleration
         switch command {
-        case RewindCommands.strength: rewind.adjustStrength(units: deltaUnits)
+        case RewindCommands.speed: rewind.adjustSpeed(units: deltaUnits, fine: false)
+        case RewindCommands.speedFine: rewind.adjustSpeed(units: deltaUnits, fine: true)
         default: rewind.scrub(units: deltaUnits)
         }
     }
@@ -1359,6 +1363,9 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         }
         switch command {
         case RewindCommands.tip: rewind.jumpToTip()
+        case RewindCommands.play: rewind.play(forward: true)
+        case RewindCommands.playReverse: rewind.play(forward: false)
+        case RewindCommands.pause: rewind.pausePlayback()
         case RewindCommands.previous: rewind.step(forward: false)
         case RewindCommands.next: rewind.step(forward: true)
         case RewindCommands.peek: rewind.setPeeking(true)

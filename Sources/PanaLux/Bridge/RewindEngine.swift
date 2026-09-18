@@ -28,7 +28,7 @@ public final class RewindEngine: ObservableObject {
     @Published public private(set) var state: RewindState = .empty
     @Published public private(set) var isRewinding = false
 
-    /// Fires whenever the readout should be redrawn (scrub, strength, landmark, branch).
+    /// Fires whenever the readout should be redrawn (scrub, playback, landmark, branch).
     public let changed = PassthroughSubject<RewindState, Never>()
 
     public weak var output: RewindOutput?
@@ -42,7 +42,6 @@ public final class RewindEngine: ObservableObject {
 
     private var playback: TrailPlayback?
     private var playhead: TimeInterval = 0
-    private var strength: Double = 1.0
     /// The playhead is behind the tip, so the next edit starts a branch instead of overwriting.
     private var detached = false
     private var peeking = false
@@ -50,7 +49,6 @@ public final class RewindEngine: ObservableObject {
     private var tipValues: [String: Double] = [:]
     private var lastSent: [String: Double] = [:]
     private var appliedKeyframeID: String?
-    private var scrubVelocity: Double = 0
     private var lastScrubAt: Date = .distantPast
     private var pendingSnapshots: [String: String] = [:]   // token → keyframe id
     private var saveWork: DispatchWorkItem?
@@ -60,12 +58,37 @@ public final class RewindEngine: ObservableObject {
     /// Encoding a long trail is not work for the main thread.
     private static let saveQueue = DispatchQueue(label: "com.panalux.trail", qos: .utility)
 
-    /// Below this many encoder units a second, one detent is one edit; above it, time flows.
-    private let slowScrub: Double = 26.0
-    /// Seconds of trail per encoder unit at a crawl and at a sprint.
-    private let secondsPerUnitSlow: Double = 0.06
-    private let secondsPerUnitFast: Double = 2.4
-    private let snapWindow: TimeInterval = 0.9
+    // MARK: Feel
+    // These are the two numbers that decide how Rewind feels under the hand. They are set from
+    // Settings, so they can be tuned without rebuilding.
+
+    /// Ring units for one click. Turned slowly, one click is exactly one thing you did.
+    public var clickUnits: Double = 40
+    /// 0…1. How fast a hard spin crosses a long session. The slow end never changes: slow is
+    /// always one step per click, whatever this says.
+    public var acceleration: Double = 0.5
+
+    private var jogRemainder: Double = 0
+    /// Clicks per second, smoothed so one quick packet in a slow turn does not throw the playhead.
+    private var jogRate: Double = 0
+
+    // MARK: Transport
+    public private(set) var isPlaying = false
+    private var playDirection: Double = 1
+    /// 1 is the pace the edits were made at. The rings turn this dial; it survives between holds.
+    public private(set) var playSpeed: Double = 1
+    private var speedLatched = false
+    private var speedPull: Double = 0
+    private var playTimer: Timer?
+    private var lastTick = Date()
+    public static let minSpeed = 0.05
+    public static let maxSpeed = 32.0
+    /// Real editing has long pauses in it. Watching one at its own pace would be watching nothing,
+    /// so a stretch of quiet longer than this plays through in `idleGapPlaysIn`.
+    static let idleGapAbove: TimeInterval = 1.2
+    static let idleGapPlaysIn: TimeInterval = 0.5
+    /// 30 a second is smooth to watch and gentle on the socket to Lightroom.
+    static let tickInterval: TimeInterval = 1.0 / 30.0
 
     public init() {}
 
@@ -174,19 +197,22 @@ public final class RewindEngine: ObservableObject {
         tipValues = output?.rewindKnownValues() ?? [:]
         lastSent = tipValues
         playhead = live.tip
-        strength = 1.0
         // Only count a landmark as already applied if the playhead is standing on it.
         let atTip = live.keyframe(at: live.tip)
         appliedKeyframeID = (atTip.map { abs($0.t - live.tip) < RewindEngine.landmarkWindow } ?? false)
             ? atTip?.id : nil
-        scrubVelocity = 0
+        jogRemainder = 0
+        jogRate = 0
         lastScrubAt = .distantPast
+        isPlaying = false
         publish(caption: "Now")
     }
 
     /// UNDO came up. The photo stays wherever the playhead is — that is the point.
     public func endRewind(announce: Bool = true) {
         guard isRewinding else { return }
+        stopPlaybackTimer()
+        isPlaying = false
         isRewinding = false
         peeking = false
         if let playback = currentPlayback() {
@@ -201,44 +227,148 @@ public final class RewindEngine: ObservableObject {
 
     // MARK: - Scrubbing
 
-    /// Centre ring. Slow is one edit at a time; fast is minutes at a time.
-    public func scrub(units: Double, now: Date = Date()) {
-        guard isRewinding, let playback = currentPlayback() else { return }
-        let gap = max(0.001, min(0.5, now.timeIntervalSince(lastScrubAt)))
-        lastScrubAt = now
-        let instant = abs(units) / gap
-        // Smoothed so one fast packet in a slow turn does not throw the playhead across the tape.
-        scrubVelocity = scrubVelocity * 0.7 + instant * 0.3
-
-        if scrubVelocity < slowScrub {
-            playhead = playback.stepToEdit(from: playhead, forward: units > 0)
-        } else {
-            let normalized = min(1.0, (scrubVelocity - slowScrub) / (slowScrub * 8))
-            let perUnit = secondsPerUnitSlow + (secondsPerUnitFast - secondsPerUnitSlow) * normalized * normalized
-            playhead += units * perUnit
-        }
-        playhead = min(playback.tip, max(playback.start, playhead))
-        if scrubVelocity < slowScrub * 2, let snap = playback.snapTarget(near: playhead, within: snapWindow) {
-            playhead = snap
-        }
-        apply(playback)
-        publish(caption: caption(for: playhead, in: playback))
+    /// How many steps one click covers. Slow is exactly one, and that never changes; faster
+    /// eases up smoothly, with no seam between "careful" and "travelling", to at most a fortieth
+    /// of the session per click so a hard spin crosses any length of session in a second or two.
+    static func jogMultiplier(rate: Double, stepCount: Int, acceleration: Double) -> Int {
+        let careful = 10.0     // clicks a second: a deliberate turn
+        let flat = 70.0        // clicks a second: a hard spin
+        let reach = max(1.0, Double(stepCount) / 40.0) * (0.25 + 1.5 * min(1, max(0, acceleration)))
+        let s = min(1.0, max(0.0, (rate - careful) / (flat - careful)))
+        return max(1, Int((1.0 + (reach - 1.0) * s * s).rounded()))
     }
 
-    /// Right ring. How far toward the scrub point, 0–100%.
-    public func adjustStrength(units: Double) {
+    /// Centre ring. One click is one thing that changed: every value you had is somewhere the
+    /// playhead can stop. Turn faster and it travels; stop turning and it holds exactly there.
+    public func scrub(units: Double, now: Date = Date()) {
         guard isRewinding, let playback = currentPlayback() else { return }
-        strength = min(1.0, max(0.0, strength + units * 0.004))
+        // Taking hold of the ring takes over from playback.
+        pausePlayback(announce: false)
+        let gap = max(0.001, min(0.5, now.timeIntervalSince(lastScrubAt)))
+        lastScrubAt = now
+        // Turning back the other way starts a fresh click rather than paying off the old one.
+        if units * jogRemainder < 0 { jogRemainder = 0 }
+        jogRemainder += units
+        let clicks = Int((jogRemainder / max(1, clickUnits)).rounded(.towardZero))
+        guard clicks != 0 else { return }
+        jogRemainder -= Double(clicks) * clickUnits
+
+        let instant = abs(units) / gap / max(1, clickUnits)
+        jogRate = jogRate * 0.6 + instant * 0.4
+        let reach = RewindEngine.jogMultiplier(rate: jogRate, stepCount: playback.stepTimes.count,
+                                               acceleration: acceleration)
+        playhead = playback.step(from: playhead, by: clicks * reach)
         apply(playback)
-        publish(caption: strength >= 0.999 ? caption(for: playhead, in: playback)
-                                           : "\(Int((strength * 100).rounded()))% of the way back")
+        publish(caption: stepCaption(for: playhead, in: playback))
+    }
+
+    /// The rings on either side. Left is the fine dial and right is the coarse one; turning
+    /// either clockwise is faster. It is a dial on a log scale, so slow motion has as much room
+    /// as fast forward. 1× is where the recording plays as it happened, and it holds there a
+    /// moment so it is easy to land on.
+    public func adjustSpeed(units: Double, fine: Bool) {
+        guard isRewinding else { return }
+        var delta = units
+        if speedLatched {
+            speedPull += units
+            guard abs(speedPull) > 40 else { return }
+            speedLatched = false
+            delta = speedPull
+            speedPull = 0
+        }
+        let before = playSpeed
+        let k = fine ? 0.0016 : 0.0045
+        playSpeed = min(RewindEngine.maxSpeed, max(RewindEngine.minSpeed, playSpeed * exp(delta * k)))
+        if (before - 1) * (playSpeed - 1) < 0 {
+            playSpeed = 1
+            speedLatched = true
+            speedPull = 0
+        }
+        publish(caption: "Speed \(RewindState.rateText(playSpeed))")
+    }
+
+    /// Play forward or backward at the dial's speed. Pressing the direction it is already going
+    /// pauses, so one key does both jobs.
+    public func play(forward: Bool) {
+        guard isRewinding, let playback = currentPlayback() else { return }
+        if isPlaying && (playDirection > 0) == forward {
+            pausePlayback()
+            return
+        }
+        if forward && playback.tip - playhead < 1e-6 {
+            publish(caption: "Already at now")
+            return
+        }
+        if !forward && playhead - playback.start < 1e-6 {
+            publish(caption: "That is the start")
+            return
+        }
+        peeking = false
+        playDirection = forward ? 1 : -1
+        isPlaying = true
+        lastTick = Date()
+        startPlaybackTimer()
+        publish(caption: forward ? "Playing" : "Playing backward")
+    }
+
+    /// Stop where it is. The photo stays exactly there.
+    public func pausePlayback(announce: Bool = true) {
+        guard isPlaying else { return }
+        stopPlaybackTimer()
+        isPlaying = false
+        if let playback = currentPlayback() {
+            // Settling on a landmark puts its whole table back, masks and crop included.
+            applyKeyframeIfNeeded(at: playhead, in: playback)
+            if announce { publish(caption: "Paused · " + stepCaption(for: playhead, in: playback)) }
+        }
+    }
+
+    /// One frame of playback. Public so it can be driven by hand in a test.
+    func advancePlayback(by dt: TimeInterval) {
+        guard isPlaying, isRewinding, let playback = currentPlayback() else { return }
+        var factor = 1.0
+        if let gap = playback.surroundingGap(at: playhead), gap > RewindEngine.idleGapAbove {
+            factor = gap / RewindEngine.idleGapPlaysIn
+        }
+        playhead += playDirection * dt * playSpeed * factor
+        var finished = false
+        if playhead >= playback.tip { playhead = playback.tip; finished = playDirection > 0 }
+        if playhead <= playback.start { playhead = playback.start; finished = finished || playDirection < 0 }
+        apply(playback)
+        if finished {
+            let forward = playDirection > 0
+            pausePlayback(announce: false)
+            publish(caption: forward ? "Now" : "The start")
+            return
+        }
+        publish(caption: RewindEngine.ago(playback.tip - playhead))
+    }
+
+    private func startPlaybackTimer() {
+        stopPlaybackTimer()
+        let timer = Timer(timeInterval: RewindEngine.tickInterval, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            let now = Date()
+            let dt = min(0.25, now.timeIntervalSince(self.lastTick))
+            self.lastTick = now
+            self.advancePlayback(by: dt)
+        }
+        // Common modes, so it keeps playing while a menu or a drag has the run loop.
+        RunLoop.main.add(timer, forMode: .common)
+        playTimer = timer
+    }
+
+    private func stopPlaybackTimer() {
+        playTimer?.invalidate()
+        playTimer = nil
     }
 
     /// One key back to now.
     public func jumpToTip() {
         guard isRewinding, let playback = currentPlayback() else { return }
+        stopPlaybackTimer()
+        isPlaying = false
         playhead = playback.tip
-        strength = 1.0
         apply(playback)
         applyKeyframeIfNeeded(at: playhead, in: playback)
         detached = false
@@ -247,6 +377,7 @@ public final class RewindEngine: ObservableObject {
 
     public func step(forward: Bool) {
         guard isRewinding, let playback = currentPlayback() else { return }
+        pausePlayback(announce: false)
         let target = forward ? playback.nextLandmark(after: playhead)?.t
                              : playback.previousLandmark(before: playhead)?.t
         playhead = min(playback.tip, max(playback.start, target ?? (forward ? playback.tip : playback.start)))
@@ -297,13 +428,12 @@ public final class RewindEngine: ObservableObject {
     private func apply(_ playback: TrailPlayback) {
         guard let output else { return }
         let past = playback.values(at: playhead)
-        let mix = peeking ? 0.0 : strength
         for (param, pastValue) in past {
-            let live = tipValues[param] ?? pastValue
-            let blended = live + (pastValue - live) * mix
-            if let sent = lastSent[param], abs(sent - blended) < 0.0008 { continue }
-            lastSent[param] = blended
-            output.rewindSetParameter(param, value: blended)
+            // Peeking shows now without moving the playhead; otherwise the photo is the past.
+            let shown = peeking ? (tipValues[param] ?? pastValue) : pastValue
+            if let sent = lastSent[param], abs(sent - shown) < 0.0008 { continue }
+            lastSent[param] = shown
+            output.rewindSetParameter(param, value: shown)
         }
     }
 
@@ -317,7 +447,7 @@ public final class RewindEngine: ObservableObject {
         guard let keyframe = playback.keyframe(at: t),
               abs(keyframe.t - t) < RewindEngine.landmarkWindow,
               keyframe.id != appliedKeyframeID else { return }
-        guard let blob = keyframe.blob, !peeking, strength > 0.999 else { return }
+        guard let blob = keyframe.blob, !peeking else { return }
         appliedKeyframeID = keyframe.id
         output?.rewindRestore(blob: blob)
         // The table has just moved every slider; what we thought Lightroom held is stale, and
@@ -352,6 +482,33 @@ public final class RewindEngine: ObservableObject {
             return keyframe.label
         }
         return RewindEngine.ago(behind)
+    }
+
+    /// What is under the playhead, in words: the landmark if it is on one, otherwise the thing
+    /// that changed at this step ("Exposure +0.35 EV"), otherwise how long ago it was.
+    private func stepCaption(for t: TimeInterval, in playback: TrailPlayback) -> String {
+        if peeking { return "Now (peek)" }
+        if playback.tip - t < 0.001 { return "Now" }
+        if let keyframe = playback.keyframe(at: t), abs(keyframe.t - t) < TrailPlayback.stepMerge {
+            return keyframe.label
+        }
+        if let change = describeChange(at: t, in: playback) { return change }
+        return RewindEngine.ago(playback.tip - t)
+    }
+
+    /// The parameter or parameters that moved at exactly this step, with the value they landed on.
+    private func describeChange(at t: TimeInterval, in playback: TrailPlayback) -> String? {
+        var moved: [(name: String, text: String)] = []
+        for param in playback.parameters.sorted() {
+            guard let events = playback.series[param],
+                  let e = events.first(where: { abs($0.t - t) < TrailPlayback.stepMerge }) else { continue }
+            moved.append((CommandDatabase.shared.shortLabel(for: param),
+                          ValueFormatter.format(param: param, value: e.value)))
+        }
+        guard let first = moved.first else { return nil }
+        var text = "\(first.name) \(first.text)"
+        if moved.count > 1 { text += " +\(moved.count - 1) more" }
+        return text
     }
 
     static func ago(_ seconds: TimeInterval) -> String {
@@ -407,14 +564,18 @@ public final class RewindEngine: ObservableObject {
             tip: playback.tip,
             playhead: peeking ? playback.tip : playhead,
             window: RewindEngine.window(for: playback),
-            strength: peeking ? 0 : strength,
             marks: marks,
             knobs: knobs,
             branchName: branchName,
             isPeeking: peeking,
             isAtTip: playback.tip - playhead < 0.4,
             caption: caption,
-            speed: min(1.0, scrubVelocity / (slowScrub * 8))
+            speed: isPlaying ? min(1.0, playSpeed / 8.0) : min(1.0, jogRate / 70.0),
+            rate: playSpeed,
+            isPlaying: isPlaying,
+            isReverse: isPlaying && playDirection < 0,
+            stepNumber: max(0, playback.stepIndex(atOrBefore: playhead) + 1),
+            stepCount: playback.stepTimes.count
         )
     }
 

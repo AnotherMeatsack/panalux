@@ -72,8 +72,6 @@ public struct RewindState: Equatable {
     public var playhead: TimeInterval
     /// Seconds of tape across the whole track.
     public var window: TimeInterval
-    /// How far toward the playhead the photo is taken, 0…1.
-    public var strength: Double
     public var marks: [TrailMark]
     public var knobs: [RewindKnobValue]
     /// nil on the original line; the branch's name once the editing has forked.
@@ -83,16 +81,24 @@ public struct RewindState: Equatable {
     public var caption: String
     /// 0…1 scrub speed, for how hard the playhead smears.
     public var speed: Double
+    /// The speed dial. 1 is the pace the edits were made at.
+    public var rate: Double
+    public var isPlaying: Bool
+    public var isReverse: Bool
+    /// "212 of 640": where the playhead stands among the things that changed.
+    public var stepNumber: Int
+    public var stepCount: Int
 
     public init(origin: TimeInterval = 0, tip: TimeInterval = 0, playhead: TimeInterval = 0,
-                window: TimeInterval = 60, strength: Double = 1, marks: [TrailMark] = [],
+                window: TimeInterval = 60, marks: [TrailMark] = [],
                 knobs: [RewindKnobValue] = [], branchName: String? = nil, isPeeking: Bool = false,
-                isAtTip: Bool = true, caption: String = "Now", speed: Double = 0) {
+                isAtTip: Bool = true, caption: String = "Now", speed: Double = 0,
+                rate: Double = 1, isPlaying: Bool = false, isReverse: Bool = false,
+                stepNumber: Int = 0, stepCount: Int = 0) {
         self.origin = origin
         self.tip = tip
         self.playhead = playhead
         self.window = window
-        self.strength = strength
         self.marks = marks
         self.knobs = knobs
         self.branchName = branchName
@@ -100,7 +106,27 @@ public struct RewindState: Equatable {
         self.isAtTip = isAtTip
         self.caption = caption
         self.speed = speed
+        self.rate = rate
+        self.isPlaying = isPlaying
+        self.isReverse = isReverse
+        self.stepNumber = stepNumber
+        self.stepCount = stepCount
     }
+
+    /// "1×", "0.25×", "12×": as short as the number allows.
+    public static func rateText(_ rate: Double) -> String {
+        let text: String
+        if rate >= 10 { text = String(format: "%.0f", rate) }
+        else if rate >= 1 { text = String(format: "%.1f", rate) }
+        else { text = String(format: "%.2f", rate) }
+        var trimmed = text
+        if trimmed.contains(".") {
+            while trimmed.hasSuffix("0") { trimmed.removeLast() }
+            if trimmed.hasSuffix(".") { trimmed.removeLast() }
+        }
+        return trimmed + "×"
+    }
+    public var rateText: String { RewindState.rateText(rate) }
 
     public static let empty = RewindState()
 
@@ -468,29 +494,31 @@ public struct RewindView: View {
 
             Spacer(minLength: 6)
 
-            strengthMeter
+            transportMeter
         }
         .padding(.horizontal, 14)
         .animation(SpringPhysics.micro, value: state.caption)
     }
 
-    /// Time in one hand, strength in the other. This is the second hand's readout.
-    private var strengthMeter: some View {
+    /// What the transport is doing and how fast, with where you stand among the steps.
+    private var transportMeter: some View {
         VStack(alignment: .trailing, spacing: 2) {
-            Text("\(Int((state.strength * 100).rounded()))%")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .foregroundColor(accent)
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.white.opacity(0.10))
-                    .frame(width: 46, height: 4)
-                Capsule()
-                    .fill(accent)
-                    .frame(width: max(1, 46 * CGFloat(min(1, max(0, state.strength)))), height: 4)
+            HStack(spacing: 4) {
+                Image(systemName: state.isPlaying ? (state.isReverse ? "backward.fill" : "play.fill") : "pause.fill")
+                    .font(.system(size: 8, weight: .bold))
+                Text(state.rateText)
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+            }
+            .foregroundColor(accent)
+            if state.stepCount > 0 {
+                Text("\(state.stepNumber) / \(state.stepCount)")
+                    .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                    .monospacedDigit()
+                    .foregroundColor(.white.opacity(0.5))
             }
         }
-        .animation(SpringPhysics.bubble, value: state.strength)
+        .animation(SpringPhysics.bubble, value: state.rate)
     }
 }

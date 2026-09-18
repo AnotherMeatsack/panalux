@@ -38,6 +38,7 @@ public struct SettingsView: View {
                 general
                 hud
                 panelSection
+                rewindSection
                 mapsSection
                 helpSection
                 aboutSection
@@ -162,6 +163,40 @@ public struct SettingsView: View {
             Toggle("Auto-align layers in Photoshop", isOn: $settings.autoAlignLayers)
                 .help("After Open as Layers, PanaLux waits for the stack to finish arriving and runs Auto-Align once. Turn this off to align by hand.")
             Button("Learn Key Positions…") { showCalibration = true }
+        }
+    }
+
+    /// Rewind's feel. These are read on every turn, so change one and try the ring straight away.
+    private var rewindSection: some View {
+        Section {
+            LabeledContent("Click size") {
+                HStack {
+                    Slider(value: $settings.rewindClickUnits, in: 10...150, step: 5)
+                        .frame(width: 160)
+                    Text(String(format: "%.0f", settings.rewindClickUnits))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .help("How far the centre ring turns for one step. Smaller is more sensitive: each click lands on one thing that changed.")
+            LabeledContent("Spin speed") {
+                HStack {
+                    Slider(value: $settings.rewindAcceleration, in: 0...1, step: 0.05)
+                        .frame(width: 160)
+                    Text(String(format: "%.0f%%", settings.rewindAcceleration * 100))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .help("How quickly a hard spin crosses a long session. Turning the ring slowly is always one step per click, whatever this says.")
+            Button("Reset Rewind feel") {
+                settings.rewindClickUnits = 40
+                settings.rewindAcceleration = 0.5
+            }
+        } header: {
+            Text("Rewind")
+        } footer: {
+            Text("Hold Undo, then turn the centre ring. Play, Play Reverse and Stop run your edits back at the pace set by the outer rings.")
         }
     }
 

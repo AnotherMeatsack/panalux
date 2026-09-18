@@ -237,18 +237,31 @@
   "layers": {
     "REWIND": {
       "title": "Rewind",
-      "_comment": "Hold Undo (its tap is still Undo). The centre ring scrubs the editing session, the right ring sets how far back the photo is taken, and the keys mark, branch, and step between landmarks.",
+      "_comment": "Hold Undo (its tap is still Undo). The centre ring steps through everything you changed, one click at a time. Play and Play Reverse replay the session; Stop pauses. The left ring is fine playback speed and the right is coarse. The other keys mark, branch, and step between landmarks.",
       "rings": {
         "RING_GAMMA": {
           "param": "rewind:scrub",
           "scale": 0.0003
         },
+        "RING_LIFT": {
+          "param": "rewind:speed_fine",
+          "scale": 0.0003
+        },
         "RING_GAIN": {
-          "param": "rewind:strength",
+          "param": "rewind:speed",
           "scale": 0.0003
         }
       },
       "buttons": {
+        "PLAY": {
+          "action": "rewind:play"
+        },
+        "PLAY_REV": {
+          "action": "rewind:play_rev"
+        },
+        "STOP": {
+          "action": "rewind:pause"
+        },
         "NEXT_STILL": {
           "action": "rewind:tip"
         },
