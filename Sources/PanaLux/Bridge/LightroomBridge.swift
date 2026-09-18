@@ -16,6 +16,10 @@ public class LightroomBridge: ObservableObject {
     public static let recvPort: UInt16 = 58764
 
     @Published public var isConnected: Bool = false
+    /// How many photos are selected in Lightroom, and which one is active. Reported by
+    /// PanaLux Bridge; the stock MIDI2LR plugin does not send it, so this stays nil there.
+    @Published public private(set) var selectedPhotoCount: Int? = nil
+    @Published public private(set) var activePhotoID: String? = nil
 
     public weak var delegate: LightroomBridgeDelegate?
 
@@ -195,6 +199,17 @@ public class LightroomBridge: ObservableObject {
         var updates: [String: Double] = [:]
         for line in lines {
             // Copy/Paste Settings and Key1…Key40 ask the host app to type a shortcut.
+            if line.hasPrefix("PanaLuxSelection ") {
+                let parts = line.dropFirst("PanaLuxSelection ".count).split(separator: " ")
+                if let count = parts.first.flatMap({ Int($0) }) {
+                    let id = parts.count > 1 ? String(parts[1]) : nil
+                    DispatchQueue.main.async {
+                        if self.selectedPhotoCount != count { self.selectedPhotoCount = count }
+                        if self.activePhotoID != id { self.activePhotoID = id }
+                    }
+                }
+                continue
+            }
             if line.hasPrefix("SendKey ") {
                 let payload = String(line.dropFirst("SendKey ".count))
                 if !isMuted { DispatchQueue.main.async { LightroomKeys.send(payload) } }

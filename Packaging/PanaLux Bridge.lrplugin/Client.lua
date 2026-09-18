@@ -91,6 +91,7 @@ LrTasks.startAsyncTask(
     MIDI2LR = {PARAM_OBSERVER = {}, SERVER = {}, CLIENT = {}, RUNNING = true, AltOpt = false} --non-local but in MIDI2LR namespace
     --local variables
     local LastParam           = ''
+    local LastSelectionSignature = ''
     local UpdateParamPickup, UpdateParamNoPickup, UpdateParam
     local sendIsConnected = false --tell whether send socket is up or not
     --local constants--may edit these to change program behaviors
@@ -106,6 +107,28 @@ LrTasks.startAsyncTask(
 
 
 
+
+    --[[ PanaLux Bridge addition.
+      Tells the app how many photos are selected and which one is active. Nothing in
+      the original protocol carries this, so an app driving Edit In > Open as Layers
+      had no way to know how many layers were supposed to arrive, and no way to tell a
+      short stack from a finished one. Sent only when it changes.
+    --]]
+    local function ReportSelection()
+      local ok, err = pcall(function()
+          local cat = LrApplication.activeCatalog()
+          local photos = cat:getTargetPhotos()
+          local count = photos and #photos or 0
+          local target = cat:getTargetPhoto()
+          local id = target and tostring(target.localIdentifier) or '0'
+          local signature = id..'/'..count
+          if signature ~= LastSelectionSignature then
+            LastSelectionSignature = signature
+            MIDI2LR.SERVER:send(string.format('PanaLuxSelection %d %s\n', count, id))
+          end
+        end)
+      if not ok then LastSelectionSignature = '' end
+    end
 
     local GradeFocusTable = {
       SplitToningShadowHue = 'shadow',
@@ -1098,6 +1121,7 @@ LrTasks.startAsyncTask(
           while MIDI2LR.RUNNING do --detect halt or reload
             LrTasks.sleep( .29 )
             Profiles.checkProfile()
+            ReportSelection()
           end
         end
       end

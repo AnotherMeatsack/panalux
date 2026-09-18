@@ -28,6 +28,11 @@ public class PhotoshopBridge {
 
     private var phaseValue: Phase = .idle
     private var sendStartedAt: Date = .distantPast
+    /// How many layers this send should produce, from Lightroom's own selection count.
+    /// Without it there is no way to tell a short stack from a finished one, which is
+    /// why a stack that quietly arrived incomplete had to be spotted and resent by hand.
+    private var expectedLayers: Int = 0
+    private var resentForShortStack = false
     /// After this long, a press means the stack has landed and Lightroom is stuck on
     /// some unrelated dialog. Saving beats being told to wait forever.
     private let sendingGiveUp: TimeInterval = 30
@@ -144,6 +149,10 @@ public class PhotoshopBridge {
         guard let lr = lightroomApp() else {
             throw makeError(404, "Lightroom Classic isn’t running")
         }
+        // Read the count before touching menus: activating Lightroom and walking its
+        // menu bar is exactly when a selection can change underneath us.
+        expectedLayers = LightroomBridge.shared.selectedPhotoCount ?? 0
+        log("send: \(expectedLayers) photo(s) selected, bracket=\(fromBracket)")
         if fromBracket {
             try showBracket(pid: lr.processIdentifier)
         }
@@ -155,7 +164,9 @@ public class PhotoshopBridge {
         sendStartedAt = Date()
         phase = .sending
         watchForStack(cameFromBracket: fromBracket)
-        return fromBracket ? "Sending the bracket to Photoshop…" : "Sending to Photoshop…"
+        let n = expectedLayers
+        if fromBracket { return "Sending the bracket to Photoshop…" }
+        return n > 1 ? "Sending \(n) photos to Photoshop…" : "Sending to Photoshop…"
     }
 
     /// Show the Quick Collection and select all of it, so Open as Layers picks up
@@ -187,10 +198,34 @@ public class PhotoshopBridge {
             }
             guard let layers = self.waitForStableStack(timeout: 120), layers > 0 else {
                 self.phase = .blending
+                self.log("no stack seen in Photoshop")
                 self.report("Couldn’t see the stack in Photoshop. Align it yourself, then press Grab Still to save.")
                 return
             }
+            self.log("stack settled at \(layers) layer(s), expected \(self.expectedLayers)")
+
+            // A short stack. This is caught before anything has been blended — the stack
+            // has only just landed and PanaLux has not said it is ready — so closing it
+            // and sending again cannot throw work away.
+            if self.expectedLayers > 1, layers < self.expectedLayers, !self.resentForShortStack {
+                self.resentForShortStack = true
+                self.report("Only \(layers) of \(self.expectedLayers) arrived. Sending again…")
+                self.closeActivePhotoshopDocument()
+                Thread.sleep(forTimeInterval: 1.2)
+                if (try? self.sendStack(fromBracket: cameFromBracket)) != nil { return }
+                self.phase = .blending
+                self.log("resend failed")
+                self.report("Only \(layers) of \(self.expectedLayers) arrived and the resend failed.")
+                return
+            }
+
             self.phase = .blending
+            self.resentForShortStack = false
+            if self.expectedLayers > 1, layers < self.expectedLayers {
+                self.log("still short after a resend")
+                self.report("\(layers) of \(self.expectedLayers) photos arrived. Close the document and press Grab Still to try again.")
+                return
+            }
             if cameFromBracket, let lr = self.lightroomApp() {
                 _ = LightroomAccessibility.pressMenuItem(
                     pid: lr.processIdentifier, titles: ["Clear Quick Collection"], menus: ["File", "Library"]
@@ -281,6 +316,29 @@ public class PhotoshopBridge {
             throw makeError(500, "Auto-align: \(result.dropFirst(4))")
         }
         return result
+    }
+
+    private func closeActivePhotoshopDocument() {
+        _ = try? photoshopJS(
+            "app.displayDialogs = DialogModes.NO; "
+            + "try { app.activeDocument.close(SaveOptions.DONOTSAVECHANGES); } catch (e) {} 'ok';"
+        )
+    }
+
+    /// A running account of every round-trip, so a stack that arrives short leaves
+    /// evidence instead of only a memory of it having gone wrong again.
+    private func log(_ line: String) {
+        let stamp = ISO8601DateFormatter().string(from: Date())
+        guard let data = "\(stamp)  \(line)\n".data(using: .utf8) else { return }
+        let url = AppPaths.supportDir.appendingPathComponent("Photoshop Handoff.log")
+        if let handle = try? FileHandle(forWritingTo: url) {
+            defer { try? handle.close() }
+            _ = try? handle.seekToEnd()
+            try? handle.write(contentsOf: data)
+        } else {
+            try? FileManager.default.createDirectory(at: AppPaths.supportDir, withIntermediateDirectories: true)
+            try? data.write(to: url)
+        }
     }
 
     private func jsLayerCount() -> Int {
