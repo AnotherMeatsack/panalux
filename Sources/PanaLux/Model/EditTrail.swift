@@ -236,9 +236,14 @@ public struct EditTrail: Codable, Equatable {
     @discardableResult
     public mutating func fork(at t: TimeInterval, name: String? = nil, wall: Date = Date()) -> TrailBranch {
         let takeNumber = branches.count + 1
+        // A take leaves the line that owns this moment. When the playhead is earlier than the
+        // active take's own start, that is one of its ancestors, not the active take itself:
+        // hanging it off the active one would put its start before its parent's.
+        let path = lineage()
+        let owner = path.last(where: { $0.forkTime <= t })?.id ?? path.first?.id ?? activeBranchID
         let branch = TrailBranch(
             name: name ?? "Take \(takeNumber)",
-            parent: activeBranchID,
+            parent: owner,
             forkTime: t,
             clockOrigin: wall
         )
@@ -246,6 +251,14 @@ public struct EditTrail: Codable, Equatable {
         activeBranchID = branch.id
         updatedAt = wall
         return branch
+    }
+
+    /// Make another take the one being edited. Its clock picks up just after its own tip, so the
+    /// next edit lands after what it already has.
+    public mutating func activate(_ id: String, at wall: Date = Date()) {
+        guard branch(id) != nil, id != activeBranchID else { return }
+        activeBranchID = id
+        resume(at: wall)
     }
 
     /// Thin the oldest half of a long recording, keeping the ends of every gesture so the
@@ -478,6 +491,38 @@ public struct TrailPlayback: Equatable {
         let onStep = i >= 0 && abs(stepTimes[i] - t) < 1e-6
         let target = clicks > 0 ? i + clicks : (onStep ? i + clicks : i + clicks + 1)
         return stepTimes[min(stepTimes.count - 1, max(0, target))]
+    }
+
+    /// The steps within `half` seconds of `t`, thinned evenly to at most `cap` so a dense stretch
+    /// costs the same to draw as a sparse one.
+    public func steps(around t: TimeInterval, half: TimeInterval, cap: Int) -> [TimeInterval] {
+        guard !stepTimes.isEmpty else { return [] }
+        var low = 0
+        var high = stepTimes.count
+        while low < high {                                   // first step >= t - half
+            let mid = (low + high) / 2
+            if stepTimes[mid] < t - half { low = mid + 1 } else { high = mid }
+        }
+        var end = low
+        while end < stepTimes.count, stepTimes[end] <= t + half { end += 1 }
+        let count = end - low
+        guard count > 0 else { return [] }
+        if count <= cap { return Array(stepTimes[low..<end]) }
+        let stride = Double(count) / Double(cap)
+        return (0..<cap).map { stepTimes[low + Int(Double($0) * stride)] }
+    }
+
+    /// The typical gap between neighbouring steps around `t`. The tape zooms to this, so a
+    /// screenful is always a handful of steps whether the editing was slow or frantic.
+    public func typicalGap(around t: TimeInterval, neighbours: Int = 20) -> TimeInterval {
+        let i = max(0, stepIndex(atOrBefore: t))
+        let lo = max(0, i - neighbours)
+        let hi = min(stepTimes.count - 1, i + neighbours)
+        guard hi > lo else { return 1 }
+        var gaps: [TimeInterval] = []
+        for k in lo..<hi { gaps.append(stepTimes[k + 1] - stepTimes[k]) }
+        gaps.sort()
+        return gaps[gaps.count / 2]
     }
 
     /// How long the stretch of quiet around `t` is, when `t` sits inside one.

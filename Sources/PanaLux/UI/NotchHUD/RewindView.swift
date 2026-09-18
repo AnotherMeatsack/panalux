@@ -62,6 +62,53 @@ public struct TrailMark: Identifiable, Equatable {
     }
 }
 
+/// One take, drawn as a lane: where its own line runs, how busy it was, and where it came from.
+public struct TakeLane: Equatable, Identifiable {
+    public let id: String
+    public let name: String
+    /// Position in the order takes were made, which is also which colour it wears.
+    public let colorIndex: Int
+    /// Where this take's own line begins (the moment it left its parent) and where it ends.
+    public let start: TimeInterval
+    public let tip: TimeInterval
+    public let parentID: String?
+    /// The take being edited and looked at right now.
+    public let isActive: Bool
+    /// Part of the line that leads to the active take, so it is drawn as history, not as a stranger.
+    public let isOnPath: Bool
+    /// How much happened in each slice of the whole session, 0…1.
+    public let activity: [Float]
+
+    public init(id: String, name: String, colorIndex: Int, start: TimeInterval, tip: TimeInterval,
+                parentID: String?, isActive: Bool, isOnPath: Bool, activity: [Float]) {
+        self.id = id
+        self.name = name
+        self.colorIndex = colorIndex
+        self.start = start
+        self.tip = tip
+        self.parentID = parentID
+        self.isActive = isActive
+        self.isOnPath = isOnPath
+        self.activity = activity
+    }
+}
+
+/// Which take the editing is on, for the badge that rides beside every readout.
+public struct TakeInfo: Equatable {
+    public let name: String
+    public let colorIndex: Int
+    /// 1-based, in the order takes were made.
+    public let number: Int
+    public let total: Int
+
+    public init(name: String, colorIndex: Int, number: Int, total: Int) {
+        self.name = name
+        self.colorIndex = colorIndex
+        self.number = number
+        self.total = total
+    }
+}
+
 /// Everything the readout needs to draw one moment of rewinding. A value type, so every state
 /// can be rendered offscreen and looked at.
 public struct RewindState: Equatable {
@@ -88,13 +135,26 @@ public struct RewindState: Equatable {
     /// "212 of 640": where the playhead stands among the things that changed.
     public var stepNumber: Int
     public var stepCount: Int
+    /// Every take, for the lanes.
+    public var takes: [TakeLane]
+    /// 1-based position of the active take, and how many there are.
+    public var takeNumber: Int
+    public var takeCount: Int
+    public var takeColorIndex: Int
+    /// The steps around the playhead, for the tape's ticks.
+    public var steps: [TimeInterval]
+    /// The stretch of time the lanes cover.
+    public var spanStart: TimeInterval
+    public var spanEnd: TimeInterval
 
     public init(origin: TimeInterval = 0, tip: TimeInterval = 0, playhead: TimeInterval = 0,
                 window: TimeInterval = 60, marks: [TrailMark] = [],
                 knobs: [RewindKnobValue] = [], branchName: String? = nil, isPeeking: Bool = false,
                 isAtTip: Bool = true, caption: String = "Now", speed: Double = 0,
                 rate: Double = 1, isPlaying: Bool = false, isReverse: Bool = false,
-                stepNumber: Int = 0, stepCount: Int = 0) {
+                stepNumber: Int = 0, stepCount: Int = 0,
+                takes: [TakeLane] = [], takeNumber: Int = 1, takeCount: Int = 1, takeColorIndex: Int = 0,
+                steps: [TimeInterval] = [], spanStart: TimeInterval = 0, spanEnd: TimeInterval = 0) {
         self.origin = origin
         self.tip = tip
         self.playhead = playhead
@@ -111,6 +171,27 @@ public struct RewindState: Equatable {
         self.isReverse = isReverse
         self.stepNumber = stepNumber
         self.stepCount = stepCount
+        self.takes = takes
+        self.takeNumber = takeNumber
+        self.takeCount = takeCount
+        self.takeColorIndex = takeColorIndex
+        self.steps = steps
+        self.spanStart = spanStart
+        self.spanEnd = spanEnd
+    }
+
+    /// One colour per take, in the order they were made. The original wears the amber Rewind
+    /// has always had; the rest are picked to stay apart from it and from each other.
+    public static let takePalette: [Color] = [
+        Color(red: 1.00, green: 0.70, blue: 0.25),   // original: amber
+        Color(red: 0.36, green: 0.80, blue: 1.00),   // cyan
+        Color(red: 0.75, green: 0.52, blue: 1.00),   // violet
+        Color(red: 0.32, green: 0.86, blue: 0.55),   // green
+        Color(red: 1.00, green: 0.42, blue: 0.55),   // rose
+        Color(red: 0.98, green: 0.90, blue: 0.40)    // lemon
+    ]
+    public static func takeColor(_ index: Int) -> Color {
+        takePalette[((index % takePalette.count) + takePalette.count) % takePalette.count]
     }
 
     /// "1×", "0.25×", "12×": as short as the number allows.
@@ -143,158 +224,259 @@ public struct RewindState: Equatable {
     }
 }
 
-/// The tape. The playhead stays put and time moves under it.
-public struct TrailTrack: View {
-    public let state: RewindState
-    /// Where the playhead sits across the track: right of centre, so most of the width is the
-    /// editing that happened, with room after it for the future a rollback has gone past.
-    private let playheadFraction: CGFloat = 0.70
+// MARK: - Motion
 
-    public init(state: RewindState) {
-        self.state = state
+/// The springs behind the readout. A class rather than state: the display-rate timeline
+/// advances it once a frame, and it must not ask SwiftUI to redraw on its own.
+///
+/// Everything here is critically damped, so things arrive quickly and never overshoot. That is
+/// the whole of the "Apple" feel: motion that starts at once, has weight, and comes to rest.
+final class RewindMotion {
+    /// Where the playhead is drawn, in trail time. It chases the real one.
+    var position: Double = .nan
+    /// The tape's visible span in seconds. It re-zooms smoothly as the editing gets denser.
+    var window: Double = 8
+    /// 0…1 blip that fires each time the playhead lands on a new step, then decays.
+    private(set) var pulse: Double = 0
+    /// 0…1 how fast the tape is moving, so the tape can lean into its own speed.
+    private(set) var speed: Double = 0
+    /// Per take, how "lit" its lane is: eases toward 1 for the active one.
+    private(set) var glow: [String: Double] = [:]
+
+    private var velocity: Double = 0
+    private var logWindowVelocity: Double = 0
+    private var lastStep: Int = -1
+    private var lastTime: TimeInterval = 0
+
+    /// One step of a critically damped spring, solved exactly rather than integrated. It gives the
+    /// same answer at 60, 120 or 240 Hz and cannot blow up if a frame is late, so a faster screen
+    /// is smoother without being any different.
+    static func spring(_ offset: inout Double, _ velocity: inout Double, omega: Double, dt: Double) {
+        let decay = exp(-omega * dt)
+        let c = velocity + omega * offset
+        let newOffset = (offset + c * dt) * decay
+        let newVelocity = (velocity - omega * c * dt) * decay
+        offset = newOffset
+        velocity = newVelocity
+    }
+
+    func advance(_ state: RewindState, now: TimeInterval) {
+        let target = state.isPeeking ? state.tip : state.playhead
+        if position.isNaN {
+            position = target
+            window = max(1, state.window)
+            lastStep = state.stepNumber
+            for lane in state.takes { glow[lane.id] = lane.isActive ? 1 : 0 }
+        }
+        let dt = lastTime == 0 ? 1.0 / 120.0 : min(1.0 / 30.0, max(0, now - lastTime))
+        lastTime = now
+        guard dt > 0 else { return }
+
+        // A jump bigger than the tape would glide across nothing. Start the glide from the edge
+        // of what is on screen instead, so the last stretch is always something you can see.
+        let reach = window * 0.55
+        if abs(position - target) > reach {
+            position = target - max(-reach, min(reach, position - target))
+        }
+        var offset = position - target
+        RewindMotion.spring(&offset, &velocity, omega: 30, dt: dt)
+        position = target + offset
+        if abs(offset) < 1e-4, abs(velocity) < 1e-3 { position = target; velocity = 0 }
+
+        // The zoom moves in log space and much more slowly: it should feel like focus, not motion.
+        let logTarget = log(max(0.5, state.window))
+        var logOffset = log(max(0.5, window)) - logTarget
+        RewindMotion.spring(&logOffset, &logWindowVelocity, omega: 7, dt: dt)
+        window = exp(logTarget + logOffset)
+
+        if state.stepNumber != lastStep {
+            if lastStep != -1 { pulse = min(1, pulse + 0.9) }
+            lastStep = state.stepNumber
+        }
+        pulse *= exp(-dt * 6.5)
+        if pulse < 0.001 { pulse = 0 }
+
+        let rel = abs(velocity) / max(0.5, window)
+        speed += (min(1, rel * 1.6) - speed) * (1 - exp(-dt * 9))
+
+        for lane in state.takes {
+            let now = glow[lane.id] ?? 0
+            glow[lane.id] = now + ((lane.isActive ? 1 : 0) - now) * (1 - exp(-dt * 10))
+        }
+    }
+}
+
+// MARK: - The badge
+
+/// Which take you are on. It rides beside every readout, so you cannot forget you are on a
+/// tangent, and it is the same colour as that take's lane and playhead everywhere else.
+public struct TakeBadge: View {
+    public let name: String
+    public let colorIndex: Int
+    public var detail: String?
+
+    public init(name: String, colorIndex: Int, detail: String? = nil) {
+        self.name = name
+        self.colorIndex = colorIndex
+        self.detail = detail
+    }
+
+    public init(_ info: TakeInfo) {
+        self.init(name: info.name, colorIndex: info.colorIndex, detail: "\(info.number) of \(info.total)")
     }
 
     public var body: some View {
-        GeometryReader { geo in
-            let width = geo.size.width
-            let height = geo.size.height
-            let headX = width * playheadFraction
-            let scale = width / CGFloat(max(1.0, state.window))
-            let lineY = height * 0.46
-
-            ZStack(alignment: .topLeading) {
-                rail(width: width, y: lineY, headX: headX, scale: scale)
-                ticks(width: width, y: lineY, headX: headX, scale: scale)
-                marks(width: width, y: lineY, headX: headX, scale: scale, height: height)
-                playhead(x: headX, height: height, y: lineY)
-            }
-            .frame(width: width, height: height)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .animation(SpringPhysics.bubble, value: state.playhead)
-            .animation(SpringPhysics.micro, value: state.isPeeking)
-        }
-    }
-
-    private func x(for time: TimeInterval, headX: CGFloat, scale: CGFloat) -> CGFloat {
-        headX + CGFloat(time - state.playhead) * scale
-    }
-
-    /// Everything already recorded, in two weights: what is behind the playhead, and the future
-    /// it has rolled past. The future is dimmed, never removed — nothing here is destroyed.
-    @ViewBuilder
-    private func rail(width: CGFloat, y: CGFloat, headX: CGFloat, scale: CGFloat) -> some View {
-        let startX = x(for: state.origin, headX: headX, scale: scale)
-        let tipX = x(for: state.tip, headX: headX, scale: scale)
-        ZStack(alignment: .topLeading) {
-            Capsule()
-                .fill(Color.white.opacity(0.08))
-                .frame(width: width, height: 3)
-                .offset(x: 0, y: y - 1.5)
-            Capsule()
-                .fill(RewindState.accent.opacity(0.75))
-                .frame(width: max(0, min(headX, tipX) - max(0, startX)), height: 3)
-                .offset(x: max(0, startX), y: y - 1.5)
-            Capsule()
-                .fill(RewindState.accent.opacity(0.22))
-                .frame(width: max(0, min(width, tipX) - headX), height: 3)
-                .offset(x: headX, y: y - 1.5)
-            // The tip itself: the thing you can always come back to.
+        let color = RewindState.takeColor(colorIndex)
+        HStack(spacing: 5) {
             Circle()
-                .fill(state.isAtTip ? RewindState.accent : RewindState.accent.opacity(0.5))
+                .fill(color)
                 .frame(width: 6, height: 6)
-                .offset(x: min(width - 3, max(-3, tipX - 3)), y: y - 3)
-        }
-    }
-
-    /// Evenly spaced in time, so they slide under a still playhead as it scrubs.
-    @ViewBuilder
-    private func ticks(width: CGFloat, y: CGFloat, headX: CGFloat, scale: CGFloat) -> some View {
-        let spacing = state.tickSpacing
-        let leftEdge = state.playhead - Double(headX / scale)
-        let firstTick = (leftEdge / spacing).rounded(.down) * spacing
-        let count = min(64, Int(Double(width) / Double(scale) / spacing) + 2)
-        ZStack(alignment: .topLeading) {
-            ForEach(Array(0..<max(0, count)), id: \.self) { i in
-                let t = firstTick + Double(i) * spacing
-                let tx = x(for: t, headX: headX, scale: scale)
-                if tx > -2 && tx < width + 2 {
-                    Rectangle()
-                        .fill(Color.white.opacity(t > state.playhead ? 0.10 : 0.18))
-                        .frame(width: 1, height: 6)
-                        .offset(x: tx, y: y - 3)
-                }
+                .shadow(color: color.opacity(0.9), radius: 3)
+            Text(name.uppercased())
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .tracking(0.7)
+            if let detail {
+                Text(detail)
+                    .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                    .opacity(0.62)
             }
         }
+        .foregroundColor(color)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3.5)
+        .background(Capsule().fill(color.opacity(0.16)))
+        .overlay(Capsule().strokeBorder(color.opacity(0.38), lineWidth: 0.75))
+    }
+}
+
+// MARK: - The tape
+
+/// The tape. The playhead stays put in the middle and time moves under it. Every tick is one
+/// thing you changed; the ticks under the playhead swell like a magnifying glass, and each new
+/// step gives them a small blip, so turning the ring feels like it is touching the tape.
+public struct TrailTrack: View {
+    public let state: RewindState
+    let motion: RewindMotion
+    /// The frame's time. Passing it in is what makes the canvas redraw every frame.
+    let now: TimeInterval
+
+    init(state: RewindState, motion: RewindMotion, now: TimeInterval) {
+        self.state = state
+        self.motion = motion
+        self.now = now
     }
 
-    @ViewBuilder
-    private func marks(width: CGFloat, y: CGFloat, headX: CGFloat, scale: CGFloat, height: CGFloat) -> some View {
-        let placed = TrailTrack.layout(marks: state.marks, playhead: state.playhead, headX: headX,
-                                       scale: scale, width: width)
-        ZStack(alignment: .topLeading) {
-            ForEach(placed, id: \.mark.id) { item in
-                markGlyph(item: item, y: y, headX: headX)
-            }
+    public var body: some View {
+        Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
+            _ = now
+            TrailTrack.draw(&ctx, size: size, state: state, motion: motion)
         }
+        .mask(
+            LinearGradient(stops: [
+                .init(color: .clear, location: 0),
+                .init(color: .black, location: 0.09),
+                .init(color: .black, location: 0.91),
+                .init(color: .clear, location: 1)
+            ], startPoint: .leading, endPoint: .trailing)
+        )
     }
 
-    @ViewBuilder
-    private func markGlyph(item: PlacedMark, y: CGFloat, headX: CGFloat) -> some View {
-        let isBranch = item.mark.kind == .branch
-        let color = isBranch ? RewindState.branchAccent : RewindState.accent
-        // Labels fade in as they come toward the playhead and out again as they pass.
-        let nearness = TrailTrack.nearness(of: item.x, to: headX)
-        ZStack(alignment: .topLeading) {
-            if isBranch {
-                // A branch is its own line leaving this one: a stub that goes somewhere,
-                // in its own colour so it never reads as a scratch on this line.
-                BranchStub()
-                    .stroke(color.opacity(0.9), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
-                    .frame(width: 20, height: 11)
-                    .offset(x: item.x, y: y)
-            }
-            Image(systemName: item.mark.kind.symbol)
-                .font(.system(size: 7.5, weight: .bold))
-                .foregroundColor(color)
-                .frame(width: 13, height: 13)
-                .background(Circle().fill(Color(red: 0.05, green: 0.06, blue: 0.08)))
-                .overlay(Circle().stroke(color.opacity(0.6), lineWidth: 1))
-                .offset(x: item.x - 6.5, y: y - 6.5)
+    static func draw(_ ctx: inout GraphicsContext, size: CGSize, state: RewindState, motion: RewindMotion) {
+        let position = motion.position.isNaN ? state.playhead : motion.position
+        let window = max(0.5, motion.window)
+        let headX = size.width * 0.5
+        let scale = size.width / CGFloat(window)
+        let base = size.height * 0.60
+        let color = RewindState.takeColor(state.takeColorIndex)
+        let pulse = CGFloat(motion.pulse)
+
+        // The line the ticks stand on.
+        ctx.fill(Path(CGRect(x: 0, y: base - 0.5, width: size.width, height: 1)),
+                 with: .color(.white.opacity(0.09)))
+
+        // Ticks: one per step. Near the playhead they grow, and a fresh step makes them jump.
+        let sigma: CGFloat = 60 + 26 * CGFloat(motion.speed)
+        for t in state.steps {
+            let x = headX + CGFloat(t - position) * scale
+            if x < -4 || x > size.width + 4 { continue }
+            let d = abs(x - headX)
+            let magnify = exp(-pow(d / sigma, 2))
+            let blip = pulse * exp(-pow(d / 36, 2))
+            let height = 10 + 34 * magnify + 20 * blip
+            let width = 1.3 + 1.1 * magnify
+            let passed = t <= position + 1e-6
+            let alpha = (passed ? 0.50 : 0.22) + 0.46 * Double(magnify)
+            let rect = CGRect(x: x - width / 2, y: base - height / 2, width: width, height: height)
+            ctx.fill(Path(roundedRect: rect, cornerRadius: width / 2), with: .color(.white.opacity(alpha)))
+        }
+
+        // The playhead: a soft glow under a crisp line, and a timecode on top.
+        let lineWidth = 2.4 + 1.2 * pulse
+        ctx.drawLayer { layer in
+            layer.addFilter(.blur(radius: 5))
+            layer.fill(
+                Path(roundedRect: CGRect(x: headX - 3, y: 12, width: 6, height: size.height - 14), cornerRadius: 3),
+                with: .color(color.opacity(0.50 + 0.30 * Double(pulse)))
+            )
+        }
+        ctx.fill(
+            Path(roundedRect: CGRect(x: headX - lineWidth / 2, y: 12, width: lineWidth, height: size.height - 14),
+                 cornerRadius: lineWidth / 2),
+            with: .color(color)
+        )
+        // Landmarks: a glyph above the tape, a stem to it, a name below. The ones the playhead is
+        // passing swell, the same way the ticks do.
+        let placed = layout(marks: state.marks, playhead: position, headX: headX, scale: scale, width: size.width)
+        for item in placed {
+            let d = abs(item.x - headX)
+            let near = CGFloat(exp(-pow(d / 34, 2)))
+            let isBranch = item.mark.kind == .branch
+            let tint = isBranch
+                ? RewindState.takeColor(state.takes.first { $0.name == item.mark.label }?.colorIndex ?? 1)
+                : Color.white
+            let radius: CGFloat = 8 * (1 + 0.32 * near + 0.22 * pulse * near)
+            let center = CGPoint(x: item.x, y: base - 33)
+
+            var stem = Path()
+            stem.move(to: CGPoint(x: item.x, y: center.y + radius))
+            stem.addLine(to: CGPoint(x: item.x, y: base - 6))
+            ctx.stroke(stem, with: .color(tint.opacity(0.28 + 0.4 * Double(near))), lineWidth: 1)
+
+            let disc = Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius,
+                                              width: radius * 2, height: radius * 2))
+            ctx.fill(disc, with: .color(Color(red: 0.06, green: 0.07, blue: 0.09)))
+            ctx.stroke(disc, with: .color(tint.opacity(0.55 + 0.4 * Double(near))), lineWidth: 1)
+            var symbol = ctx.resolve(Image(systemName: item.mark.kind.symbol))
+            symbol.shading = .color(tint.opacity(0.95))
+            let glyph = radius * 1.05
+            ctx.draw(symbol, in: CGRect(x: center.x - glyph / 2, y: center.y - glyph / 2, width: glyph, height: glyph))
+
             if item.showsLabel {
-                Text(item.mark.label)
-                    .font(.system(size: 8, weight: isBranch ? .bold : .semibold, design: .rounded))
-                    .foregroundColor(isBranch ? color : .white.opacity(0.9))
-                    .lineLimit(1)
-                    .frame(width: 104)
-                    .opacity(nearness)
-                    .offset(x: item.x - 52, y: y + 6 + CGFloat(item.row) * 9)
+                let labelCenter = CGPoint(x: item.x, y: base + 15 + CGFloat(item.row) * 12)
+                let backing = CGRect(x: labelCenter.x - labelWidth(item.mark.label) / 2, y: labelCenter.y - 7,
+                                     width: labelWidth(item.mark.label), height: 14)
+                ctx.fill(Path(roundedRect: backing, cornerRadius: 7),
+                         with: .color(Color(red: 0.05, green: 0.06, blue: 0.08).opacity(0.78)))
+                ctx.draw(
+                    Text(item.mark.label)
+                        .font(.system(size: 8.5, weight: isBranch ? .bold : .semibold, design: .rounded))
+                        .foregroundColor(isBranch ? tint : .white.opacity(0.92)),
+                    at: labelCenter,
+                    anchor: .center
+                )
             }
         }
-    }
 
-    @ViewBuilder
-    private func playhead(x headX: CGFloat, height: CGFloat, y: CGFloat) -> some View {
-        ZStack(alignment: .top) {
-            // The smear: the faster the scrub, the more the head drags time behind it.
-            Capsule()
-                .fill(
-                    LinearGradient(
-                        colors: [RewindState.accent.opacity(0), RewindState.accent.opacity(0.35 * state.speed)],
-                        startPoint: .leading, endPoint: .trailing
-                    )
-                )
-                .frame(width: 26 + 40 * CGFloat(state.speed), height: 10)
-                .offset(x: -(26 + 40 * CGFloat(state.speed)) / 2, y: y - 5)
-            Capsule()
-                .fill(state.isPeeking ? Color.white.opacity(0.85) : RewindState.accent)
-                .frame(width: 2, height: height * 0.74)
-                .offset(x: -1, y: height * 0.08)
-            PlayheadArrow()
-                .fill(state.isPeeking ? Color.white : RewindState.accent)
-                .frame(width: 7, height: 5)
-                .offset(x: -3.5, y: height * 0.08 - 5)
-        }
-        .offset(x: headX)
+        let stamp = CGRect(x: headX - 25, y: 0, width: 50, height: 15)
+        ctx.fill(Path(roundedRect: stamp, cornerRadius: 7.5), with: .color(Color(red: 0.05, green: 0.06, blue: 0.08).opacity(0.85)))
+        ctx.stroke(Path(roundedRect: stamp, cornerRadius: 7.5), with: .color(color.opacity(0.55)), lineWidth: 0.75)
+        ctx.draw(
+            Text(RewindEngine.clock(position - state.spanStart))
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundColor(color),
+            at: CGPoint(x: stamp.midX, y: stamp.midY),
+            anchor: .center
+        )
     }
 
     // MARK: - Label layout
@@ -369,28 +551,127 @@ public struct TrailTrack: View {
     }
 }
 
-/// The little diagonal that says "this line went somewhere else".
-struct BranchStub: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
-        path.addCurve(
-            to: CGPoint(x: rect.maxX, y: rect.maxY),
-            control1: CGPoint(x: rect.minX + rect.width * 0.55, y: rect.minY),
-            control2: CGPoint(x: rect.minX + rect.width * 0.45, y: rect.maxY)
-        )
-        return path
-    }
-}
+// MARK: - The takes
 
-struct PlayheadArrow: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        path.closeSubpath()
-        return path
+/// Every take as a lane over the whole session, with the playhead running down through all of
+/// them. Forks curve off the line they left; the take being edited is lit and the rest sit back.
+struct TakesMap: View {
+    let state: RewindState
+    let motion: RewindMotion
+    let now: TimeInterval
+
+    static let rowHeight: CGFloat = 21
+    static let labelWidth: CGFloat = 64
+    static let maxRows = 5
+
+    static func height(for takeCount: Int) -> CGFloat {
+        CGFloat(min(max(1, takeCount), maxRows)) * rowHeight + 8
+    }
+
+    /// At most five lanes; when there are more, the window follows the active take.
+    static func visible(_ takes: [TakeLane]) -> [TakeLane] {
+        guard takes.count > maxRows else { return takes }
+        let active = takes.firstIndex { $0.isActive } ?? 0
+        let first = min(max(0, active - maxRows / 2), takes.count - maxRows)
+        return Array(takes[first..<(first + maxRows)])
+    }
+
+    var body: some View {
+        Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
+            _ = now
+            TakesMap.draw(&ctx, size: size, state: state, motion: motion)
+        }
+    }
+
+    static func draw(_ ctx: inout GraphicsContext, size: CGSize, state: RewindState, motion: RewindMotion) {
+        let lanes = visible(state.takes)
+        guard !lanes.isEmpty else { return }
+        let x0 = labelWidth
+        let plotWidth = max(1, size.width - x0 - 6)
+        let span = max(1, state.spanEnd - state.spanStart)
+        func x(_ t: TimeInterval) -> CGFloat {
+            x0 + CGFloat(min(1, max(0, (t - state.spanStart) / span))) * plotWidth
+        }
+        func y(_ row: Int) -> CGFloat { 4 + rowHeight * CGFloat(row) + rowHeight / 2 }
+        let rowOf = Dictionary(uniqueKeysWithValues: lanes.enumerated().map { ($1.id, $0) })
+        let position = motion.position.isNaN ? state.playhead : motion.position
+        let pulse = CGFloat(motion.pulse)
+
+        for (row, lane) in lanes.enumerated() {
+            let color = RewindState.takeColor(lane.colorIndex)
+            let glow = CGFloat(motion.glow[lane.id] ?? (lane.isActive ? 1 : 0))
+            let cy = y(row)
+            let dim = 0.40 + 0.60 * Double(glow)
+
+            // The lit lane: a quiet wash behind the take being edited.
+            if glow > 0.01 {
+                ctx.fill(
+                    Path(roundedRect: CGRect(x: 2, y: cy - rowHeight / 2 + 1, width: size.width - 4, height: rowHeight - 2), cornerRadius: 7),
+                    with: .color(color.opacity(0.10 * Double(glow)))
+                )
+            }
+
+            // Name.
+            ctx.draw(
+                Text(lane.name)
+                    .font(.system(size: 9, weight: lane.isActive ? .bold : .semibold, design: .rounded))
+                    .foregroundColor(color.opacity(0.55 + 0.45 * Double(glow))),
+                at: CGPoint(x: 12 + 4, y: cy), anchor: .leading
+            )
+            ctx.fill(Path(ellipseIn: CGRect(x: 6, y: cy - 2.5, width: 5, height: 5)),
+                     with: .color(color.opacity(0.35 + 0.65 * Double(glow))))
+
+            // Its line, from where it left its parent to its own last moment.
+            let left = x(lane.start)
+            let right = max(left + 2, x(lane.tip))
+            ctx.fill(Path(roundedRect: CGRect(x: left, y: cy - 1, width: right - left, height: 2), cornerRadius: 1),
+                     with: .color(color.opacity(0.30 * dim + 0.10)))
+
+            // Activity: what you did, when. Dense bursts stand tall; quiet stretches are flat.
+            let n = max(1, lane.activity.count)
+            let slot = plotWidth / CGFloat(n)
+            for (i, value) in lane.activity.enumerated() where value > 0.02 {
+                let t0 = state.spanStart + Double(i) / Double(n) * span
+                guard t0 >= lane.start - span / Double(n), t0 <= lane.tip + span / Double(n) else { continue }
+                let barHeight = 2 + 11 * CGFloat(value)
+                let rect = CGRect(x: x0 + CGFloat(i) * slot + 0.3, y: cy - barHeight / 2,
+                                  width: max(1, slot - 0.8), height: barHeight)
+                ctx.fill(Path(roundedRect: rect, cornerRadius: 0.8),
+                         with: .color(color.opacity((0.22 + 0.55 * Double(value)) * dim)))
+            }
+
+            // Where it left its parent: a curve off the parent's line into this one.
+            if let parentID = lane.parentID, let parentRow = rowOf[parentID] {
+                let from = CGPoint(x: left, y: y(parentRow))
+                let to = CGPoint(x: left + 12, y: cy)
+                var curve = Path()
+                curve.move(to: from)
+                curve.addCurve(to: to, control1: CGPoint(x: from.x + 9, y: from.y),
+                               control2: CGPoint(x: to.x - 9, y: to.y))
+                ctx.stroke(curve, with: .color(color.opacity(0.35 + 0.55 * Double(glow))),
+                           style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                ctx.fill(Path(ellipseIn: CGRect(x: from.x - 2.25, y: from.y - 2.25, width: 4.5, height: 4.5)),
+                         with: .color(color.opacity(0.9)))
+            }
+        }
+
+        // The playhead, down through every take.
+        let px = x(position)
+        let lineColor = RewindState.takeColor(state.takeColorIndex)
+        ctx.fill(Path(CGRect(x: px - 0.6, y: 2, width: 1.2, height: size.height - 4)),
+                 with: .color(lineColor.opacity(0.65)))
+        if let activeRow = lanes.firstIndex(where: { $0.isActive }) {
+            let radius: CGFloat = 3.6 + 2.4 * pulse
+            let center = CGPoint(x: px, y: y(activeRow))
+            ctx.drawLayer { layer in
+                layer.addFilter(.blur(radius: 3))
+                layer.fill(Path(ellipseIn: CGRect(x: center.x - radius - 2, y: center.y - radius - 2,
+                                                  width: (radius + 2) * 2, height: (radius + 2) * 2)),
+                           with: .color(lineColor.opacity(0.7)))
+            }
+            ctx.fill(Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)),
+                     with: .color(lineColor))
+        }
     }
 }
 
@@ -431,73 +712,75 @@ struct KnobRoll: View {
     }
 }
 
-/// The whole Rewind readout: what you are holding, where the playhead is, how far back the
-/// photo has been taken, and what the twelve knobs read there.
+/// The whole Rewind readout: which take you are on, the tape under the playhead, every take as
+/// a lane, and what the twelve knobs read right here.
 public struct RewindView: View {
     public let state: RewindState
+    @State private var motion = RewindMotion()
 
     public init(state: RewindState) {
         self.state = state
     }
 
-    public var body: some View {
-        VStack(spacing: 5) {
-            header
-            TrailTrack(state: state)
-                .frame(height: 62)
-                .padding(.horizontal, 12)
-            if !state.knobs.isEmpty {
-                KnobRoll(knobs: state.knobs, accent: accent)
-                    .padding(.horizontal, 12)
-            }
-        }
-        .padding(.top, 8)
-        .padding(.bottom, 8)
+    /// The window is sized to this: header, tape, lanes, knobs, and the padding between.
+    public static func height(takeCount: Int, hasKnobs: Bool) -> CGFloat {
+        let lanes = TakesMap.height(for: takeCount)
+        return 54 + 112 + 8 + lanes + (hasKnobs ? 8 + 70 : 0) + 14
     }
 
-    private var accent: Color {
-        state.branchName == nil ? RewindState.accent : RewindState.branchAccent
+    public var body: some View {
+        VStack(spacing: 8) {
+            header
+            TimelineView(.animation) { timeline in
+                let now = timeline.date.timeIntervalSinceReferenceDate
+                let _ = motion.advance(state, now: now)
+                VStack(spacing: 8) {
+                    TrailTrack(state: state, motion: motion, now: now)
+                        .frame(height: 112)
+                    TakesMap(state: state, motion: motion, now: now)
+                        .frame(height: TakesMap.height(for: state.takes.count))
+                }
+            }
+            .padding(.horizontal, 14)
+            if !state.knobs.isEmpty {
+                KnobRoll(knobs: state.knobs, accent: accent)
+                    .padding(.horizontal, 14)
+            }
+        }
+        .padding(.top, 10)
+        .padding(.bottom, 4)
     }
+
+    private var accent: Color { RewindState.takeColor(state.takeColorIndex) }
 
     private var header: some View {
         HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(Color(red: 0.05, green: 0.06, blue: 0.08))
-                    .frame(width: 34, height: 34)
-                Image(systemName: state.isPeeking ? "eye.fill" : "gobackward")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(accent)
-            }
-            .frame(width: 34, height: 34)
-
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 5) {
+            Image(systemName: state.isPeeking ? "eye.fill" : "gobackward")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(accent)
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
                     Text("REWIND")
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
-                    if let branch = state.branchName {
-                        Text(branch.uppercased())
-                            .font(.system(size: 7.5, weight: .bold, design: .rounded))
-                            .foregroundColor(RewindState.branchAccent)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 1.5)
-                            .background(Capsule().fill(RewindState.branchAccent.opacity(0.18)))
-                    }
+                    TakeBadge(name: state.takeCount > 1 || state.branchName != nil ? (state.branchName ?? "Original") : "Original",
+                              colorIndex: state.takeColorIndex,
+                              detail: state.takeCount > 1 ? "\(state.takeNumber) of \(state.takeCount)" : nil)
+                        .id(state.takeNumber)
+                        .transition(.scale(scale: 0.8).combined(with: .opacity))
                 }
                 Text(state.caption)
-                    .font(.system(size: 9.5, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.55))
+                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.62))
                     .lineLimit(1)
                     .contentTransition(.opacity)
             }
-
             Spacer(minLength: 6)
-
             transportMeter
         }
         .padding(.horizontal, 14)
-        .animation(SpringPhysics.micro, value: state.caption)
+        .animation(.smooth(duration: 0.3), value: state.takeNumber)
     }
 
     /// What the transport is doing and how fast, with where you stand among the steps.
@@ -505,20 +788,20 @@ public struct RewindView: View {
         VStack(alignment: .trailing, spacing: 2) {
             HStack(spacing: 4) {
                 Image(systemName: state.isPlaying ? (state.isReverse ? "backward.fill" : "play.fill") : "pause.fill")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                 Text(state.rateText)
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .monospacedDigit()
                     .contentTransition(.numericText())
             }
             .foregroundColor(accent)
             if state.stepCount > 0 {
                 Text("\(state.stepNumber) / \(state.stepCount)")
-                    .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
                     .monospacedDigit()
                     .foregroundColor(.white.opacity(0.5))
             }
         }
-        .animation(SpringPhysics.bubble, value: state.rate)
+        .animation(.smooth(duration: 0.25), value: state.rate)
     }
 }

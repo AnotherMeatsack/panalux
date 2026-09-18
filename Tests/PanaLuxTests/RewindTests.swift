@@ -82,6 +82,43 @@ final class EditTrailTests: XCTestCase {
         XCTAssertEqual(playback.step(from: steps[last], by: 99), steps[last], accuracy: 0.0001)
     }
 
+    func testATakeLeavesTheLineThatOwnsThatMoment() {
+        var trail = EditTrail(photoID: "cat:1")
+        trail.record(param: "Exposure", value: 0.6, at: 10.0)
+        trail.record(param: "Exposure", value: 0.7, at: 30.0)
+        let original = trail.activeBranchID
+        let second = trail.fork(at: 20.0, wall: Date())                  // Take 2 leaves the original at 20 s
+        trail.record(param: "Contrast", value: 0.8, at: 25.0)
+
+        // Rewinding to 5 s and editing while Take 2 is active: 5 s belongs to the original, not to
+        // Take 2 (which only begins at 20 s), so that is where the new take must hang.
+        let third = trail.fork(at: 5.0, wall: Date())
+        XCTAssertEqual(third.parent, original, "a take cannot start before its parent does")
+        XCTAssertEqual(trail.lineage().map(\.id), [original, third.id])
+
+        // And one from later than Take 2's start does hang off Take 2.
+        trail.activate(second.id)
+        let fourth = trail.fork(at: 22.0, wall: Date())
+        XCTAssertEqual(fourth.parent, second.id)
+        // Every take can still be played back from the start, in order.
+        for id in [original, second.id, third.id, fourth.id] {
+            let playback = trail.playback(on: id)
+            XCTAssertEqual(playback.stepTimes, playback.stepTimes.sorted(), id)
+            XCTAssertLessThanOrEqual(playback.start, playback.tip)
+        }
+    }
+
+    func testActivatingATakeContinuesItsClockAfterItsOwnTip() {
+        var trail = EditTrail(photoID: "cat:1")
+        let root = trail.activeBranchID
+        trail.record(param: "Exposure", value: 0.6, at: 40.0)
+        _ = trail.fork(at: 10.0, wall: Date())
+        let later = Date().addingTimeInterval(500)
+        trail.activate(root, at: later)
+        // Now, on the original, is just after where the original ended, not 500 s later.
+        XCTAssertEqual(trail.time(at: later), 40.0 + EditTrail.resumeGap, accuracy: 0.01)
+    }
+
     func testKeyframeSeedsParametersTheStreamNeverSaw() {
         var trail = EditTrail(photoID: "cat:1")
         _ = trail.addKeyframe(TrailKeyframe(t: 0, kind: .open, label: "Opened",
@@ -805,5 +842,250 @@ final class RewindTransportTests: XCTestCase {
         engine.adjustSpeed(units: -150, fine: false)
         let coarse = engine.state.rate
         XCTAssertGreaterThan(fine, coarse, "the same turn moves the fine dial less")
+    }
+}
+
+
+/// Takes: how you get onto one, how you tell, and how you move between them.
+final class RewindTakesTests: XCTestCase {
+    private var dir: URL!
+    private var lightroom: FakeLightroom!
+    private var engine: RewindEngine!
+    private var events: [RewindEngine.TakeEvent] = []
+    private var subscription: Any?
+
+    override func setUp() {
+        super.setUp()
+        dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        lightroom = FakeLightroom()
+        engine = RewindEngine()
+        engine.storeDirectory = dir
+        engine.output = lightroom
+        engine.knobParams = [(control: "Y_GAMMA", param: "Exposure")]
+        lightroom.values = ["Exposure": 0.5]
+        engine.setActivePhoto("cat:1")
+        events = []
+        subscription = engine.takeEvents.sink { [unowned self] in self.events.append($0) }
+    }
+
+    override func tearDown() {
+        engine.endRewind(announce: false)
+        engine.setActivePhoto(nil)
+        try? FileManager.default.removeItem(at: dir)
+        super.tearDown()
+    }
+
+    private func edit(_ value: Double, at seconds: TimeInterval) {
+        lightroom.values["Exposure"] = value
+        let branch = engine.trail!.activeBranch
+        engine.record(param: "Exposure", value: value,
+                      at: branch.clockOrigin.addingTimeInterval(seconds - branch.forkTime))
+    }
+
+    /// Original: 0.6 at 10 s, 0.9 at 30 s. Then rewind to 15 s and edit: Take 2 starts there.
+    private func makeSecondTake() {
+        edit(0.6, at: 10)
+        edit(0.9, at: 30)
+        engine.beginRewind()
+        engine.scrub(units: -40, now: Date())                            // one step back: onto 10 s
+        engine.endRewind()
+        edit(0.2, at: 12)                                                // an edit from the past
+    }
+
+    func testThereIsNoBadgeOnTheOriginal() {
+        edit(0.6, at: 10)
+        XCTAssertNil(engine.takeInfo)
+    }
+
+    func testEditingFromThePastStartsATakeSaysSoAndKeepsTheOtherLine() {
+        makeSecondTake()
+        XCTAssertEqual(engine.trail?.branches.count, 2)
+        XCTAssertEqual(engine.takeInfo, TakeInfo(name: "Take 2", colorIndex: 1, number: 2, total: 2))
+        XCTAssertEqual(events.count, 1)
+        if case .started(let name, let parent, let at)? = events.first {
+            XCTAssertEqual(name, "Take 2")
+            XCTAssertEqual(parent, "Original")
+            XCTAssertEqual(at, 10, accuracy: 0.05)
+        } else {
+            XCTFail("expected a started event, got \(events)")
+        }
+        // The original still has all of it.
+        let original = engine.trail!.branches[0].id
+        XCTAssertEqual(engine.trail!.playback(on: original).value(of: "Exposure", at: 31) ?? 0, 0.9, accuracy: 0.0001)
+    }
+
+    func testHoppingKeepsYourPlaceAndTheAB() {
+        makeSecondTake()
+        engine.beginRewind()
+        XCTAssertEqual(engine.state.takeNumber, 2)
+        XCTAssertEqual(engine.state.takes.map(\.name), ["Original", "Take 2"])
+        XCTAssertEqual(engine.state.takes.filter(\.isActive).map(\.name), ["Take 2"])
+        XCTAssertEqual(lightroom.values["Exposure"] ?? 0, 0.2, accuracy: 0.0001, "Take 2 finished at 0.2")
+
+        // At the end of Take 2, hopping lands at the end of the original: compare the results.
+        engine.hopTake(forward: true)
+        XCTAssertEqual(engine.state.takeNumber, 1)
+        XCTAssertEqual(engine.takeInfo, nil)
+        XCTAssertEqual(lightroom.values["Exposure"] ?? 0, 0.9, accuracy: 0.0001, "the original finished at 0.9")
+        XCTAssertTrue(engine.state.isAtTip)
+
+        // And back. It wraps.
+        engine.hopTake(forward: true)
+        XCTAssertEqual(engine.state.takeNumber, 2)
+        XCTAssertEqual(lightroom.values["Exposure"] ?? 0, 0.2, accuracy: 0.0001)
+    }
+
+    func testHoppingFromTheMiddleStaysAtTheSameMoment() {
+        makeSecondTake()
+        engine.beginRewind()
+        engine.scrub(units: -40, now: Date())                            // off the tip, into Take 2's line
+        let here = engine.state.playhead
+        XCTAssertFalse(engine.state.isAtTip)
+        engine.hopTake(forward: false)
+        XCTAssertEqual(engine.state.playhead, min(here, engine.state.tip), accuracy: 0.0001)
+        XCTAssertFalse(engine.state.isAtTip)
+    }
+
+    func testHoppingThenEditingContinuesThatTake() {
+        makeSecondTake()
+        engine.beginRewind()
+        engine.hopTake(forward: true)                                    // onto the original, at its tip
+        engine.endRewind()
+        // The original is the take being edited again, so this lands on it, not on Take 2.
+        XCTAssertEqual(engine.trail?.activeBranch.name, "Original")
+        let before = engine.trail!.activeBranch.events.count
+        edit(0.95, at: 36)                                               // well after Lightroom has settled
+        XCTAssertEqual(engine.trail?.branches.count, 2, "still no new take: we were at its tip")
+        XCTAssertEqual(engine.trail!.activeBranch.events.count, before + 1)
+    }
+
+    func testOneTakeHasNothingToHopTo() {
+        edit(0.6, at: 10)
+        engine.beginRewind()
+        engine.hopTake(forward: true)
+        XCTAssertEqual(engine.state.takeCount, 1)
+        XCTAssertTrue(engine.state.caption.contains("Only one take"), engine.state.caption)
+    }
+
+    func testEveryTakeGetsALaneWithItsOwnActivity() {
+        makeSecondTake()
+        engine.beginRewind()
+        let lanes = engine.state.takes
+        XCTAssertEqual(lanes.count, 2)
+        XCTAssertEqual(lanes[1].parentID, lanes[0].id)
+        XCTAssertGreaterThan(lanes[0].activity.max() ?? 0, 0)
+        XCTAssertEqual(lanes[0].activity.count, RewindEngine.laneBuckets)
+        XCTAssertEqual(lanes.map(\.colorIndex), [0, 1])
+        XCTAssertGreaterThanOrEqual(engine.state.spanEnd, lanes.map(\.tip).max() ?? 0)
+        XCTAssertFalse(engine.state.steps.isEmpty, "the tape has ticks to draw")
+    }
+
+    func testTheTapeZoomsToHowDenselyYouWereEditing() {
+        // Frantic: a step every tenth of a second. Slow: one every five seconds.
+        var frantic = EditTrail(photoID: "a")
+        for i in 0..<200 { frantic.record(param: "Exposure", value: 0.3 + Double(i) * 0.001, at: Double(i) * 0.1) }
+        var slow = EditTrail(photoID: "b")
+        for i in 0..<200 { slow.record(param: "Exposure", value: 0.3 + Double(i) * 0.001, at: Double(i) * 5.0) }
+        let fast = RewindEngine.tapeWindow(for: frantic.playback(), at: 10)
+        let calm = RewindEngine.tapeWindow(for: slow.playback(), at: 500)
+        XCTAssertLessThan(fast, calm)
+        XCTAssertGreaterThanOrEqual(fast, 3)
+        XCTAssertLessThanOrEqual(calm, 900)
+    }
+}
+
+
+/// The springs behind the readout. They have to arrive quickly and never overshoot: that is what
+/// makes the tape feel like it has weight instead of wobbling.
+final class RewindMotionTests: XCTestCase {
+    private func state(playhead: Double, step: Int, window: Double = 30) -> RewindState {
+        RewindState(origin: 0, tip: 200, playhead: playhead, window: window, stepNumber: step, stepCount: 100)
+    }
+
+    /// Runs the springs at a display rate for a while.
+    private func run(_ motion: RewindMotion, _ state: RewindState, seconds: Double, hz: Double = 120,
+                     from start: Double = 1000) -> [Double] {
+        var positions: [Double] = []
+        var t = start
+        for _ in 0..<Int(seconds * hz) {
+            motion.advance(state, now: t)
+            positions.append(motion.position)
+            t += 1 / hz
+        }
+        return positions
+    }
+
+    func testThePlayheadArrivesQuicklyAndNeverOvershoots() {
+        let motion = RewindMotion()
+        motion.advance(state(playhead: 100, step: 10), now: 1000)         // starts settled at 100
+        let path = run(motion, state(playhead: 108, step: 11), seconds: 0.6, from: 1000.01)
+        XCTAssertLessThanOrEqual(path.max() ?? 0, 108.0001, "critically damped: it never goes past")
+        XCTAssertGreaterThan(path[Int(0.25 * 120)], 108 - 8 * 0.02, "within about a quarter of a second it is nearly there")
+        XCTAssertEqual(path.last ?? 0, 108, accuracy: 0.001)
+        // Monotonic: no wobble on the way.
+        for pair in zip(path, path.dropFirst()) { XCTAssertGreaterThanOrEqual(pair.1, pair.0 - 1e-9) }
+    }
+
+    func testTheSameSpringWorksAtAnyFrameRate() {
+        func settle(hz: Double) -> Double {
+            let motion = RewindMotion()
+            motion.advance(state(playhead: 50, step: 1), now: 1000)
+            return run(motion, state(playhead: 56, step: 2), seconds: 0.2, hz: hz, from: 1000.01).last ?? 0
+        }
+        // 60, 120 and 240 Hz displays all agree, so a ProMotion screen is smoother, not different.
+        XCTAssertEqual(settle(hz: 60), settle(hz: 120), accuracy: 0.08)
+        XCTAssertEqual(settle(hz: 120), settle(hz: 240), accuracy: 0.08)
+    }
+
+    func testAJumpAcrossTheWholeSessionGlidesInFromTheEdgeOfTheTape() {
+        let motion = RewindMotion()
+        motion.advance(state(playhead: 5, step: 1, window: 30), now: 1000)
+        motion.advance(state(playhead: 5_000, step: 2, window: 30), now: 1000.01)
+        XCTAssertGreaterThan(motion.position, 5_000 - 30, "it never crosses empty tape: the last stretch is on screen")
+    }
+
+    func testEachNewStepBlipsAndItDecays() {
+        let motion = RewindMotion()
+        motion.advance(state(playhead: 10, step: 4), now: 1000)
+        XCTAssertEqual(motion.pulse, 0, accuracy: 0.0001, "nothing to blip about on the first frame")
+        motion.advance(state(playhead: 10.5, step: 5), now: 1000.01)
+        XCTAssertGreaterThan(motion.pulse, 0.5)
+        _ = run(motion, state(playhead: 10.5, step: 5), seconds: 1.0, from: 1000.02)
+        XCTAssertLessThan(motion.pulse, 0.01, "and it settles, so a held playhead is still")
+    }
+
+    func testTheTapeReZoomsSmoothly() {
+        let motion = RewindMotion()
+        motion.advance(state(playhead: 10, step: 1, window: 10), now: 1000)
+        let w = (0..<60).map { i -> Double in
+            motion.advance(state(playhead: 10, step: 1, window: 40), now: 1000.01 + Double(i) / 120)
+            return motion.window
+        }
+        XCTAssertGreaterThanOrEqual(w.first ?? 0, 10)
+        XCTAssertLessThanOrEqual(w.max() ?? 0, 40.0001, "no overshoot when it zooms out")
+        for pair in zip(w, w.dropFirst()) { XCTAssertGreaterThanOrEqual(pair.1, pair.0 - 1e-9) }
+    }
+
+    func testTheActiveLaneEasesOnRatherThanSnapping() {
+        let motion = RewindMotion()
+        let a = TakeLane(id: "a", name: "Original", colorIndex: 0, start: 0, tip: 10, parentID: nil,
+                         isActive: true, isOnPath: true, activity: [])
+        let b = TakeLane(id: "b", name: "Take 2", colorIndex: 1, start: 4, tip: 10, parentID: "a",
+                         isActive: false, isOnPath: false, activity: [])
+        var s = state(playhead: 5, step: 1)
+        s.takes = [a, b]
+        motion.advance(s, now: 1000)
+        XCTAssertEqual(motion.glow["a"] ?? 0, 1, accuracy: 0.001)
+        // Hop: b becomes active.
+        s.takes = [TakeLane(id: "a", name: "Original", colorIndex: 0, start: 0, tip: 10, parentID: nil, isActive: false, isOnPath: false, activity: []),
+                   TakeLane(id: "b", name: "Take 2", colorIndex: 1, start: 4, tip: 10, parentID: "a", isActive: true, isOnPath: true, activity: [])]
+        motion.advance(s, now: 1000.008)
+        let early = motion.glow["b"] ?? 0
+        XCTAssertGreaterThan(early, 0)
+        XCTAssertLessThan(early, 0.5, "the lit lane fades over rather than jumping")
+        _ = run(motion, s, seconds: 0.6, from: 1000.02)
+        XCTAssertGreaterThan(motion.glow["b"] ?? 0, 0.97)
+        XCTAssertLessThan(motion.glow["a"] ?? 1, 0.03)
     }
 }

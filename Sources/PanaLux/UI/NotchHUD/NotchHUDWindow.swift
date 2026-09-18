@@ -11,7 +11,15 @@ public class NotchHUDWindowController: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var isHiding = false
 
-    private let hudWidth: CGFloat = 400
+    /// Readouts are 400 wide; Rewind is a timeline and gets room to be one. It is set from the
+    /// mode before any frame is worked out, so the window, its content and its position agree.
+    private var hudWidth: CGFloat = 400
+    static let rewindWidth: CGFloat = 560
+
+    static func width(for mode: ActiveDisplayMode) -> CGFloat {
+        if case .rewind = mode, AppSettings.shared.hudStyle != "minimal" { return rewindWidth }
+        return 400
+    }
     /// The height the window is at or animating to. `window.frame` lags during animations.
     private var currentHeight: CGFloat = 0
     /// The display the readout is on. Chosen when it slides down and kept until it hides,
@@ -94,9 +102,12 @@ public class NotchHUDWindowController: ObservableObject {
             slideUpIntoNotch()
         } else {
             let height = Self.height(for: mode)
+            let width = Self.width(for: mode)
+            let widthChanged = abs(hudWidth - width) > 0.5
+            hudWidth = width
             if let window, window.isVisible {
                 // Values change every packet; only move the window when its size changes.
-                if isHiding || abs(currentHeight - height) > 0.5 {
+                if isHiding || widthChanged || abs(currentHeight - height) > 0.5 {
                     isHiding = false
                     slideToRest(height: height, fromHidden: false)
                 }
@@ -175,8 +186,8 @@ public class NotchHUDWindowController: ObservableObject {
             // One row fits in the same box as a single readout, so nothing jumps.
             return readings.count > 3 ? 104 : 68
         case .rewind(let state):
-            // Header, the tape, and two rows of knobs when there are knobs to roll.
-            return state.knobs.isEmpty ? 126 : 180
+            // Header, the tape, a lane for each take, and the knobs. It grows with the takes.
+            return RewindView.height(takeCount: state.takes.count, hasKnobs: !state.knobs.isEmpty)
         default: return 68
         }
     }

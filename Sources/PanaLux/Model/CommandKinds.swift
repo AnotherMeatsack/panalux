@@ -87,6 +87,9 @@ public enum RewindCommands {
     public static let play = "rewind:play"
     public static let playReverse = "rewind:play_rev"
     public static let pause = "rewind:pause"
+    /// Keys: hop to the previous or next take, keeping your place in time.
+    public static let takePrevious = "rewind:take_prev"
+    public static let takeNext = "rewind:take_next"
     public static let tip = "rewind:tip"
     public static let mark = "rewind:mark"
     public static let branch = "rewind:branch"
@@ -108,6 +111,8 @@ public enum RewindCommands {
         case play: return "Play"
         case playReverse: return "Play backward"
         case pause: return "Pause"
+        case takePrevious: return "Previous take"
+        case takeNext: return "Next take"
         case tip: return "Back to now"
         case mark: return "Mark this"
         case branch: return "Branch here"

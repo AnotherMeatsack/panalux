@@ -283,7 +283,7 @@ public struct Profile: Codable, Equatable {
     }
 
     /// Bump when the factory map gains something existing users should receive.
-    public static let schemaVersion = 12
+    public static let schemaVersion = 13
 
     public static func loadUserOrDefault() -> Profile {
         let factory = loadDefault()
@@ -539,6 +539,22 @@ public struct Profile: Codable, Equatable {
                let rewind = factory.layers["REWIND"] {
                 if seen >= 2 { backup() }
                 p.layers["REWIND"] = rewind
+            }
+        }
+        if seen < 13 {
+            // v13: Prev/Next Node hop between takes while Rewind is held. Only keys the layer
+            // has not already given a job are filled.
+            if var rewind = p.layers["REWIND"], let shipped = factory.layers["REWIND"] {
+                var buttons = rewind.buttons ?? [:]
+                var changed = false
+                for key in ["PREV_NODE", "NEXT_NODE"] where buttons[key] == nil {
+                    if let spec = shipped.buttons?[key] { buttons[key] = spec; changed = true }
+                }
+                if changed {
+                    if seen >= 2 { backup() }
+                    rewind.buttons = buttons
+                    p.layers["REWIND"] = rewind
+                }
             }
         }
         if seen < schemaVersion {

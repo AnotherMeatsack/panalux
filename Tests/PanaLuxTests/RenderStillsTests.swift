@@ -71,15 +71,26 @@ final class RenderStillsTests: XCTestCase {
             ("rewind-branch", .rewind(RewindSamples.branched)),
             ("rewind-crowded", .rewind(RewindSamples.crowded)),
             ("rewind-playing", .rewind(RewindSamples.playing)),
-            ("rewind-reverse", .rewind(RewindSamples.reversing))
+            ("rewind-reverse", .rewind(RewindSamples.reversing)),
+            ("rewind-takes", .rewind(RewindSamples.threeTakes))
         ]
         for (name, mode) in modes {
             let height = NotchHUDWindowController.height(for: mode)
+            let width = NotchHUDWindowController.width(for: mode)
             let view = readoutView(mode)
-                .frame(width: 400, height: height)
+                .frame(width: width, height: height)
                 .background(RoundedRectangle(cornerRadius: 22).fill(Color(white: 0.15)))
-            try save(view, size: CGSize(width: 400, height: height), name: "hud-\(name)")
+            try save(view, size: CGSize(width: width, height: height), name: "hud-\(name)")
         }
+        // A tangent: every readout wears the take's badge.
+        let badgeView = readoutView(.knob(name: "Y Gamma", param: "Exposure", value: 0.62, displayValue: "+0.35 EV", isFine: false, angleDegrees: 40))
+            .overlay(alignment: .topTrailing) {
+                TakeBadge(TakeInfo(name: "Take 2", colorIndex: 1, number: 2, total: 3))
+                    .padding(.top, 7).padding(.trailing, 10)
+            }
+            .frame(width: 400, height: 68)
+            .background(RoundedRectangle(cornerRadius: 22).fill(Color(white: 0.15)))
+        try save(badgeView, size: CGSize(width: 400, height: 68), name: "hud-knob-take")
         // Rewind: the notch while you scrub your own session.
         let detailKnobs: [KnobCell] = [
             KnobCell(label: "Blacks", value: "-12", isOverlay: false),
@@ -190,54 +201,129 @@ enum RewindSamples {
         TrailMark(id: "crop", time: 140, label: "Crop", kind: .crop)
     ]
 
+    /// A believable session: bursts of turning with quiet between them.
+    static let bursts: [Double] = [6, 14, 26, 41, 58, 66, 92, 104, 121, 141, 158, 176, 196, 214]
+
+    static func steps(around playhead: Double, half: Double, from: Double = 0, to: Double = 240) -> [TimeInterval] {
+        var out: [TimeInterval] = []
+        for centre in bursts {
+            for i in 0..<16 {
+                let t = centre + Double(i) * 0.55 + Double((i * 7) % 3) * 0.08
+                if t >= from, t <= to, abs(t - playhead) <= half { out.append(t) }
+            }
+        }
+        return out.sorted()
+    }
+
+    static func activity(from: Double, to: Double, span: Double = 240, salt: Int = 0) -> [Float] {
+        let n = RewindEngine.laneBuckets
+        var counts = [Float](repeating: 0, count: n)
+        for centre in bursts where centre >= from - 1 && centre <= to {
+            let b = min(n - 1, Int(centre / span * Double(n)))
+            counts[b] += Float(9 + (Int(centre) + salt) % 5)
+        }
+        let peak = counts.max() ?? 1
+        return counts.map { ($0 / peak).squareRoot() }
+    }
+
+    static func lane(_ name: String, _ index: Int, from: Double, to: Double, parent: String?,
+                     active: Int, path: Set<Int>) -> TakeLane {
+        TakeLane(id: "t\(index)", name: name, colorIndex: index, start: from, tip: to,
+                 parentID: parent, isActive: index == active, isOnPath: path.contains(index),
+                 activity: activity(from: from, to: to, salt: index * 3))
+    }
+
+    static func oneTake(active: Bool = true) -> [TakeLane] {
+        [lane("Original", 0, from: 0, to: 230, parent: nil, active: 0, path: [0])]
+    }
+
+    static func twoTakes(active: Int) -> [TakeLane] {
+        [lane("Original", 0, from: 0, to: 230, parent: nil, active: active, path: active == 0 ? [0] : [0, 1]),
+         lane("Take 2", 1, from: 92, to: 190, parent: "t0", active: active, path: active == 1 ? [0, 1] : [1])]
+    }
+
+    static func threeTakes(active: Int) -> [TakeLane] {
+        [lane("Original", 0, from: 0, to: 230, parent: nil, active: active, path: [0]),
+         lane("Take 2", 1, from: 92, to: 190, parent: "t0", active: active, path: active == 1 ? [0, 1] : [1]),
+         lane("Take 3", 2, from: 141, to: 214, parent: "t1", active: active, path: active == 2 ? [0, 1, 2] : [2])]
+    }
+
     static let now = RewindState(
-        origin: 0, tip: 180, playhead: 180, window: 200,
+        origin: 0, tip: 230, playhead: 230, window: 34,
         marks: marks, knobs: knobs(rolledBack: 0), branchName: nil,
         isPeeking: false, isAtTip: true, caption: "Now", speed: 0,
-        stepNumber: 640, stepCount: 640
+        stepNumber: 640, stepCount: 640,
+        takes: oneTake(), takeNumber: 1, takeCount: 1, takeColorIndex: 0,
+        steps: steps(around: 230, half: 48), spanStart: 0, spanEnd: 240
     )
 
     static let scrubbing = RewindState(
-        origin: 0, tip: 180, playhead: 74, window: 200,
+        origin: 0, tip: 230, playhead: 92, window: 34,
         marks: marks, knobs: knobs(rolledBack: 0.7), branchName: nil,
         isPeeking: false, isAtTip: false, caption: "Exposure +0.35 EV", speed: 0.75,
-        stepNumber: 212, stepCount: 640
+        stepNumber: 212, stepCount: 640,
+        takes: oneTake(), takeNumber: 1, takeCount: 1, takeColorIndex: 0,
+        steps: steps(around: 92, half: 48), spanStart: 0, spanEnd: 240
     )
 
     /// Watching the edits happen again, in slow motion.
     static let playing = RewindState(
-        origin: 0, tip: 180, playhead: 96, window: 200,
+        origin: 0, tip: 230, playhead: 104, window: 12,
         marks: marks, knobs: knobs(rolledBack: 0.5), branchName: nil,
-        isPeeking: false, isAtTip: false, caption: "84 seconds back", speed: 0.1,
-        rate: 0.25, isPlaying: true, stepNumber: 301, stepCount: 640
+        isPeeking: false, isAtTip: false, caption: "2 minutes back", speed: 0.1,
+        rate: 0.25, isPlaying: true, stepNumber: 301, stepCount: 640,
+        takes: oneTake(), takeNumber: 1, takeCount: 1, takeColorIndex: 0,
+        steps: steps(around: 104, half: 30), spanStart: 0, spanEnd: 240
     )
 
     /// Undoing itself, fast.
     static let reversing = RewindState(
-        origin: 0, tip: 180, playhead: 120, window: 200,
+        origin: 0, tip: 230, playhead: 141, window: 60,
         marks: marks, knobs: knobs(rolledBack: 0.3), branchName: nil,
         isPeeking: false, isAtTip: false, caption: "a minute back", speed: 0.5,
-        rate: 4, isPlaying: true, isReverse: true, stepNumber: 402, stepCount: 640
+        rate: 4, isPlaying: true, isReverse: true, stepNumber: 402, stepCount: 640,
+        takes: oneTake(), takeNumber: 1, takeCount: 1, takeColorIndex: 0,
+        steps: steps(around: 141, half: 90), spanStart: 0, spanEnd: 240
     )
 
     static let peeking = RewindState(
-        origin: 0, tip: 180, playhead: 180, window: 200,
+        origin: 0, tip: 230, playhead: 230, window: 34,
         marks: marks, knobs: knobs(rolledBack: 0), branchName: nil,
         isPeeking: true, isAtTip: false, caption: "Now (peek)", speed: 0,
-        stepNumber: 640, stepCount: 640
+        stepNumber: 640, stepCount: 640,
+        takes: oneTake(), takeNumber: 1, takeCount: 1, takeColorIndex: 0,
+        steps: steps(around: 230, half: 48), spanStart: 0, spanEnd: 240
     )
 
+    /// On a tangent: two takes, the second one lit.
     static let branched = RewindState(
-        origin: 0, tip: 210, playhead: 120, window: 200,
+        origin: 0, tip: 190, playhead: 120, window: 34,
         marks: marks + [TrailMark(id: "fork", time: 92, label: "Take 2", kind: .branch, branchName: "Take 2")],
         knobs: knobs(rolledBack: 0.35), branchName: "Take 2",
-        isPeeking: false, isAtTip: false, caption: "Take 2", speed: 0.2,
-        stepNumber: 388, stepCount: 702
+        isPeeking: false, isAtTip: false, caption: "Take 2 · Contrast +11", speed: 0.2,
+        stepNumber: 388, stepCount: 702,
+        takes: twoTakes(active: 1), takeNumber: 2, takeCount: 2, takeColorIndex: 1,
+        steps: steps(around: 120, half: 48, to: 190), spanStart: 0, spanEnd: 240
     )
+
+    /// Three takes, each left from a different moment, the newest one lit.
+    static let threeTakesState = RewindState(
+        origin: 0, tip: 214, playhead: 176, window: 34,
+        marks: marks + [
+            TrailMark(id: "fork2", time: 92, label: "Take 2", kind: .branch, branchName: "Take 2"),
+            TrailMark(id: "fork3", time: 141, label: "Take 3", kind: .branch, branchName: "Take 3")
+        ],
+        knobs: knobs(rolledBack: 0.2), branchName: "Take 3",
+        isPeeking: false, isAtTip: false, caption: "Take 3 · Temp 5650 K", speed: 0.3,
+        stepNumber: 471, stepCount: 702,
+        takes: threeTakes(active: 2), takeNumber: 3, takeCount: 3, takeColorIndex: 2,
+        steps: steps(around: 176, half: 48, to: 214), spanStart: 0, spanEnd: 240
+    )
+    static var threeTakes: RewindState { threeTakesState }
 
     /// Four landmarks inside a few seconds. Their labels must not print on top of each other.
     static let crowded = RewindState(
-        origin: 0, tip: 120, playhead: 66, window: 200,
+        origin: 0, tip: 120, playhead: 66, window: 34,
         marks: [
             TrailMark(id: "a", time: 60, label: "New Radial Mask", kind: .mask),
             TrailMark(id: "b", time: 63, label: "Paste Settings", kind: .paste),
@@ -246,7 +332,10 @@ enum RewindSamples {
             TrailMark(id: "e", time: 74, label: "Take 3", kind: .branch, branchName: "Take 3")
         ],
         knobs: knobs(rolledBack: 0.5), branchName: nil,
-        isPeeking: false, isAtTip: false, caption: "Mark", speed: 0.1
+        isPeeking: false, isAtTip: false, caption: "Mark", speed: 0.1,
+        stepNumber: 120, stepCount: 300,
+        takes: oneTake(), takeNumber: 1, takeCount: 1, takeColorIndex: 0,
+        steps: steps(around: 66, half: 48), spanStart: 0, spanEnd: 240
     )
 }
 

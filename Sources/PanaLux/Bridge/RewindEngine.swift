@@ -31,6 +31,17 @@ public final class RewindEngine: ObservableObject {
     /// Fires whenever the readout should be redrawn (scrub, playback, landmark, branch).
     public let changed = PassthroughSubject<RewindState, Never>()
 
+    /// Which take is being edited, or nil on the original. The badge beside every readout is
+    /// this, so it is never possible to forget you are on a tangent.
+    @Published public private(set) var takeInfo: TakeInfo?
+
+    public enum TakeEvent: Equatable {
+        /// A new take began. `parent` is the line it left, `at` where on the tape.
+        case started(name: String, parent: String, at: TimeInterval)
+        case switched(name: String)
+    }
+    public let takeEvents = PassthroughSubject<TakeEvent, Never>()
+
     public weak var output: RewindOutput?
     /// The twelve knobs as they are mapped right now, for the rolling readout.
     public var knobParams: [(control: String, param: String)] = []
@@ -50,6 +61,11 @@ public final class RewindEngine: ObservableObject {
     private var lastSent: [String: Double] = [:]
     private var appliedKeyframeID: String?
     private var lastScrubAt: Date = .distantPast
+    /// How busy each take was, by slice of the session. Worked out once per rewind: nothing
+    /// is recorded while the hold is on, so it cannot change under the playhead.
+    private var laneActivity: [String: [Float]] = [:]
+    private var laneSpan: (start: TimeInterval, end: TimeInterval) = (0, 1)
+    static let laneBuckets = 120
     private var pendingSnapshots: [String: String] = [:]   // token → keyframe id
     private var saveWork: DispatchWorkItem?
     /// Reports arriving before this are Lightroom catching up with Rewind, not editing.
@@ -104,6 +120,7 @@ public final class RewindEngine: ObservableObject {
         guard let id, !id.isEmpty else {
             trail = nil
             playback = nil
+            refreshTakeInfo()
             return
         }
         var loaded = TrailStore.load(photoID: id, in: storeDirectory) ?? EditTrail(photoID: id)
@@ -111,6 +128,7 @@ public final class RewindEngine: ObservableObject {
         trail = loaded
         playback = nil
         detached = false
+        refreshTakeInfo()
         // The photo as it arrives is a landmark in its own right: somewhere to get back to.
         captureKeyframe(kind: .open, label: "Opened")
     }
@@ -205,6 +223,7 @@ public final class RewindEngine: ObservableObject {
         jogRate = 0
         lastScrubAt = .distantPast
         isPlaying = false
+        rebuildLaneActivity()
         publish(caption: "Now")
     }
 
@@ -418,9 +437,94 @@ public final class RewindEngine: ObservableObject {
         appliedKeyframeID = nil
         if let branch {
             _ = captureKeyframe(kind: .branch, label: branch.name, at: wall, time: at, values: values)
+            let parent = branch.parent.flatMap { trail?.branch($0)?.name } ?? "Original"
+            takeEvents.send(.started(name: branch.name, parent: parent, at: at))
         }
+        refreshTakeInfo()
+        rebuildLaneActivity()
         scheduleSave()
         publish(caption: reason)
+    }
+
+    // MARK: - Takes
+
+    /// Move to the next or previous take, keeping your place in time. Standing at the end of a
+    /// take lands you at the end of the next, so hopping compares where each one finished.
+    /// The photo follows at once, so it is an A/B you can flip as fast as you can press.
+    public func hopTake(forward: Bool) {
+        guard isRewinding, let current = trail, let before = currentPlayback() else { return }
+        guard current.branches.count > 1 else {
+            publish(caption: "Only one take so far")
+            return
+        }
+        pausePlayback(announce: false)
+        let ids = current.branches.map(\.id)
+        let index = ids.firstIndex(of: current.activeBranchID) ?? 0
+        let next = ids[(index + (forward ? 1 : ids.count - 1)) % ids.count]
+        let wasAtTip = before.tip - playhead < 1e-6
+        trail?.activate(next)
+        playback = nil
+        guard let trail, let after = Optional(playbackForTrail(trail)) else { return }
+        playhead = wasAtTip ? after.tip : min(after.tip, max(after.start, playhead))
+        appliedKeyframeID = nil
+        peeking = false
+        apply(after)
+        applyKeyframeIfNeeded(at: playhead, in: after)
+        refreshTakeInfo()
+        scheduleSave()
+        let name = trail.activeBranch.name
+        takeEvents.send(.switched(name: name))
+        publish(caption: "\(name) · " + stepCaption(for: playhead, in: after))
+    }
+
+    /// The badge's contents: nil on the original, so it only ever appears on a tangent.
+    private func refreshTakeInfo() {
+        guard let trail, trail.activeBranch.parent != nil else {
+            if takeInfo != nil { takeInfo = nil }
+            return
+        }
+        let index = trail.branches.firstIndex { $0.id == trail.activeBranchID } ?? 0
+        let next = TakeInfo(name: trail.activeBranch.name, colorIndex: index,
+                            number: index + 1, total: trail.branches.count)
+        if takeInfo != next { takeInfo = next }
+    }
+
+    private func rebuildLaneActivity() {
+        laneActivity = [:]
+        guard let trail else { return }
+        let start = trail.branches.map(\.forkTime).min() ?? 0
+        let end = max(start + 1, trail.branches.map(\.localTip).max() ?? 1)
+        laneSpan = (start, end)
+        let n = RewindEngine.laneBuckets
+        for branch in trail.branches {
+            var counts = [Float](repeating: 0, count: n)
+            func bucket(_ t: TimeInterval) -> Int {
+                min(n - 1, max(0, Int((t - start) / (end - start) * Double(n))))
+            }
+            for e in branch.events { counts[bucket(e.t)] += 1 }
+            for k in branch.keyframes { counts[bucket(k.t)] += 1 }
+            // Square root, so a burst does not flatten everything else into the floor.
+            let peak = counts.max() ?? 0
+            laneActivity[branch.id] = peak > 0 ? counts.map { ($0 / peak).squareRoot() } : counts
+        }
+    }
+
+    private func makeLanes() -> [TakeLane] {
+        guard let trail else { return [] }
+        let path = Set(trail.lineage().map(\.id))
+        return trail.branches.enumerated().map { index, b in
+            TakeLane(id: b.id, name: b.name, colorIndex: index, start: b.forkTime, tip: b.localTip,
+                     parentID: b.parent, isActive: b.id == trail.activeBranchID,
+                     isOnPath: path.contains(b.id),
+                     activity: laneActivity[b.id] ?? [Float](repeating: 0, count: RewindEngine.laneBuckets))
+        }
+    }
+
+    /// The tape zooms so a screenful is about thirty steps, whether the editing was slow or
+    /// frantic. Zoomed out, a dense burst is a solid smear; zoomed in, a slow session is a few
+    /// ticks in a void.
+    static func tapeWindow(for playback: TrailPlayback, at t: TimeInterval) -> TimeInterval {
+        min(900, max(3, playback.typicalGap(around: t) * 30))
     }
 
     // MARK: - Applying
@@ -511,6 +615,14 @@ public final class RewindEngine: ObservableObject {
         return text
     }
 
+    /// "1:32" for a point on the tape.
+    static func clock(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds.rounded()))
+        return total >= 3600
+            ? String(format: "%d:%02d:%02d", total / 3600, (total % 3600) / 60, total % 60)
+            : String(format: "%d:%02d", total / 60, total % 60)
+    }
+
     static func ago(_ seconds: TimeInterval) -> String {
         if seconds < 60 { return String(format: "%.0f seconds back", seconds.rounded()) }
         if seconds < 3600 {
@@ -559,11 +671,12 @@ public final class RewindEngine: ObservableObject {
         marks.sort { $0.time < $1.time }
 
         let branchName = trail.map { $0.activeBranch }.flatMap { $0.parent == nil ? nil : $0.name }
+        let tapeWindow = RewindEngine.tapeWindow(for: playback, at: playhead)
         return RewindState(
             origin: playback.start,
             tip: playback.tip,
             playhead: peeking ? playback.tip : playhead,
-            window: RewindEngine.window(for: playback),
+            window: tapeWindow,
             marks: marks,
             knobs: knobs,
             branchName: branchName,
@@ -575,7 +688,14 @@ public final class RewindEngine: ObservableObject {
             isPlaying: isPlaying,
             isReverse: isPlaying && playDirection < 0,
             stepNumber: max(0, playback.stepIndex(atOrBefore: playhead) + 1),
-            stepCount: playback.stepTimes.count
+            stepCount: playback.stepTimes.count,
+            takes: makeLanes(),
+            takeNumber: (trail?.branches.firstIndex { $0.id == trail?.activeBranchID } ?? 0) + 1,
+            takeCount: trail?.branches.count ?? 1,
+            takeColorIndex: trail?.branches.firstIndex { $0.id == trail?.activeBranchID } ?? 0,
+            steps: playback.steps(around: playhead, half: tapeWindow * 1.4, cap: 500),
+            spanStart: laneSpan.start,
+            spanEnd: laneSpan.end
         )
     }
 

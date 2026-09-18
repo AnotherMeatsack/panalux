@@ -3,6 +3,8 @@ import SwiftUI
 public struct NotchHUDView: View {
     @ObservedObject var feed = HUDFeed.shared
     @ObservedObject var settings = AppSettings.shared
+    /// Which take is being edited, so a tangent is never invisible.
+    @ObservedObject var rewind = RewindEngine.shared
     @State private var pinnedMode: ActiveDisplayMode = .idle
 
     public init() {}
@@ -19,6 +21,11 @@ public struct NotchHUDView: View {
         displayedMode != .idle
     }
 
+    private var isRewind: Bool {
+        if case .rewind = displayedMode { return true }
+        return false
+    }
+
     public var body: some View {
         ZStack(alignment: .top) {
             if isExpanded {
@@ -30,12 +37,13 @@ public struct NotchHUDView: View {
                             contentBody
                                 .id(kindKey)
                                 .transition(.blurReplace.combined(with: .opacity))
+                                .overlay(alignment: .topTrailing) { takeBadge }
                         }
                         .animation(.smooth(duration: 0.24), value: kindKey)
                         .animation(.smooth(duration: 0.18), value: nameKey)
                     }
                 }
-                .frame(minWidth: 260, maxWidth: 400)
+                .frame(minWidth: 260, maxWidth: isRewind ? NotchHUDWindowController.rewindWidth : 400)
                 .padding(.horizontal, 4)
                 .padding(.vertical, 2)
                 .modifier(HUDChrome())
@@ -55,6 +63,18 @@ public struct NotchHUDView: View {
             if newMode != .idle {
                 pinnedMode = newMode
             }
+        }
+    }
+
+    /// On a tangent, every readout wears the take's badge. Rewind draws its own, and the original
+    /// is the quiet default, so it only ever appears when it means something.
+    @ViewBuilder
+    private var takeBadge: some View {
+        if let take = rewind.takeInfo, !isRewind {
+            TakeBadge(take)
+                .padding(.top, 7)
+                .padding(.trailing, 10)
+                .transition(.scale(scale: 0.7, anchor: .topTrailing).combined(with: .opacity))
         }
     }
 

@@ -271,6 +271,12 @@
         "ADD_NODE": {
           "action": "rewind:branch"
         },
+        "PREV_NODE": {
+          "action": "rewind:take_prev"
+        },
+        "NEXT_NODE": {
+          "action": "rewind:take_next"
+        },
         "PREV_KEYFRM": {
           "action": "rewind:prev"
         },

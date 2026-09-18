@@ -203,6 +203,22 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
                 self.currentDisplayMode = .rewind(state)
             }
             .store(in: &cancellables)
+
+        // A take that starts because you edited from the past would otherwise begin in silence.
+        // Say so, and say the other line is safe. (Branching by key already has its own message.)
+        rewind.takeEvents
+            .sink { [weak self] event in
+                guard let self, !RewindEngine.shared.isRewinding else { return }
+                if case .started(let name, let parent, let at) = event {
+                    self.triggerActionDisplay(
+                        name: "REWIND",
+                        label: "New take · \(name) from \(RewindEngine.clock(at)) · \(parent) is kept",
+                        phase: .done,
+                        duration: 4
+                    )
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func buildLookups() {
@@ -1366,6 +1382,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         case RewindCommands.play: rewind.play(forward: true)
         case RewindCommands.playReverse: rewind.play(forward: false)
         case RewindCommands.pause: rewind.pausePlayback()
+        case RewindCommands.takePrevious: rewind.hopTake(forward: false)
+        case RewindCommands.takeNext: rewind.hopTake(forward: true)
         case RewindCommands.previous: rewind.step(forward: false)
         case RewindCommands.next: rewind.step(forward: true)
         case RewindCommands.peek: rewind.setPeeking(true)
