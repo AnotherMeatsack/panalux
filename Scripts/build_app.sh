@@ -90,10 +90,10 @@ elif [[ -z "$SIGN_IDENTITY" ]]; then
             | head -1 \
             | awk '{print $2}'
     }
+    # Developer ID only. An Apple Development certificate also gives a stable
+    # identity, but a binary signed with one will not launch without a matching
+    # provisioning profile, so it is worse than ad-hoc here.
     SIGN_IDENTITY="$(pick_identity 'Developer ID Application:' || true)"
-    if [[ -z "$SIGN_IDENTITY" ]]; then
-        SIGN_IDENTITY="$(pick_identity 'Apple Development:' || true)"
-    fi
     if [[ -n "$SIGN_IDENTITY" ]]; then
         SIGN_NAME="$(security find-identity -v -p codesigning 2>/dev/null | grep "$SIGN_IDENTITY" | sed 's/.*"\(.*\)".*/\1/' || true)"
     fi
@@ -110,8 +110,10 @@ if [[ -n "$SIGN_IDENTITY" ]]; then
             --entitlements Packaging/PanaLux.entitlements \
             --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
     else
-        codesign --force --entitlements Packaging/PanaLux.entitlements \
-            --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
+        # No entitlements on a development certificate: those need a provisioning
+        # profile to go with them, and without one the app will not launch at all.
+        # All this signature is for is a stable identity, so permissions survive.
+        codesign --force --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
     fi
     codesign --verify --strict --verbose=2 "$APP_BUNDLE"
 else
