@@ -530,66 +530,25 @@ local curHiUp = LOC('$$$/AgCameraRawController/TargetAdjustment/Increase=^1 incr
 local function PointCurveUpDown(blacks, moveup, color)
   return function()
     if LrApplicationView.getCurrentModuleName() ~= 'develop' or LrApplication.activeCatalog():getTargetPhoto() == nil then return end
-    local maxamount = 5
-    local  factor  = 0
     local setting = 'ToneCurvePV2012'
     if color then setting = setting..color end
-    local points = getValue(setting)
-    local newpoints = {}
-    local xval = 0
-    local testamount = 0
-    -- Find the left and right most points
-    local xmin, ymin, xmax, ymax, xmindid, xmaxdid = nil, nil, nil, nil, false, false
-    for idx,val in ipairs(points) do
-      if math.floor(idx/2) ~= idx/2 then -- odd number, i.e. x
-        if val < (xmin or 256) then xmin = val; xmindid = true end
-        if val > (xmax or 0) then xmax = val; xmaxdid = true end
-      elseif xmindid then
-        ymin = val
-        xmindid = false
-      elseif xmaxdid then
-        ymax = val
-        xmaxdid = false
-      end
+    local hdrOK, hdr = LrTasks.pcall(getValue, 'HDREditMode')
+    if not hdrOK or (hdr ~= false and hdr ~= 0) then
+      LrDialogs.showBezel('Point curve requires verified SDR mode')
+      return
     end
-    -- There are two scales (explanation for blacks):
-    -- xscale: diminishes the point movement the further right the point is, where the left most point has full effect (1 => maxamount), the right most point has 0 (does not move at all)
-    -- yscale: is the percentage how much maxamount is in relation to the y-value of the leftmost point; this is for awkward curves where the leftmost point is not the lowest one,
-    -- in such cases the points lower than the leftmost have to be affected more to keep the shape of the curve intact, as those values are more 'extreme', they are affected more
-    local yscale = 0
-    local xscale = 0
-    if blacks then
-      if not moveup and ymin < maxamount then maxamount = ymin end
-      yscale = maxamount / (255 - ymin)
-    else
-      if moveup and (255 - ymax) < maxamount then maxamount = (255 - ymax) end
-      yscale = maxamount / ymax
-    end
-    xscale = 1 / (xmax - xmin)
-    -- Now all points are moved. 'factor' is the diminishing effect of xscale depending on the actual x-value of the point
-    for idx,val in ipairs(points) do
-      if math.floor(idx/2) ~= idx/2 then -- odd number, i.e. x
-        if blacks then
-          factor  = 1 - (xscale * (val - xmin))^2.5
-        else
-          factor  = 1 - (xscale * (xmax - val))^2.5
-        end
-        xval = val
-      else -- even number, i.e. y
-        newpoints[#newpoints+1] = xval
-        if not moveup then  factor  =  factor  * -1 end
-        if blacks then
-          testamount = val + yscale * (255 - val) * factor
-        else
-          testamount = val + yscale * val * factor
-        end
-        if testamount < 0 then testamount = 0 end
-        if testamount > 255 then testamount = 255 end
-        newpoints[#newpoints+1] = testamount
-      end
+    local ok, points = LrTasks.pcall(getValue, setting)
+    local newpoints = ok and require('PanaLuxPointCurve').adjust(points, blacks, moveup) or nil
+    if newpoints == nil then
+      LrDialogs.showBezel('Point curve unavailable: requires a supported SDR curve')
+      return
     end
     fChangePanel('tonePanel')
-    setValue(setting, newpoints)
+    local applied = LrTasks.pcall(setValue, setting, newpoints)
+    if not applied then
+      LrDialogs.showBezel('Point curve is unavailable in this Lightroom context')
+      return
+    end
     if ProgramPreferences.ClientShowBezelOnChange then
       if blacks then
         LrDialogs.showBezel(moveup and curBlkUp or curBlkDn)

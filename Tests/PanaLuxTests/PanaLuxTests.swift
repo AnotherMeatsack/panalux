@@ -402,12 +402,23 @@ final class CommandCatalogTests: XCTestCase {
 
     func testRepeatPairsResolve() {
         for id in ["NextPrev", "ZoomInOut", "ChangeBrushSize", "ChangeFeatherSize", "PresetPreviousNext",
-                   "IncreaseDecreaseRating", "Key2Key1", "QuickDevExpAdj"] {
+                   "IncreaseDecreaseRating", "Key2Key1", "QuickDevExpAdj", "PointCurveBlacksUpDown", "PointCurveHighlightsUpDown"] {
             let pair = RepeatCommands.pair(for: id)
             XCTAssertNotNil(pair, id)
             XCTAssertTrue(db.isDialable(id), id)
         }
         XCTAssertNil(RepeatCommands.pair(for: "Exposure"))
+    }
+
+    func testEveryCatalogRepeatHasDirectionalDispatch() {
+        for command in db.commands.values where command.type == "repeat" {
+            XCTAssertNotNil(RepeatCommands.pair(for: command.id), command.id)
+            XCTAssertTrue(db.isDialable(command.id), command.id)
+        }
+        XCTAssertEqual(RepeatCommands.pair(for: "PointCurveBlacksUpDown")?.clockwise,
+                       "PanaLuxPointCurveBlacksUp")
+        XCTAssertEqual(RepeatCommands.pair(for: "PointCurveHighlightsUpDown")?.counterClockwise,
+                       "PanaLuxPointCurveHighlightsDown")
     }
 
     func testFriendlyLabels() {

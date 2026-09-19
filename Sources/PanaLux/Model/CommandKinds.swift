@@ -11,6 +11,8 @@ public enum RepeatCommands {
 
     private static let pairs: [String: Pair] = {
         var table: [String: Pair] = [
+            "PointCurveBlacksUpDown": Pair(clockwise: "PanaLuxPointCurveBlacksUp", counterClockwise: "PanaLuxPointCurveBlacksDown"),
+            "PointCurveHighlightsUpDown": Pair(clockwise: "PanaLuxPointCurveHighlightsUp", counterClockwise: "PanaLuxPointCurveHighlightsDown"),
             "NextPrev": Pair(clockwise: "Next", counterClockwise: "Prev"),
             "SelectRightLeft": Pair(clockwise: "Select1Right", counterClockwise: "Select1Left"),
             "RotateRightLeft": Pair(clockwise: "RotateRight", counterClockwise: "RotateLeft"),
@@ -30,6 +32,8 @@ public enum RepeatCommands {
         for name in ["Blacks", "Clarity", "Contrast", "Exp", "Highlights", "Sat", "Shadows", "Temp", "Tint", "Vibrance", "Whites"] {
             table["QuickDev\(name)Adj"] = Pair(clockwise: "QuickDev\(name)Small", counterClockwise: "QuickDev\(name)SmallDec")
         }
+        // The bundled bridge's public ID uses "Smal"; preserve that wire spelling.
+        table["QuickDevTempAdj"] = Pair(clockwise: "QuickDevTempSmall", counterClockwise: "QuickDevTempSmalDec")
         return table
     }()
 

@@ -4993,5 +4993,29 @@
   "group": "crop",
   "label": "Straighten Angle",
   "type": "parameter"
+ },
+ "PanaLuxPointCurveBlacksUp": {
+  "group": "toneCurve",
+  "label": "Point Curve Black Point Up",
+  "type": "button",
+  "explanation": "Adjust a composite SDR curve endpoint. Requires updated PanaLux Bridge, selected photo in Develop, and verified SDR mode. Unsupported curve data is left unchanged."
+ },
+ "PanaLuxPointCurveBlacksDown": {
+  "group": "toneCurve",
+  "label": "Point Curve Black Point Down",
+  "type": "button",
+  "explanation": "Adjust a composite SDR curve endpoint. Requires updated PanaLux Bridge, selected photo in Develop, and verified SDR mode. Unsupported curve data is left unchanged."
+ },
+ "PanaLuxPointCurveHighlightsUp": {
+  "group": "toneCurve",
+  "label": "Point Curve White Point Up",
+  "type": "button",
+  "explanation": "Adjust a composite SDR curve endpoint. Requires updated PanaLux Bridge, selected photo in Develop, and verified SDR mode. Unsupported curve data is left unchanged."
+ },
+ "PanaLuxPointCurveHighlightsDown": {
+  "group": "toneCurve",
+  "label": "Point Curve White Point Down",
+  "type": "button",
+  "explanation": "Adjust a composite SDR curve endpoint. Requires updated PanaLux Bridge, selected photo in Develop, and verified SDR mode. Unsupported curve data is left unchanged."
  }
 }

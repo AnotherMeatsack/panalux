@@ -237,11 +237,13 @@ public class CommandCatalog: ObservableObject {
                 ("ParametricMidtoneSplit", "Curve · Midtone Split", true),
                 ("ParametricHighlightSplit", "Curve · Highlight Split", true),
                 ("CurveRefineSaturation", "Curve · Refine Saturation", true),
+                ("PointCurveBlacksUpDown", "Point Curve · Black Point (SDR)", true),
+                ("PointCurveHighlightsUpDown", "Point Curve · White Point (SDR)", true),
                 ("PointCurveLinear", "Point Curve · Linear", false),
                 ("PointCurveMediumContrast", "Point Curve · Medium Contrast", false),
                 ("PointCurveStrongContrast", "Point Curve · Strong Contrast", false)
             ].map { id, title, parameter in
-                CatalogCommand(id: id, title: title, subtitle: parameter ? "Assign to a knob, ring or ball" : "Apply this point curve to the current photo", isParameter: parameter, icon: "waveform.path")
+                CatalogCommand(id: id, title: title, subtitle: id.hasSuffix("UpDown") ? "Requires Bridge build 4 · verified SDR photo in Develop" : (parameter ? "Assign to a knob, ring or ball" : "Apply this point curve to the current photo"), isParameter: parameter, icon: "waveform.path")
             }
         ))
 
