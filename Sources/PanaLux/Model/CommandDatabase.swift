@@ -103,6 +103,7 @@ public class CommandDatabase: ObservableObject {
     }
     
     public func label(for id: String) -> String {
+        if KeyCommands.isKey(id) { return KeyCommands.title(id) }
         if let override = Self.titleOverrides[id] { return override }
         if let mask = Self.maskTitle(id) { return mask }
         if id.hasPrefix("local_"), let cmd = commands[id] {

@@ -268,6 +268,39 @@ final class CommandCatalogTests: XCTestCase {
         XCTAssertNotNil(CommandDatabase.shared.commands["Key1"], "Key1 is a command a button can be given")
     }
 
+    /// Any button can type a key into Lightroom. The id says which, so a typo has to be refused rather
+    /// than sending some other key.
+    func testAButtonCanTypeAKeyIntoLightroom() {
+        let backslash = KeyCommands.parse(KeyCommands.beforeAfter)
+        XCTAssertEqual(backslash?.key, "\\")
+        XCTAssertEqual(backslash?.flags, [])
+        XCTAssertEqual(KeyCommands.parse("key:shift+e")?.flags, [.maskShift])
+        XCTAssertEqual(KeyCommands.parse("key:cmd+opt+z")?.flags, [.maskCommand, .maskAlternate])
+        XCTAssertEqual(KeyCommands.parse("key:Ctrl+Shift+A")?.key, "a", "case does not matter")
+
+        // Refused, not guessed at.
+        XCTAssertNil(KeyCommands.parse("key:"))
+        XCTAssertNil(KeyCommands.parse("key:nope"))
+        XCTAssertNil(KeyCommands.parse("key:bogus+e"), "an unknown modifier")
+        XCTAssertNil(KeyCommands.parse("key:shift+"), "a modifier with no key")
+        XCTAssertNil(KeyCommands.parse("Exposure"))
+        XCTAssertFalse(KeyCommands.isKey("key:"))
+        XCTAssertTrue(KeyCommands.isKey(KeyCommands.beforeAfter))
+
+        // What shows on the panel's readout and in the Map.
+        XCTAssertEqual(KeyCommands.title(KeyCommands.beforeAfter), "Before / After (Toggle)")
+        XCTAssertEqual(KeyCommands.title("key:shift+cmd+e"), "Press ⇧⌘E in Lightroom")
+        XCTAssertEqual(CommandDatabase.shared.label(for: "key:opt+z"), "Press ⌥Z in Lightroom")
+        XCTAssertEqual(KeyCommands.title("key:nope"), "Press a key")
+
+        // It is a tile in the Map, a command rather than a slider, so it goes on a key and not a knob.
+        let tile = CommandCatalog.shared.command(for: KeyCommands.beforeAfter)
+        XCTAssertNotNil(tile)
+        XCTAssertEqual(tile?.isParameter, false)
+        // Lightroom's own "show Before" is still there beside it.
+        XCTAssertNotNil(CommandCatalog.shared.command(for: "ShoVwdevelop_before_after_horiz"))
+    }
+
     func testCuratedTilesUseRealCommands() {
         // Local ids come from one list so a new Photoshop action can't quietly
         // slip past this check.

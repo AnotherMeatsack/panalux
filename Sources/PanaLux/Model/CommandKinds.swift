@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 /// MIDI2LR "repeat" commands are knob gestures. The MIDI2LR desktop app normally turns them
 /// into repeated button presses; PanaLux talks to the plugin directly, so it does that here.
@@ -60,6 +61,48 @@ public enum MomentaryCommands {
 }
 
 /// Trackball-as-mouse while Masks is on. Not MIDI2LR IDs.
+/// A button that types a key into Lightroom, for the things Lightroom only offers as a shortcut.
+/// The id says which: `key:\` is the backslash that flips Before and After, `key:shift+e` is
+/// Shift-E, `key:cmd+opt+z` is Command-Option-Z. Modifiers are shift, cmd, opt and ctrl.
+public enum KeyCommands {
+    public static let prefix = "key:"
+    /// Lightroom's own Before/After toggle: press for Before, press again to come back.
+    public static let beforeAfter = "key:\\"
+
+    public static func isKey(_ id: String) -> Bool { id.hasPrefix(prefix) && id.count > prefix.count }
+
+    /// The key and modifiers an id asks for, or nil when it does not make sense.
+    public static func parse(_ id: String) -> (key: String, flags: CGEventFlags)? {
+        guard isKey(id) else { return nil }
+        var parts = String(id.dropFirst(prefix.count)).components(separatedBy: "+")
+        guard let last = parts.popLast(), !last.isEmpty else { return nil }
+        var flags: CGEventFlags = []
+        for modifier in parts {
+            switch modifier.lowercased() {
+            case "shift": flags.insert(.maskShift)
+            case "cmd", "command": flags.insert(.maskCommand)
+            case "opt", "option", "alt": flags.insert(.maskAlternate)
+            case "ctrl", "control": flags.insert(.maskControl)
+            default: return nil
+            }
+        }
+        let key = last.lowercased()
+        guard LightroomKeys.keyCodes[key] != nil else { return nil }
+        return (key, flags)
+    }
+
+    public static func title(_ id: String) -> String {
+        if id == beforeAfter { return "Before / After (Toggle)" }
+        guard let parsed = parse(id) else { return "Press a key" }
+        var symbols = ""
+        if parsed.flags.contains(.maskControl) { symbols += "⌃" }
+        if parsed.flags.contains(.maskAlternate) { symbols += "⌥" }
+        if parsed.flags.contains(.maskShift) { symbols += "⇧" }
+        if parsed.flags.contains(.maskCommand) { symbols += "⌘" }
+        return "Press \(symbols)\(parsed.key.uppercased()) in Lightroom"
+    }
+}
+
 public enum PointerCommands {
     public static let prefix = "pointer:"
     public static let move = "pointer:move"

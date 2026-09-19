@@ -130,6 +130,8 @@ The main window is one drawing of the panel. Click a control or touch it on the 
 
 Each key has an On tap job and a While held job. A hold can activate a mode, make adjustments slower with Fine, show a comparison, put a focused slider on the knobs, open the mask wheel, or do nothing.
 
+**Press a key.** Some things in Lightroom only exist as a keyboard shortcut. Any key can type one for you: **Before / After (Toggle)** in the Workspace & View Modes category types Lightroom's `\` key, so a button flips to Before and back again with one press. Give a key that tile as its hold job and it is Before while you hold and After when you let go. Under the hood it is a command like any other, `key:\`, and other shortcuts work the same way: `key:shift+e`, `key:cmd+opt+z`. It needs the same Accessibility permission as the Photoshop round-trip.
+
 Copy, paste, or swap controls. Undo map edits with Command-Z and redo with Shift-Command-Z. Use the editing picker to work on Base or any mode without holding its key down.
 
 Command-K finds a command so you can run it once, assign it, see where it is mapped, or temporarily put it on a knob. Hover a key to see arrows to the knobs and wheels it affects. If a mode is held, the hover view shows that mode's map rather than Base.

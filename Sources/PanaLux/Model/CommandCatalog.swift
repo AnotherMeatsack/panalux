@@ -216,6 +216,7 @@ public class CommandCatalog: ObservableObject {
             icon: "rectangle.split.2x1.fill",
             items: [
                 CatalogCommand(id: "ShoVwdevelop_before_after_horiz", title: "Before / After", subtitle: "Side-by-side before and after in Develop", isParameter: false, icon: "rectangle.split.2x1"),
+                CatalogCommand(id: KeyCommands.beforeAfter, title: "Before / After (Toggle)", subtitle: "Press for Before, press again to come back. Types Lightroom's \\ key", isParameter: false, icon: "arrow.left.arrow.right"),
                 CatalogCommand(id: "ShoVwRefHoriz", title: "Reference View", subtitle: "Side-by-side reference comparison", isParameter: false, icon: "rectangle.split.3x1"),
                 CatalogCommand(id: "NextScreenMode", title: "Full Screen / Lights Out", subtitle: "Cycles cinema and full-screen modes", isParameter: false, icon: "arrow.up.left.and.arrow.down.right"),
                 CatalogCommand(id: "ShowClipping", title: "Toggle Highlight/Shadow Clipping", subtitle: "Displays clipping warnings (J)", isParameter: false, icon: "eye.trianglebadge.exclamationmark"),

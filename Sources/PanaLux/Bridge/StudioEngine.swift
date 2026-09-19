@@ -832,6 +832,11 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             return
         }
 
+        if let action = spec.action, KeyCommands.isKey(action) {
+            typeKey(action, name: name)
+            return
+        }
+
         if let action = spec.action, PointerCommands.isPointer(action) {
             if !LightroomAccessibility.isTrusted(prompt: true) {
                 triggerActionDisplay(name: name, label: "Allow Accessibility to click", phase: .blocked, duration: 4)
@@ -930,11 +935,33 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             resetWheel(String(id.dropFirst(WheelReset.prefix.count)), key: key)
         } else if RewindCommands.isRewind(id) {
             performRewindKey(id, key: key)
+        } else if KeyCommands.isKey(id) {
+            typeKey(id, name: key)
         } else {
             LightroomBridge.shared.fireAction(id)
             RewindEngine.shared.noteStructuralEdit(id, label: CommandDatabase.shared.label(for: id))
             noteMaskCommand(id)
         }
+    }
+
+    /// Type a key into Lightroom. It needs Accessibility, like every other thing PanaLux does by
+    /// posting events, so say so plainly instead of doing nothing when it is missing.
+    private func typeKey(_ id: String, name: String, hold: Bool = false) {
+        let title = CommandDatabase.shared.label(for: id)
+        guard let parsed = KeyCommands.parse(id) else {
+            triggerActionDisplay(name: name, label: "\(id) isn’t a key PanaLux can type", phase: .failed, duration: 4)
+            return
+        }
+        guard LightroomAccessibility.isTrusted(prompt: true) else {
+            triggerActionDisplay(name: name, label: "Allow Accessibility to type keys", phase: .blocked, duration: 4)
+            return
+        }
+        guard LightroomKeys.lightroomPID != nil else {
+            triggerActionDisplay(name: name, label: "\(title) · Lightroom isn’t running", phase: .blocked)
+            return
+        }
+        let sent = LightroomKeys.press(parsed.key, flags: parsed.flags)
+        triggerActionDisplay(name: name, label: title, phase: sent ? .sent : .failed, hold: hold)
     }
 
     private func runMenuAction(_ action: String, key: String) {
@@ -974,6 +1001,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             }
             if outputBlocked {
                 triggerActionDisplay(name: name, label: "Paused · \(CommandDatabase.shared.label(for: press))", phase: .blocked, hold: true)
+            } else if KeyCommands.isKey(press) {
+                typeKey(press, name: name, hold: true)
             } else if PointerCommands.isPointer(press) {
                 PointerDriver.perform(press)
                 triggerActionDisplay(name: name, label: CommandDatabase.shared.label(for: press), phase: .sent, hold: true)
@@ -1022,6 +1051,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             if let release = spec?.release_action, !outputBlocked {
                 if RewindCommands.isRewind(release) {
                     performRewindKey(release, key: name)
+                } else if KeyCommands.isKey(release) {
+                    typeKey(release, name: name)
                 } else if PointerCommands.isPointer(release) {
                     PointerDriver.perform(release)
                 } else {
