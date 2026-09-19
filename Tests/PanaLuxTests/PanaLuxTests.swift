@@ -258,6 +258,16 @@ final class CommandCatalogTests: XCTestCase {
         XCTAssertEqual(ParameterFeel.travel(for: "local_Temperature"), 1)
     }
 
+    /// A panel button can be made to type a key into Lightroom through the plugin's Key1…Key40
+    /// shortcuts. Typing "backslash" in the plugin's options stores a real backslash, which is what
+    /// Lightroom uses to flip Before and After, so PanaLux must be able to type it.
+    func testTheKeysAButtonCanTypeIntoLightroomIncludeBackslash() {
+        XCTAssertEqual(LightroomKeys.keyCodes["\\"], 42, "the ANSI backslash key")
+        XCTAssertNotNil(LightroomKeys.keyCodes["z"])
+        XCTAssertNotNil(LightroomKeys.keyCodes["return"])
+        XCTAssertNotNil(CommandDatabase.shared.commands["Key1"], "Key1 is a command a button can be given")
+    }
+
     func testCuratedTilesUseRealCommands() {
         // Local ids come from one list so a new Photoshop action can't quietly
         // slip past this check.
