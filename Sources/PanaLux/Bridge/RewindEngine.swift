@@ -72,7 +72,7 @@ public final class RewindEngine: ObservableObject {
     private var ignoreRecordsUntil: Date = .distantPast
     private static let settleAfterRewind: TimeInterval = 1.2
     /// Encoding a long trail is not work for the main thread.
-    private static let saveQueue = DispatchQueue(label: "com.panalux.trail", qos: .utility)
+    static let saveQueue = DispatchQueue(label: "com.panalux.trail", qos: .utility)
 
     // MARK: Feel
     // These are the two numbers that decide how Rewind feels under the hand. They are set from
@@ -107,6 +107,8 @@ public final class RewindEngine: ObservableObject {
     static let tickInterval: TimeInterval = 1.0 / 30.0
 
     public init() {}
+
+    deinit { saveWork?.cancel() }
 
     // MARK: - Photo lifecycle
 

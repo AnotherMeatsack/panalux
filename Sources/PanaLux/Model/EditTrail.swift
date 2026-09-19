@@ -93,7 +93,10 @@ public struct TrailBranch: Codable, Equatable, Identifiable {
 /// again when a later session picks the photo back up, so the tape stays dense and scrubbable
 /// instead of carrying the hours PanaLux spent quit.
 public struct EditTrail: Codable, Equatable {
-    public static let formatVersion = 1
+    public static let formatVersion = 2
+    /// The moment the plugin stopped squeezing Temperature into 3000–9000 K (commit b7f61b7,
+    /// 18 Sep 2026 14:10 PDT). A version-1 trail last written before it holds the old scale.
+    static let temperatureScaleChanged = Date(timeIntervalSince1970: 1_789_765_844)
     /// Samples closer together than this are one continuous move, and are interpolated.
     /// Further apart, the earlier value simply held — so the playhead steps.
     public static let gestureGap: TimeInterval = 0.4
@@ -256,6 +259,25 @@ public struct EditTrail: Codable, Equatable {
     /// Tangents were first called takes, and a trail written then has "Take 2" on disk. They are
     /// "Tangent 2" now. The fork's landmark carries the same name, and the tape finds a fork's
     /// colour by matching the two, so both are renamed together.
+    /// Version-1 trails written before the plugin's Temperature window was removed store
+    /// Temperature as a fraction of 3000–9000 K. Put them on Lightroom's 2000–50000 K span.
+    public mutating func migrateTemperatureScale() {
+        guard version < 2 else { return }
+        version = EditTrail.formatVersion
+        guard updatedAt < EditTrail.temperatureScaleChanged else { return }
+        func fix(_ v: Double) -> Double { max(0, min(1, (v * 6000 + 1000) / 48000)) }
+        for i in branches.indices {
+            for j in branches[i].events.indices where branches[i].events[j].param == "Temperature" {
+                branches[i].events[j].value = fix(branches[i].events[j].value)
+            }
+            for j in branches[i].keyframes.indices {
+                if let v = branches[i].keyframes[j].values["Temperature"] {
+                    branches[i].keyframes[j].values["Temperature"] = fix(v)
+                }
+            }
+        }
+    }
+
     public mutating func renameLegacyTakes() {
         func renamed(_ name: String) -> String? {
             guard name.hasPrefix("Take "), Int(name.dropFirst(5)) != nil else { return nil }
@@ -320,6 +342,9 @@ public struct TrailPlayback: Equatable {
     /// One step is one thing you did, so the ring can walk them one at a time and any value you
     /// ever had is somewhere it can stop, whether the session was thirty seconds or two hours.
     public let stepTimes: [TimeInterval]
+    /// Every parameter any tangent ever touched, at the first value the trail saw for it. Hopping
+    /// to a line that never touched a slider still has to put it back where it started.
+    public let baseline: [String: Double]
     /// Samples closer together than this are one step: a trackball's hue and saturation land a
     /// few milliseconds apart and are a single move.
     public static let stepMerge: TimeInterval = 0.03
@@ -382,6 +407,18 @@ public struct TrailPlayback: Equatable {
             steps.append(latest)
         }
         self.stepTimes = steps
+        var base: [String: Double] = [:]
+        var seen: [String: TimeInterval] = [:]
+        for b in trail.branches {
+            for e in b.events where seen[e.param].map({ e.t < $0 }) ?? true {
+                seen[e.param] = e.t
+                base[e.param] = e.value
+            }
+        }
+        for k in (trail.branches.first?.keyframes ?? []).sorted(by: { $0.t < $1.t }).prefix(1) {
+            for (p, v) in k.values { base[p] = v }
+        }
+        self.baseline = base
         self.forks = trail.forks(of: branchID)
             .sorted { $0.forkTime < $1.forkTime }
             .map { (time: $0.forkTime, name: $0.name, id: $0.id) }
@@ -393,7 +430,9 @@ public struct TrailPlayback: Equatable {
     /// The photo as it stood at `t`. Inside a gesture the value is interpolated, so scrubbing
     /// is continuous; between gestures the earlier value simply held, so the playhead steps.
     public func values(at t: TimeInterval) -> [String: Double] {
-        var out = seed(at: t)?.values ?? [:]
+        // Sliders this line never touched but another tangent did: put back where they started.
+        var out = baseline.filter { series[$0.key] == nil }
+        for (p, v) in seed(at: t)?.values ?? [:] { out[p] = v }
         for (param, events) in series {
             guard let value = value(of: param, in: events, at: t) else { continue }
             out[param] = value
@@ -402,7 +441,7 @@ public struct TrailPlayback: Equatable {
     }
 
     public func value(of param: String, at t: TimeInterval) -> Double? {
-        guard let events = series[param] else { return seed(at: t)?.values[param] }
+        guard let events = series[param] else { return seed(at: t)?.values[param] ?? baseline[param] }
         return value(of: param, in: events, at: t) ?? seed(at: t)?.values[param]
     }
 
@@ -623,6 +662,7 @@ public enum TrailStore {
             trail.activeBranchID = first.id
         }
         trail.renameLegacyTakes()
+        trail.migrateTemperatureScale()
         return trail.branches.isEmpty ? nil : trail
     }
 

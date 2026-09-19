@@ -147,6 +147,33 @@ final class EditTrailTests: XCTestCase {
         XCTAssertEqual(values["Exposure"] ?? 0, 0.7, accuracy: 0.0001)
     }
 
+    func testAParameterOnlyOneTangentTouchedComesBackWhenYouHopAway() {
+        var trail = EditTrail(photoID: "cat:1")
+        trail.addKeyframe(TrailKeyframe(t: 0, kind: .open, label: "Opened", values: ["Exposure": 0.5]))
+        trail.record(param: "Contrast", value: 0.4, at: 1.0)
+        trail.record(param: "Exposure", value: 0.6, at: 5.0)
+        let original = trail.activeBranchID
+        _ = trail.fork(at: 5.0, wall: Date())
+        trail.record(param: "Contrast", value: 0.9, at: 8.0)
+        trail.record(param: "Vibrance", value: 0.7, at: 9.0)
+        let back = trail.playback(on: original).values(at: 5.0)
+        XCTAssertEqual(back["Contrast"] ?? -1, 0.4, accuracy: 0.0001)
+        XCTAssertNotNil(back["Vibrance"], "a slider only the other tangent touched must be reset too")
+    }
+
+    func testOldTemperatureTrailsAreMovedToTheWideScaleOnce() {
+        var trail = EditTrail(photoID: "cat:1")
+        trail.version = 1
+        trail.updatedAt = Date(timeIntervalSince1970: 1_780_000_000)
+        trail.record(param: "Temperature", value: 0.5, at: 1.0)   // 6000 K on the old scale
+        trail.migrateTemperatureScale()
+        XCTAssertEqual(trail.version, 2)
+        XCTAssertEqual(trail.branches[0].events[0].value, 4000.0 / 48000.0, accuracy: 1e-9)
+        let once = trail.branches[0].events[0].value
+        trail.migrateTemperatureScale()
+        XCTAssertEqual(trail.branches[0].events[0].value, once, "migrating twice must do nothing")
+    }
+
     func testBranchingKeepsTheParentWhole() {
         var trail = EditTrail(photoID: "cat:1")
         trail.record(param: "Exposure", value: 0.3, at: 1.0)
@@ -324,6 +351,8 @@ final class RewindEngineTests: XCTestCase {
     }
 
     override func tearDown() {
+        engine = nil
+        RewindEngine.saveQueue.sync {}
         try? FileManager.default.removeItem(at: dir)
         super.tearDown()
     }
@@ -641,6 +670,8 @@ final class RewindTransportTests: XCTestCase {
     override func tearDown() {
         engine.endRewind(announce: false)
         engine.setActivePhoto(nil)          // writes what is pending, so nothing lands on a deleted folder
+        engine = nil
+        RewindEngine.saveQueue.sync {}
         try? FileManager.default.removeItem(at: dir)
         super.tearDown()
     }
@@ -890,6 +921,8 @@ final class RewindTangentsTests: XCTestCase {
     override func tearDown() {
         engine.endRewind(announce: false)
         engine.setActivePhoto(nil)
+        engine = nil
+        RewindEngine.saveQueue.sync {}
         try? FileManager.default.removeItem(at: dir)
         super.tearDown()
     }
