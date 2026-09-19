@@ -128,16 +128,29 @@ public class AppCoordinator: ObservableObject {
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
     
-    private static func installedBridgeMatchesBundle() -> Bool {
+    /// Every file in the bundled plugin must match the installed one, and the installed one must
+    /// have nothing else. Comparing only three files let a changed Lua file go unnoticed.
+    static func installedBridgeMatchesBundle() -> Bool {
         guard let bundled = bundledBridgeURL else { return true }
-        for file in ["Info.lua", "Client.lua", "Database.lua"] {
-            let a = try? Data(contentsOf: bundled.appendingPathComponent(file))
-            let b = try? Data(contentsOf: bridgeInstallURL.appendingPathComponent(file))
-            if a != b { return false }
-        }
-        return true
+        return pluginFolder(bundled, matches: bridgeInstallURL)
     }
-    
+
+    static func pluginFolder(_ a: URL, matches b: URL) -> Bool {
+        func files(_ root: URL) -> [String: Data] {
+            var out: [String: Data] = [:]
+            let base = root.resolvingSymlinksInPath().path
+            guard let walker = FileManager.default.enumerator(at: root.resolvingSymlinksInPath(), includingPropertiesForKeys: [.isRegularFileKey]) else { return out }
+            for case let url as URL in walker {
+                guard (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true,
+                      url.lastPathComponent != ".DS_Store" else { continue }
+                let rel = String(url.resolvingSymlinksInPath().path.dropFirst(base.count))
+                out[rel] = try? Data(contentsOf: url)
+            }
+            return out
+        }
+        return files(a) == files(b)
+    }
+
     /// Copy the plugin that ships inside PanaLux into Lightroom's Modules folder.
     @discardableResult
     public func installBridge() -> Bool {

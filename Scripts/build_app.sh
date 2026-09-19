@@ -15,8 +15,8 @@ if [[ "${PANALUX_NATIVE_ONLY:-0}" == "1" ]]; then
 fi
 
 echo "==> Building ${APP_NAME} ${VERSION} (release)"
-swift build -c release "${ARCH_FLAGS[@]}"
-BIN_DIR="$(swift build -c release "${ARCH_FLAGS[@]}" --show-bin-path)"
+swift build -c release ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"}
+BIN_DIR="$(swift build -c release ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"} --show-bin-path)"
 
 APP_BUNDLE="${APP_NAME}.app"
 CONTENTS="${APP_BUNDLE}/Contents"

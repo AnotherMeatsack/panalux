@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import IOKit
 import IOKit.hid
 
@@ -45,6 +46,7 @@ public class PanelManager: ObservableObject {
     // to look like every hold had been released.
     private var suppressButtonInputUntil: Date = .distantPast
     private var lastLEDBits: Set<Int>? = nil
+    private var wakeObserver: NSObjectProtocol?
 
     // Power management assertion preventing USB suspension / App Nap
     private var activityToken: NSObjectProtocol?
@@ -75,6 +77,16 @@ public class PanelManager: ObservableObject {
 
     public func start() {
         guard hidManager == nil else { return }
+        if wakeObserver == nil {
+            wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+                forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+                // Give the USB bus a moment to come back, then put the lights where they were.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    if let dev = self?.connectedDevice { self?.wake(device: dev) }
+                    self?.rewriteLEDs()
+                }
+            }
+        }
 
         // Advisory lock so a second copy of PanaLux cannot compete for the panel
         _ = acquireAdvisoryLock()
@@ -195,7 +207,10 @@ public class PanelManager: ObservableObject {
             searchAndAttach()
         case .rearmStream:
             lastRearm = now
-            if let dev = connectedDevice { wake(device: dev) }
+            if let dev = connectedDevice {
+                wake(device: dev)
+                rewriteLEDs()
+            }
         case .wait:
             break
         }
@@ -321,6 +336,14 @@ public class PanelManager: ObservableObject {
             &payload,
             payload.count
         )
+    }
+
+    /// Another app (Resolve, a replug, sleep) can clear the lights without telling us, and the
+    /// cache would then swallow every write that matches what we last sent. Forget it and resend.
+    public func rewriteLEDs() {
+        guard let bits = lastLEDBits else { return }
+        lastLEDBits = nil
+        setLEDs(activeBits: bits)
     }
 
     public func setLEDs(activeBits: Set<Int>) {

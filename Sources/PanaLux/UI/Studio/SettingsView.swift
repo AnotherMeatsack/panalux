@@ -35,6 +35,7 @@ public struct SettingsView: View {
     public var body: some View {
         NavigationStack {
             Form {
+                ConnectionDoctorView()
                 general
                 hud
                 panelSection
@@ -134,6 +135,8 @@ public struct SettingsView: View {
                 Text("All keys off").tag("stealth")
             }
             .onChange(of: settings.ledMode) { _, _ in engine.updateLeds() }
+            Text("Lights only show for keys you press or for the active mode. If your panel looks dark, pick \"All keys on\".")
+                .font(.callout).foregroundStyle(.secondary)
             Toggle("Light the key I click in the Map", isOn: $settings.highlightHardwareOnSelect)
             LabeledContent("Fine speed") {
                 HStack {

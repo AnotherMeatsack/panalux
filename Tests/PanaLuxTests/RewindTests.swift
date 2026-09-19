@@ -1223,3 +1223,57 @@ final class IntroRewindDemoTests: XCTestCase {
         XCTAssertGreaterThan(IntroRewindDemo.frame(at: IntroRewindDemo.length).state.stepCount, 100)
     }
 }
+
+final class ConnectionDoctorTests: XCTestCase {
+    private func healthy() -> DoctorInputs {
+        var i = DoctorInputs()
+        i.panelConnected = true; i.lightroomRunning = true; i.lightroomConnected = true
+        i.bridgeInstalled = true; i.accessibilityTrusted = true; i.photoshopRunning = true
+        return i
+    }
+    private func check(_ id: String, _ i: DoctorInputs) -> DoctorCheck {
+        ConnectionDoctor.checks(i).first { $0.id == id }!
+    }
+
+    func testEverythingHealthyIsAllGreen() {
+        XCTAssertTrue(ConnectionDoctor.checks(healthy()).allSatisfy { $0.status == .ok })
+    }
+
+    func testResolveHoldingThePanelOffersToQuitIt() {
+        var i = healthy(); i.panelConnected = false; i.resolveRunning = true
+        XCTAssertEqual(check("panel", i).fix, .quitResolve)
+    }
+
+    func testAStalePluginOffersReinstallAndAFreshOneOffersRestart() {
+        var i = healthy(); i.pluginOutdated = true
+        XCTAssertEqual(check("plugin", i).fix, .reinstallPlugin)
+        i.pluginOutdated = false; i.needsLightroomRestart = true
+        XCTAssertEqual(check("plugin", i).fix, .restartLightroom)
+    }
+
+    func testEachMissingPieceHasOneFix() {
+        var i = healthy(); i.accessibilityTrusted = false
+        XCTAssertEqual(check("access", i).fix, .openAccessibility)
+        i = healthy(); i.lightroomConnected = false
+        XCTAssertEqual(check("lightroom", i).fix, .restartLightroom)
+        i = healthy(); i.lightroomRunning = false; i.lightroomConnected = false
+        XCTAssertEqual(check("lightroom", i).fix, .openLightroom)
+        i = healthy(); i.panelConnected = false
+        XCTAssertEqual(check("panel", i).fix, .reconnectPanel)
+    }
+
+    func testPluginFolderComparisonSeesEveryFile() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let a = root.appendingPathComponent("a"), b = root.appendingPathComponent("b")
+        for d in [a, b] {
+            try fm.createDirectory(at: d, withIntermediateDirectories: true)
+            try "one".write(to: d.appendingPathComponent("Client.lua"), atomically: true, encoding: .utf8)
+            try "two".write(to: d.appendingPathComponent("PanaLuxRewind.lua"), atomically: true, encoding: .utf8)
+        }
+        defer { try? fm.removeItem(at: root) }
+        XCTAssertTrue(AppCoordinator.pluginFolder(a, matches: b))
+        try "changed".write(to: b.appendingPathComponent("PanaLuxRewind.lua"), atomically: true, encoding: .utf8)
+        XCTAssertFalse(AppCoordinator.pluginFolder(a, matches: b), "a change outside Info/Client/Database must count")
+    }
+}
