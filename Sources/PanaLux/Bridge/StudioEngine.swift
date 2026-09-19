@@ -149,11 +149,13 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     private var applyingHistory = false
 
     private init() {
-        let loaded = Profile.loadUserOrDefault()
+        let loaded = AppRuntime.isRenderingStills ? Profile.loadDefault() : Profile.loadUserOrDefault()
         self.profile = loaded
         self.historyBaseline = loaded
         buildLookups()
         setupTrackballs()
+
+        guard !AppRuntime.isRenderingStills else { return }
 
         PanelManager.shared.delegate = self
         LightroomBridge.shared.delegate = self
@@ -1308,7 +1310,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             return
         }
         let fineFactor = isFine ? AppSettings.shared.fineMultiplier : 1.0
-        let step = deltaUnits * scale * fineFactor * ParameterFeel.travel(for: param)
+        let step = deltaUnits * scale * fineFactor * ParameterFeel.travel(for: param, range: LightroomBridge.shared.parameterRange(for: param))
 
         if !bridge.hasValue(param) {
             let now = Date()
@@ -1384,7 +1386,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         guard rewind.isRewinding else {
             // No trail yet: Lightroom has not said which photo is on screen, which an older
             // PanaLux Bridge never does.
-            triggerActionDisplay(name: "UNDO", label: "Rewind is waiting for Lightroom", phase: .blocked, hold: true)
+            triggerActionDisplay(name: "UNDO", label: rewind.historyUnavailableMessage ?? "Rewind is waiting for Lightroom", phase: .blocked, hold: true)
             return
         }
         currentDisplayMode = .rewind(rewind.state)
@@ -1696,7 +1698,14 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     private func commitPicker() {
         let session = ToolWheelSession.shared
         let tool = MaskToolPicker.tool(at: session.selectedIndex)
-        let command = tool.command(combine: session.combine)
+        guard let command = tool.command(combine: session.combine) else {
+            let label = "\(session.combine.title) \(tool.title) isn’t available · choose another mask tool"
+            cancelPicker(commit: false)
+            triggerActionDisplay(name: "ADD_NODE", label: label, phase: .blocked, duration: 4)
+            updateLeds()
+            updateStatusMessage()
+            return
+        }
         lastPickerIndex = session.selectedIndex
         lastPickerCombine = session.combine
         let label = "\(session.combine.title) \(tool.title)"
@@ -2224,7 +2233,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     }
 
     public func formatValue(param: String, value: Double) -> String {
-        ValueFormatter.format(param: param, value: value)
+        ValueFormatter.format(param: param, value: value, range: LightroomBridge.shared.parameterRange(for: param))
     }
 
     // MARK: - LightroomBridgeDelegate
@@ -2257,6 +2266,47 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             guard let binding = profile.knobs[id] else { return nil }
             return (control: id, param: binding.param)
         }
+    }
+
+    /// The help overlay follows the same layer priority, custom programs and focus dial
+    /// as the live controls. It never loads a factory map over the user's assignments.
+    func currentHelpProfile() -> Profile {
+        var shown = profile
+        if overlayLayerName == "MASK" { shown.knobs = [:] }
+        for layer in layerPriority.reversed() {
+            if let knobs = knobsForLayer(layer, variant: activeVariants[layer]) { shown.knobs.merge(knobs) { _, next in next } }
+            if let rings = profile.layers[layer]?.rings { shown.rings.merge(rings) { _, next in next } }
+            if let balls = profile.layers[layer]?.balls { shown.balls.merge(balls) { _, next in next } }
+        }
+        for id in profile.buttons.keys {
+            var binding = resolvedButtonBinding(for: id) ?? ButtonBinding()
+            let hold = holdBinding(for: id)
+            binding.hold_layer = hold?.hold_layer
+            binding.holdProgram = hold?.holdProgram
+            binding.hold_picker = hold?.hold_picker
+            binding.hold_action = hold?.hold_action
+            binding.modifier = hold?.modifier
+            binding.release_action = hold?.release_action
+            shown.buttons[id] = binding
+        }
+        if let program = currentAnalogProgram() {
+            if program.scope == "focus", let raw = program.focusParam {
+                let param = resolveProgramParam(raw)
+                if program.appliesToKnobs { for id in PanelLayout.knobs { shown.knobs[id] = KnobBinding(param: param) } }
+                if program.appliesToWheels {
+                    for id in PanelLayout.rings { shown.rings[id] = RingBinding(param: param) }
+                    for id in PanelLayout.balls { shown.balls[id] = .slider(param) }
+                }
+            } else {
+                if program.appliesToKnobs { shown.knobs.merge(program.knobs ?? [:]) { _, next in next } }
+                if program.appliesToWheels {
+                    shown.rings.merge(program.rings ?? [:]) { _, next in next }
+                    shown.balls.merge(program.balls ?? [:]) { _, next in next }
+                }
+            }
+        }
+        if let param = tempFocusParam { shown.knobs[AppSettings.shared.focusDialControl] = KnobBinding(param: param) }
+        return shown
     }
 
     public func lightroomParameterDidUpdate(name: String, value: Double) {
@@ -2302,7 +2352,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
 
 /// Lightroom-style readouts. Never prints "+0" or "-0".
 public enum ValueFormatter {
-    public static func format(param: String, value: Double) -> String {
+    public static func format(param: String, value: Double, range: ParameterRange? = nil) -> String {
+        if let range, !["CropLeft", "CropRight", "CropTop", "CropBottom", "PresetAmount", "local_Amount"].contains(param) { return range.display(value) }
         switch param {
         case "Exposure", "local_Exposure":
             return signed((value - 0.5) * 10.0, decimals: 2, suffix: " EV")

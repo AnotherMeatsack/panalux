@@ -104,6 +104,11 @@ public struct StudioWindowView: View {
         }
 
         ToolbarItemGroup(placement: .primaryAction) {
+            Button { ControlHelpWindowController.shared.show() } label: {
+                Label("Your Controls", systemImage: "questionmark.circle")
+            }
+            .keyboardShortcut("?", modifiers: .command)
+            .help("Your current controls and shortcuts (⌘?)")
             ControlGroup {
                 Button {
                     engine.undoMapChange()

@@ -9,7 +9,8 @@ public final class ToolWheelWindowController: ObservableObject {
     private var window: NSPanel?
     private var hostingView: NSHostingView<ToolWheelView>?
     private var cancellables = Set<AnyCancellable>()
-    private let size: CGFloat = 400
+    private let width: CGFloat = 480
+    private let height: CGFloat = 610
 
     private init() {}
 
@@ -17,7 +18,7 @@ public final class ToolWheelWindowController: ObservableObject {
         guard window == nil else { return }
 
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: size, height: size),
+            contentRect: NSRect(x: 0, y: 0, width: width, height: height),
             styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -33,7 +34,7 @@ public final class ToolWheelWindowController: ObservableObject {
         panel.animationBehavior = .utilityWindow
 
         let hosting = NSHostingView(rootView: ToolWheelView())
-        hosting.frame = NSRect(x: 0, y: 0, width: size, height: size)
+        hosting.frame = NSRect(x: 0, y: 0, width: width, height: height)
         hostingView = hosting
         panel.contentView = hosting
 
@@ -51,13 +52,13 @@ public final class ToolWheelWindowController: ObservableObject {
         guard let window else { return }
         let screen = NotchHUDWindowController.lightroomScreen() ?? NSScreen.main
         let frame = screen.map {
-            NSRect(x: $0.frame.midX - size / 2, y: $0.frame.midY - size / 2, width: size, height: size)
+            NSRect(x: $0.visibleFrame.midX - width / 2, y: $0.visibleFrame.midY - height / 2, width: width, height: height)
         } ?? window.frame
         window.setFrame(frame, display: true)
         window.alphaValue = 0
         window.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.22
+            ctx.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0.12 : 0.22
             ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1.0, 0.3, 1.0)
             window.animator().alphaValue = 1
         }
@@ -66,7 +67,7 @@ public final class ToolWheelWindowController: ObservableObject {
     private func hide() {
         guard let window, window.isVisible else { return }
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.18
+            ctx.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0.12 : 0.18
             ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.4, 0.0, 1.0, 0.15)
             window.animator().alphaValue = 0
         }, completionHandler: { [weak self] in

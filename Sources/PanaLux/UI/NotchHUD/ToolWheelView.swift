@@ -6,19 +6,52 @@ public struct ToolWheelView: View {
 
     public init() {}
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     public var body: some View {
-        ToolWheelCanvas(
-            selectedIndex: session.selectedIndex,
-            combine: session.combine,
-            ownerLabel: session.ownerLabel,
-            aimActive: session.aimActive,
-            aimX: session.aimX,
-            aimY: session.aimY,
-            tick: session.tick
-        )
-        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: session.selectedIndex)
-        .animation(.easeOut(duration: 0.16), value: session.combine)
-        .animation(.easeOut(duration: 0.12), value: session.tick)
+        VStack(spacing: 10) {
+            HStack {
+                Label("Mask tools", systemImage: "circle.lefthalf.filled")
+                    .font(.system(size: 15, weight: .semibold))
+                Spacer()
+                Text("HOLD \(session.ownerLabel.uppercased())")
+                    .font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+            }
+            ToolWheelCanvas(selectedIndex: session.selectedIndex, combine: session.combine,
+                            ownerLabel: session.ownerLabel, aimActive: session.aimActive,
+                            aimX: session.aimX, aimY: session.aimY, tick: session.tick)
+                .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.82), value: session.selectedIndex)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: session.combine)
+            HStack(spacing: 6) {
+                ForEach(MaskCombine.allCases, id: \.rawValue) { mode in
+                    VStack(spacing: 4) {
+                        Label(mode.title, systemImage: mode.symbol)
+                            .font(.system(size: 11, weight: .semibold))
+                        Text(["Prev Node", "Next Node", "Prev Frame", "Next Frame"][mode.rawValue])
+                            .font(.system(size: 9, weight: .medium)).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 8)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(mode == session.combine ? Color.white.opacity(0.16) : Color.white.opacity(0.04)))
+                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(mode == session.combine ? 0.4 : 0.08)))
+                    .opacity(session.selected.command(combine: mode) == nil ? 0.4 : 1)
+                }
+            }
+            VStack(spacing: 4) {
+                Text(session.selectedCommand == nil ? "This combination isn’t available. Choose another tool." : session.combine.hint)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(session.selectedCommand == nil ? Color.orange : Color.white)
+                Text("Centre/right ring: tool · Left ring: operation · Right ball: aim")
+                    .font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+                Text("Release \(session.ownerLabel) to apply")
+                    .font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
+            }
+        }
+        .padding(18)
+        .frame(width: 480, height: 610)
+        .modifier(GlassCard())
+        .environment(\.colorScheme, .dark)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Mask tools. \(session.combine.title) \(session.selected.title). \(session.combine.hint). Release \(session.ownerLabel) to apply.")
     }
 }
 
@@ -61,7 +94,7 @@ public struct ToolWheelCanvas: View {
     public var body: some View {
         ZStack {
             Circle()
-                .fill(Color(white: 0.07).opacity(0.94))
+                .fill(LinearGradient(colors: [Color(white: 0.18), Color(white: 0.06)], startPoint: .topLeading, endPoint: .bottomTrailing))
                 .overlay(Circle().strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
             wedges
             aimPip
@@ -127,21 +160,14 @@ public struct ToolWheelCanvas: View {
                 .font(.system(size: 24, weight: .semibold))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(combineColor)
-            Text("\(combine.title) \(selected.title)")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
+            Text(selected.title)
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            HStack(spacing: 3) {
-                ForEach(MaskCombine.allCases, id: \.rawValue) { mode in
-                    Text(mode.title)
-                        .font(.system(size: 8, weight: mode == combine ? .bold : .medium, design: .rounded))
-                        .foregroundStyle(mode == combine ? Color.white : Color.white.opacity(0.4))
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Capsule().fill(mode == combine ? combineColor.opacity(0.85) : Color.white.opacity(0.08)))
-                }
-            }
+            Text(combine.title.uppercased())
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .tracking(1).foregroundStyle(combineColor)
             Text("Release \(ownerLabel)")
                 .font(.system(size: 8, weight: .medium, design: .rounded))
                 .foregroundStyle(.white.opacity(0.5))

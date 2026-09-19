@@ -707,7 +707,7 @@ final class MaskToolPickerTests: XCTestCase {
         }
         XCTAssertEqual(MaskToolPicker.tools.count, 12)
         let land = MaskToolPicker.tools.first { $0.kind == "Land" }!
-        XCTAssertEqual(land.command(combine: .subtract), "MaskNewLand", "MIDI2LR has no MaskSubLand")
+        XCTAssertNil(land.command(combine: .subtract), "Unavailable subtraction must never create a new mask")
         XCTAssertEqual(land.command(combine: .add), "MaskAddLand")
         XCTAssertEqual(MaskToolPicker.tools[1].command(combine: .subtract), "MaskSubRad")
     }
@@ -818,5 +818,44 @@ final class MaskToolPickerTests: XCTestCase {
         XCTAssertEqual(migrated.layers["MASK"]?.rings?["RING_GAIN"]?.param, "local_ToningLuminance")
         XCTAssertEqual(migrated.layers["MASK"]?.buttons?["ADD_NODE"]?.hold_picker, MaskToolPicker.id)
         defaults.removePersistentDomain(forName: name)
+    }
+}
+
+
+final class ReportedParameterRangeTests: XCTestCase {
+    func testRawAndRenderedTemperatureUseTheirOwnUnitsAndTravel() throws {
+        var ranges = PhotoParameterRanges()
+        ranges.reset(photoID: "raw")
+        XCTAssertTrue(ranges.accept("raw Temperature 2000 50000"))
+        let raw = try XCTUnwrap(ranges.values["Temperature"])
+        XCTAssertEqual(ValueFormatter.format(param: "Temperature", value: 0.125, range: raw), "8000 K")
+        XCTAssertEqual(ParameterFeel.travel(for: "Temperature", range: raw), 0.125)
+        ranges.reset(photoID: "tiff")
+        XCTAssertNil(ranges.values["Temperature"])
+        XCTAssertFalse(ranges.accept("raw Temperature 2000 50000"))
+        XCTAssertTrue(ranges.accept("tiff Temperature -100 100"))
+        let tiff = try XCTUnwrap(ranges.values["Temperature"])
+        XCTAssertEqual(ValueFormatter.format(param: "Temperature", value: 0.6, range: tiff), "+20")
+        XCTAssertEqual(ParameterFeel.travel(for: "Temperature", range: tiff), 1)
+    }
+    func testInvalidRangesAreRejectedAndSpecialUnitsArePreserved() throws {
+        var ranges = PhotoParameterRanges()
+        ranges.reset(photoID: "photo")
+        for payload in ["photo Exposure nan 5", "photo Exposure 5 5", "photo Exposure 5 -5", "photo Exposure -inf 5", "photo Exposure 0"] {
+            XCTAssertFalse(ranges.accept(payload))
+        }
+        XCTAssertTrue(ranges.accept("photo local_Exposure -4 4"))
+        XCTAssertEqual(ValueFormatter.format(param: "local_Exposure", value: 0.75, range: ranges.values["local_Exposure"]), "+2.00 EV")
+        XCTAssertTrue(ranges.accept("photo CropLeft 0 1"))
+        XCTAssertEqual(ValueFormatter.format(param: "CropLeft", value: 0.25, range: ranges.values["CropLeft"]), "25%")
+    }
+    func testHelpUsesCustomAssignmentsIncludingHoldsAndUnassignedControls() {
+        var profile = Profile.loadDefault()
+        profile.knobs["Y_LIFT"] = KnobBinding(param: "Texture")
+        profile.buttons["WIPE_STILL"] = ButtonBinding(action: KeyCommands.beforeAfter, hold_layer: "DETAIL")
+        let rows = ControlHelpRow.rows(profile: profile)
+        XCTAssertEqual(rows.first(where: { $0.id == "Y_LIFT" })?.action, CommandDatabase.shared.label(for: "Texture"))
+        XCTAssertEqual(rows.first(where: { $0.id == "WIPE_STILL" })?.action, "Before / After (Toggle)")
+        XCTAssertEqual(rows.first(where: { $0.id == "WIPE_STILL" })?.hold, LayerNames.defaultTitle("DETAIL"))
     }
 }

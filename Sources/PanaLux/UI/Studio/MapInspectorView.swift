@@ -59,6 +59,7 @@ public struct MapInspectorView: View {
     @ObservedObject var guide = GuideController.shared
 
     @State private var searchText = ""
+    @State private var shortcutText = ""
     @State private var assignSlot: Slot = .tap
     @State private var showModesHelp = false
     @State private var browseGroup: String = "Featured"
@@ -96,6 +97,18 @@ public struct MapInspectorView: View {
             if let c = control {
                 actionRow(c)
                 if isButton {
+                    DisclosureGroup("Press a Key…") {
+                        VStack(alignment: .leading, spacing: 7) {
+                            TextField("For example: cmd+shift+e", text: $shortcutText)
+                                .textFieldStyle(.roundedBorder)
+                            Text("Modifiers: cmd, shift, opt, ctrl. Requires Accessibility access.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Button("Assign shortcut") {
+                                assign(db.catalogCommand(for: "key:" + shortcutText.trimmingCharacters(in: .whitespaces)))
+                            }
+                            .disabled(KeyCommands.parse("key:" + shortcutText.trimmingCharacters(in: .whitespaces)) == nil)
+                        }.padding(.top, 6)
+                    }
                     if let layer = editLayer {
                         layerKeyCard(c, layer: layer)
                     } else {

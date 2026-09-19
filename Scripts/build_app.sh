@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds PanaLux.app (universal, ad-hoc signed) in the project root.
+# Builds PanaLux.app in this checkout. Uses Developer ID when available; PANALUX_ADHOC=1 opts out.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -69,8 +69,8 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
 PLIST
 
 # Set PANALUX_SIGN_IDENTITY to a "Developer ID Application: …" identity to produce a
-# build that can be notarized. Without it the app is ad-hoc signed and users have to
-# use Open Anyway on first launch.
+# build that can be notarized. Otherwise an available Developer ID is selected.
+# With no identity (or PANALUX_ADHOC=1), use ad-hoc signing.
 # An ad-hoc signature is a hash of the binary, so every rebuild looks like a different
 # app to macOS and the Accessibility grant silently stops applying — the checkbox stays
 # on while AXIsProcessTrusted() returns false. Signing with any Apple-issued identity
@@ -100,6 +100,15 @@ elif [[ -z "$SIGN_IDENTITY" ]]; then
 fi
 
 if [[ -n "$SIGN_IDENTITY" ]]; then
+    # Resolve explicit fingerprints too: deciding runtime options from the supplied
+    # text alone silently omitted hardened runtime for a Developer ID SHA-1.
+    SIGN_NAME="$(security find-identity -v -p codesigning 2>/dev/null | awk -v identity="$SIGN_IDENTITY" '
+        index($0, identity) { n=$0; sub(/^[^\"]*\"/, "", n); sub(/\".*$/, "", n); print n; exit }
+    ')"
+    if [[ "$SIGN_NAME" != Developer\ ID\ Application:* ]]; then
+        echo "!! Choose a valid Developer ID Application identity, or PANALUX_ADHOC=1." >&2
+        exit 1
+    fi
     echo "==> Signing with ${SIGN_NAME:-$SIGN_IDENTITY}"
     # Sign inside out: nested code first, then the bundle.
     find "$APP_BUNDLE" -name "*.bundle" -type d -print0 | while IFS= read -r -d '' nested; do

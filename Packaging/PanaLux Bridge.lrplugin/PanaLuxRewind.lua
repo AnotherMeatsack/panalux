@@ -66,7 +66,7 @@ end
 
 --[[ Called from Client.lua's idle loops, a few times a second. Only speaks when something
      changed, so it costs nothing while the user is working on one photo. ]]
-local function PushSelection()
+local function PushSelection(force)
   local ok, message = pcall(function()
       local catalog = LrApplication.activeCatalog()
       local targets = catalog:getTargetPhotos()
@@ -76,9 +76,22 @@ local function PushSelection()
       return string.format('PanaLuxSelection %d %s %s\n', count, id, moduleName)
     end)
   if not ok or message == nil then return end
-  if message == lastSelection then return end
+  if not force and message == lastSelection then return end
   lastSelection = message
   send(message)
+  if LrApplicationView.getCurrentModuleName() ~= 'develop' then return end
+  local photo = LrApplication.activeCatalog():getTargetPhoto()
+  if photo == nil then return end
+  local id = photoIdentifier(photo)
+  local limits = require 'Limits'
+  local database = require 'Database'
+  for param in pairs(database.Parameters) do
+    -- Report the same bounds used by the numeric protocol, including user limits.
+    local ok, low, high = LrTasks.pcall(limits.GetMinMax, param, nil, true)
+    if ok and type(low) == 'number' and type(high) == 'number' and high > low then
+      send(string.format('PanaLuxRange %s %s %.17g %.17g\n', id, param, low, high))
+    end
+  end
 end
 
 --[[ The whole table, serialised and sent in pieces. A settings table with masks in it is far

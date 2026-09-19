@@ -5,6 +5,15 @@ set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$DIR"
 
+if [[ -n "${PANALUX_NOTARY_PROFILE:-}" ]]; then
+    if [[ -z "${PANALUX_SIGN_IDENTITY:-}" || "${PANALUX_ADHOC:-0}" == "1" ]]; then
+        echo "!! Notarization requires an explicit Developer ID and PANALUX_ADHOC unset." >&2
+        exit 1
+    fi
+    # Verify the saved profile before doing an expensive build. No secrets are read here.
+    xcrun notarytool history --keychain-profile "$PANALUX_NOTARY_PROFILE" >/dev/null
+fi
+
 bash Scripts/build_app.sh
 
 APP_NAME="PanaLux"
@@ -49,7 +58,7 @@ hdiutil create -volname "$APP_NAME" -srcfolder "$STAGING" -ov -format UDZO "$DMG
 DMG_AUTHORITY="$(codesign -dv --verbose=2 "${APP_NAME}.app" 2>&1 | grep '^Authority=' | head -1 || true)"
 if [[ "$DMG_AUTHORITY" == *"Apple Development"* && -z "${PANALUX_SIGN_IDENTITY:-}" ]]; then
     echo "!! ${APP_NAME}.app is signed with a development certificate, which carries a personal name." >&2
-    echo "   Re-run as: PANALUX_ADHOC=1 ./Scripts/build_app.sh && ./Scripts/create_dmg.sh" >&2
+    echo "   Re-run as: PANALUX_ADHOC=1 ./Scripts/create_dmg.sh" >&2
     echo "   or set PANALUX_SIGN_IDENTITY to a Developer ID certificate." >&2
     exit 1
 fi
@@ -59,10 +68,18 @@ if [[ -n "${PANALUX_SIGN_IDENTITY:-}" && -n "$NOTARY_PROFILE" ]]; then
     echo "==> Signing the disk image"
     codesign --force --timestamp --sign "$PANALUX_SIGN_IDENTITY" "$DMG"
     echo "==> Notarizing (this takes a few minutes)"
-    xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+    xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait \
+        --output-format json > "$STAGING/notary-result.json"
+    NOTARY_STATUS="$(plutil -extract status raw -o - "$STAGING/notary-result.json")"
+    if [[ "$NOTARY_STATUS" != "Accepted" ]]; then
+        cat "$STAGING/notary-result.json" >&2
+        echo "!! Notarization was not accepted; do not distribute this image." >&2
+        exit 1
+    fi
     echo "==> Stapling"
     xcrun stapler staple "$DMG"
-    spctl --assess --type open --context context:primary-signature -vv "$DMG" || true
+    xcrun stapler validate "$DMG"
+    spctl --assess --type open --context context:primary-signature -vv "$DMG"
     echo "Notarized ${DIR}/${DMG}"
 else
     echo "==> Not notarized. Set PANALUX_SIGN_IDENTITY and PANALUX_NOTARY_PROFILE to notarize."

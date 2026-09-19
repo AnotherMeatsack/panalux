@@ -138,7 +138,7 @@ final class RenderStillsTests: XCTestCase {
         }
 
         ToolWheelSession.shared.present(ownerLabel: "Add Node", index: 4, combine: .add)
-        try save(ToolWheelView().background(Color(white: 0.12)), size: CGSize(width: 360, height: 360), name: "hud-mask-wheel")
+        try save(ToolWheelView().background(Color(white: 0.12)), size: CGSize(width: 480, height: 610), name: "hud-mask-wheel")
         ToolWheelSession.shared.hide()
     }
 

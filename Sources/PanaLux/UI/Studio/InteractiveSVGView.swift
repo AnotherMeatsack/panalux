@@ -310,13 +310,22 @@ public struct InteractiveSVGView: NSViewRepresentable {
             stroke-width: 1.8;
             stroke-linecap: round;
             stroke-dasharray: 2 26;
-            animation: conn-flow 1.4s linear infinite, conn-fade 0.3s ease both;
+            animation: conn-flow 1.4s linear 2, conn-fade 0.3s ease both;
           }
           .conn-dot {
             fill: #fb923c;
             animation: conn-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both;
             transform-box: fill-box;
             transform-origin: center;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation: none !important; transition: none !important; }
+            .conn-flow { display: none; }
+            .conn-line { stroke-dasharray: none !important; opacity: 1; }
+          }
+          @media (prefers-contrast: more) {
+            .conn-line, .conn-line.faint { stroke: #ffbd72; stroke-width: 2.4; }
+            .link-tag { background: #18181b; color: #fff; border-color: #ffbd72; }
           }
           @keyframes conn-draw {
             from { stroke-dashoffset: var(--len); stroke-dasharray: var(--len); opacity: 0; }

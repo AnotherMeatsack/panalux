@@ -29,6 +29,9 @@ public class LightroomBridge: ObservableObject {
     /// Which Lightroom module is in front. Open as Layers behaves differently in each.
     @Published public private(set) var currentModule: String? = nil
 
+    private var photoRanges = PhotoParameterRanges()
+    public func parameterRange(for param: String) -> ParameterRange? { photoRanges.values[param] }
+
     public weak var delegate: LightroomBridgeDelegate?
 
     /// Every value change PanaLux knows about, whoever caused it: a knob here, or a mouse in
@@ -69,6 +72,7 @@ public class LightroomBridge: ObservableObject {
     public init() {}
 
     public func connect() {
+        guard !AppRuntime.isRenderingStills else { return }
         teardown()
         setupSendConnection()
         setupRecvConnection()
@@ -225,6 +229,11 @@ public class LightroomBridge: ObservableObject {
                 absorbSelection(String(line.dropFirst("PanaLuxSelection ".count)))
                 continue
             }
+            if line.hasPrefix("PanaLuxRange ") {
+                let payload = String(line.dropFirst("PanaLuxRange ".count))
+                DispatchQueue.main.async { self.photoRanges.accept(payload) }
+                continue
+            }
             // A settings table, in pieces: "PanaLuxKeyframe <token> <seq> <total> <base64>".
             if line.hasPrefix("PanaLuxKeyframe ") {
                 absorbKeyframe(String(line.dropFirst("PanaLuxKeyframe ".count)))
@@ -268,6 +277,7 @@ public class LightroomBridge: ObservableObject {
             if self.currentModule != module { self.currentModule = module }
             let resolved = id == "-" ? nil : id
             guard self.activePhotoID != resolved else { return }
+            self.photoRanges.reset(photoID: resolved)
             self.activePhotoID = resolved
             self.delegate?.lightroomActivePhotoDidChange(id: resolved)
         }
@@ -515,6 +525,7 @@ public class LightroomBridge: ObservableObject {
 }
 
 extension LightroomBridge: RewindOutput {
+    public func rewindRange(for param: String) -> ParameterRange? { parameterRange(for: param) }
     public func rewindKnownValues() -> [String: Double] { allKnownValues() }
 
     public func rewindSetParameter(_ name: String, value: Double) {

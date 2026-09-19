@@ -5,7 +5,7 @@ import Foundation
 /// MIDI2LR normalises every parameter to 0…1, which throws away whether a slider runs
 /// −100…100 or 0…150. Without that, a unipolar slider reads as a large negative number:
 /// Sharpness 52 of 150 is 0.35 normalised, and printing it as bipolar gives "−31".
-public struct ParameterRange {
+public struct ParameterRange: Equatable {
     public let low: Double
     public let high: Double
     public let decimals: Int
@@ -40,8 +40,12 @@ public enum ParameterFeel {
     static let temperatureSpan = 48_000.0
     static let temperatureFeltSpan = 6_000.0
 
-    public static func travel(for param: String) -> Double {
-        param == "Temperature" ? temperatureFeltSpan / temperatureSpan : 1.0
+    public static func travel(for param: String, range: ParameterRange? = nil) -> Double {
+        guard param == "Temperature" else { return 1 }
+        if let range {
+            return range.high >= 1000 ? min(1, temperatureFeltSpan / (range.high - range.low)) : 1
+        }
+        return temperatureFeltSpan / temperatureSpan
     }
 }
 
@@ -124,5 +128,27 @@ public enum ParameterRanges {
             if let inherited = table[base] { return inherited }
         }
         return nil
+    }
+}
+
+
+/// Ranges describe the actual normalization window used by the plugin, scoped to
+/// the photo so a delayed RAW reply cannot change a TIFF's control feel.
+struct PhotoParameterRanges {
+    private(set) var photoID: String?
+    private(set) var values: [String: ParameterRange] = [:]
+    mutating func reset(photoID: String?) { self.photoID = photoID; values.removeAll() }
+    @discardableResult
+    mutating func accept(_ payload: String) -> Bool {
+        let fields = payload.split(separator: " ").map(String.init)
+        guard fields.count == 4, fields[0] == photoID,
+              let low = Double(fields[2]), let high = Double(fields[3]),
+              low.isFinite, high.isFinite, high > low, (high - low).isFinite else { return false }
+        let param = fields[1]
+        let fallback = ParameterRanges.range(for: param)
+        let suffix = param == "Temperature" ? (high >= 1000 ? " K" : "") : (fallback?.suffix ?? (param == "Exposure" ? " EV" : (param == "straightenAngle" ? "°" : "")))
+        let decimals = (param == "Exposure" || param == "local_Exposure") ? 2 : (fallback?.decimals ?? (param == "straightenAngle" ? 1 : 0))
+        values[param] = ParameterRange(low, high, decimals: decimals, suffix: suffix)
+        return true
     }
 }

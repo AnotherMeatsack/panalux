@@ -68,10 +68,10 @@ public struct MaskTool: Equatable, Identifiable, Hashable {
 
     public var createCommand: String { "MaskNew\(kind)" }
 
-    public func command(combine: MaskCombine) -> String {
+    public func command(combine: MaskCombine) -> String? {
         let id = "Mask\(combine.verb)\(kind)"
         if CommandDatabase.shared.commands[id] != nil { return id }
-        return createCommand
+        return nil
     }
 }
 
@@ -183,7 +183,7 @@ public final class ToolWheelSession: ObservableObject {
     private init() {}
 
     public var selected: MaskTool { MaskToolPicker.tool(at: selectedIndex) }
-    public var selectedCommand: String { selected.command(combine: combine) }
+    public var selectedCommand: String? { selected.command(combine: combine) }
 
     public func present(ownerLabel: String, index: Int, combine: MaskCombine = .create) {
         self.ownerLabel = ownerLabel

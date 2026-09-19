@@ -6,11 +6,16 @@ import Combine
 public protocol RewindOutput: AnyObject {
     /// Every develop value PanaLux currently believes in.
     func rewindKnownValues() -> [String: Double]
+    func rewindRange(for param: String) -> ParameterRange?
     func rewindSetParameter(_ name: String, value: Double)
     /// Ask the plugin for a full `getDevelopSettings()` table; the reply comes back by id.
     func rewindRequestSnapshot(token: String)
     /// Hand a table back to the plugin. This is what restores masks and crop exactly.
     func rewindRestore(blob: String)
+}
+
+public extension RewindOutput {
+    func rewindRange(for param: String) -> ParameterRange? { nil }
 }
 
 /// The recorder and the playhead.
@@ -48,6 +53,7 @@ public final class RewindEngine: ObservableObject {
     /// Trails are only written for photos Lightroom has actually named.
     public private(set) var photoID: String?
     public private(set) var trail: EditTrail?
+    @Published public private(set) var historyUnavailableMessage: String?
     /// Where trails are kept. nil means the usual place beside the map; tests point it elsewhere.
     public var storeDirectory: URL?
 
@@ -119,13 +125,25 @@ public final class RewindEngine: ObservableObject {
         flush(synchronously: true)
         endRewind(announce: false)
         photoID = id
+        historyUnavailableMessage = nil
+        pendingSnapshots.removeAll()
         guard let id, !id.isEmpty else {
             trail = nil
             playback = nil
             refreshTakeInfo()
             return
         }
-        var loaded = TrailStore.load(photoID: id, in: storeDirectory) ?? EditTrail(photoID: id)
+        let stored = TrailStore.load(photoID: id, in: storeDirectory)
+        // An unreadable or newer-format trail is not a missing trail. Preserve its
+        // exact bytes and suspend recording for this photo instead of replacing it.
+        if stored == nil, FileManager.default.fileExists(atPath: TrailStore.url(for: id, in: storeDirectory).path) {
+            trail = nil
+            playback = nil
+            historyUnavailableMessage = "This history can’t be opened · saved history is kept"
+            refreshTakeInfo()
+            return
+        }
+        var loaded = stored ?? EditTrail(photoID: id)
         loaded.resume()
         trail = loaded
         playback = nil
@@ -609,7 +627,7 @@ public final class RewindEngine: ObservableObject {
             guard let events = playback.series[param],
                   let e = events.first(where: { abs($0.t - t) < TrailPlayback.stepMerge }) else { continue }
             moved.append((CommandDatabase.shared.shortLabel(for: param),
-                          ValueFormatter.format(param: param, value: e.value)))
+                          ValueFormatter.format(param: param, value: e.value, range: output?.rewindRange(for: param))))
         }
         guard let first = moved.first else { return nil }
         var text = "\(first.name) \(first.text)"
@@ -652,7 +670,7 @@ public final class RewindEngine: ObservableObject {
                 control: entry.control,
                 label: CommandDatabase.shared.shortLabel(for: entry.param),
                 value: value,
-                display: ValueFormatter.format(param: entry.param, value: value),
+                display: ValueFormatter.format(param: entry.param, value: value, range: output?.rewindRange(for: entry.param)),
                 isChanged: abs(tip - value) > 0.002
             ))
         }
@@ -732,7 +750,8 @@ public final class RewindEngine: ObservableObject {
             }
         }
         if synchronously {
-            write()
+            // Drain older snapshots before the latest write, including photo switches.
+            RewindEngine.saveQueue.sync(execute: write)
         } else {
             RewindEngine.saveQueue.async(execute: write)
         }

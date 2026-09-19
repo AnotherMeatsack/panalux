@@ -260,6 +260,16 @@ final class RewindMotion {
         velocity = newVelocity
     }
 
+    func settle(_ state: RewindState) {
+        position = state.isPeeking ? state.tip : state.playhead
+        window = max(1, state.window)
+        velocity = 0
+        logWindowVelocity = 0
+        pulse = 0
+        speed = 0
+        for lane in state.tangents { glow[lane.id] = lane.isActive ? 1 : 0 }
+    }
+
     func advance(_ state: RewindState, now: TimeInterval) {
         let target = state.isPeeking ? state.tip : state.playhead
         if position.isNaN {
@@ -560,8 +570,8 @@ struct TangentsMap: View {
     let motion: RewindMotion
     let now: TimeInterval
 
-    static let rowHeight: CGFloat = 21
-    static let labelWidth: CGFloat = 64
+    static let rowHeight: CGFloat = 25
+    static let labelWidth: CGFloat = 80
     static let maxRows = 5
 
     static func height(for tangentCount: Int) -> CGFloat {
@@ -687,21 +697,21 @@ struct KnobRoll: View {
             ForEach(knobs) { knob in
                 VStack(alignment: .leading, spacing: 1) {
                     Text(knob.label)
-                        .font(.system(size: 7.5, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white.opacity(knob.isChanged ? 0.75 : 0.35))
+                        .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(knob.isChanged ? 0.9 : 0.72))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                     Text(knob.display)
-                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
                         .monospacedDigit()
                         .contentTransition(.numericText())
-                        .foregroundColor(knob.isChanged ? accent : .white.opacity(0.55))
+                        .foregroundColor(knob.isChanged ? accent : .white.opacity(0.82))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4)
-                .padding(.vertical, 2)
+                .padding(.vertical, 5)
                 .background(
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .fill(knob.isChanged ? accent.opacity(0.12) : Color.white.opacity(0.04))
@@ -717,6 +727,7 @@ struct KnobRoll: View {
 public struct RewindView: View {
     public let state: RewindState
     @State private var motion = RewindMotion()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(state: RewindState) {
         self.state = state
@@ -725,15 +736,15 @@ public struct RewindView: View {
     /// The window is sized to this: header, tape, lanes, knobs, and the padding between.
     public static func height(tangentCount: Int, hasKnobs: Bool) -> CGFloat {
         let lanes = TangentsMap.height(for: tangentCount)
-        return 54 + 112 + 8 + lanes + (hasKnobs ? 8 + 70 : 0) + 14
+        return 66 + 112 + 8 + lanes + (hasKnobs ? 8 + 88 : 0) + 14
     }
 
     public var body: some View {
         VStack(spacing: 8) {
             header
-            TimelineView(.animation) { timeline in
+            TimelineView(.animation(paused: reduceMotion)) { timeline in
                 let now = timeline.date.timeIntervalSinceReferenceDate
-                let _ = motion.advance(state, now: now)
+                let _ = reduceMotion ? motion.settle(state) : motion.advance(state, now: now)
                 VStack(spacing: 8) {
                     TrailTrack(state: state, motion: motion, now: now)
                         .frame(height: 112)
@@ -749,6 +760,9 @@ public struct RewindView: View {
         }
         .padding(.top, 10)
         .padding(.bottom, 4)
+        .transaction { if reduceMotion { $0.animation = nil; $0.disablesAnimations = true } }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Rewind plus. \(state.branchName ?? "Original"). \(state.caption). Edit \(state.stepNumber) of \(state.stepCount). \(state.isPlaying ? "Playing" : "Paused") at \(state.rateText).")
     }
 
     private var accent: Color { RewindState.tangentColor(state.tangentColorIndex) }
@@ -761,8 +775,8 @@ public struct RewindView: View {
                 .frame(width: 20)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text("REWIND")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                    Text("REWIND+")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                     TangentBadge(name: state.tangentCount > 1 || state.branchName != nil ? (state.branchName ?? "Original") : "Original",
                               colorIndex: state.tangentColorIndex,
@@ -771,8 +785,8 @@ public struct RewindView: View {
                         .transition(.scale(scale: 0.8).combined(with: .opacity))
                 }
                 Text(state.caption)
-                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.62))
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundColor(.white.opacity(0.85))
                     .lineLimit(1)
                     .contentTransition(.opacity)
             }
@@ -790,16 +804,16 @@ public struct RewindView: View {
                 Image(systemName: state.isPlaying ? (state.isReverse ? "backward.fill" : "play.fill") : "pause.fill")
                     .font(.system(size: 9, weight: .bold))
                 Text(state.rateText)
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
                     .monospacedDigit()
                     .contentTransition(.numericText())
             }
             .foregroundColor(accent)
             if state.stepCount > 0 {
-                Text("\(state.stepNumber) / \(state.stepCount)")
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                Text("Edit \(state.stepNumber) of \(state.stepCount)")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
                     .monospacedDigit()
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(.white.opacity(0.75))
             }
         }
         .animation(.smooth(duration: 0.25), value: state.rate)

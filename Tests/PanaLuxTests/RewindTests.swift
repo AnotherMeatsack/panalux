@@ -1277,3 +1277,81 @@ final class ConnectionDoctorTests: XCTestCase {
         XCTAssertFalse(AppCoordinator.pluginFolder(a, matches: b), "a change outside Info/Client/Database must count")
     }
 }
+
+
+final class RewindPersistenceRegressionTests: XCTestCase {
+    func testSynchronousFlushCannotBeOverwrittenByAnOlderQueuedSave() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let engine = RewindEngine()
+        engine.storeDirectory = dir
+        defer {
+            engine.setActivePhoto(nil)
+            RewindEngine.saveQueue.sync {}
+            try? FileManager.default.removeItem(at: dir)
+        }
+        engine.setActivePhoto("ordering")
+        let gate = DispatchSemaphore(value: 0)
+        RewindEngine.saveQueue.async { gate.wait() }
+        engine.flush() // queues the old snapshot behind the gate
+        engine.record(param: "Exposure", value: 0.8)
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) { gate.signal() }
+        engine.flush(synchronously: true)
+        RewindEngine.saveQueue.sync {}
+        let saved = try XCTUnwrap(TrailStore.load(photoID: "ordering", in: dir))
+        XCTAssertEqual(saved.activeBranch.events.last?.value, 0.8)
+    }
+
+    func testOpeningUnsupportedOrDamagedHistoryNeverOverwritesItsBytes() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var future = EditTrail(photoID: "future")
+        future.version = EditTrail.formatVersion + 1
+        try TrailStore.save(future, in: dir)
+        let futureURL = TrailStore.url(for: "future", in: dir)
+        let original = try Data(contentsOf: futureURL)
+        let damagedURL = TrailStore.url(for: "damaged", in: dir)
+        let damaged = Data("unreadable history".utf8)
+        try damaged.write(to: damagedURL)
+        let engine = RewindEngine()
+        engine.storeDirectory = dir
+        for (id, url, bytes) in [("future", futureURL, original), ("damaged", damagedURL, damaged)] {
+            engine.setActivePhoto(id)
+            engine.record(param: "Exposure", value: 0.9)
+            engine.flush(synchronously: true)
+            engine.setActivePhoto(nil)
+            RewindEngine.saveQueue.sync {}
+            XCTAssertNil(engine.trail)
+            XCTAssertEqual(try Data(contentsOf: url), bytes)
+        }
+    }
+}
+
+final class HUDPlacementTests: XCTestCase {
+    func testNotchFlatAndReducedMotionPlacement() {
+        let screen = CGRect(x: -1920, y: 120, width: 1920, height: 1080)
+        let visible = CGRect(x: -1920, y: 160, width: 1920, height: 1012)
+        let size = CGSize(width: 560, height: 360)
+        let flat = HUDPlacement.frames(screen: screen, visible: visible, safeTop: 0, size: size)
+        XCTAssertEqual(flat.hidden.minY - flat.rest.minY, 12)
+        XCTAssertLessThan(flat.rest.maxY, visible.maxY)
+        XCTAssertTrue(visible.contains(flat.rest))
+        let notch = HUDPlacement.frames(screen: screen, visible: visible, safeTop: 38, size: size)
+        XCTAssertEqual(notch.hidden.minY, screen.maxY - 2)
+        XCTAssertEqual(notch.rest.maxY, screen.maxY - 48)
+        let still = HUDPlacement.frames(screen: screen, visible: visible, safeTop: 38, size: size, reduceMotion: true)
+        XCTAssertEqual(still.rest, still.hidden)
+    }
+    func testSmallDisplayKeepsReadoutWithinVisibleBounds() {
+        let screen = CGRect(x: 0, y: -600, width: 500, height: 600)
+        let visible = CGRect(x: 40, y: -580, width: 460, height: 552)
+        let frames = HUDPlacement.frames(screen: screen, visible: visible, safeTop: 0, size: CGSize(width: 560, height: 700))
+        XCTAssertTrue(visible.contains(frames.rest))
+    }
+    func testReducedMotionShowsCurrentRewindValuesImmediately() {
+        let motion = RewindMotion()
+        motion.settle(RewindSamples.scrubbing)
+        XCTAssertEqual(motion.position, RewindSamples.scrubbing.playhead)
+        XCTAssertEqual(motion.speed, 0)
+        XCTAssertEqual(motion.pulse, 0)
+    }
+}

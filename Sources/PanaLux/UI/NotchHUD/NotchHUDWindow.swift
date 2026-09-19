@@ -56,6 +56,7 @@ public class NotchHUDWindowController: ObservableObject {
             let glass = NSGlassEffectView()
             glass.cornerRadius = 20
             glass.style = .regular
+            glass.tintColor = NSColor.black.withAlphaComponent(0.18)
             if #available(macOS 27.0, *) {
                 glass.effectIsInteractive = false
             }
@@ -127,7 +128,7 @@ public class NotchHUDWindowController: ObservableObject {
         window.orderFrontRegardless()
 
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.40
+            ctx.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0.14 : 0.40
             ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1.0, 0.3, 1.0)
             window.animator().setFrame(rest, display: true)
             window.animator().alphaValue = 1
@@ -140,7 +141,7 @@ public class NotchHUDWindowController: ObservableObject {
         guard let rest = restFrame(height: height) else { return }
         applyContentSize(height: height)
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = fromHidden ? 0.40 : 0.22
+            ctx.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0.14 : (fromHidden ? 0.40 : 0.22)
             ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1.0, 0.3, 1.0)
             window.animator().setFrame(rest, display: true)
             window.animator().alphaValue = 1
@@ -159,7 +160,7 @@ public class NotchHUDWindowController: ObservableObject {
         }()
 
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.36
+            ctx.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0.14 : 0.30
             ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.4, 0.0, 1.0, 0.15)
             window.animator().setFrame(tucked, display: true)
             window.animator().alphaValue = 0
@@ -210,19 +211,10 @@ public class NotchHUDWindowController: ObservableObject {
 
     private func restFrame(height: CGFloat) -> NSRect? {
         guard let screen else { return nil }
-        let screenFrame = screen.frame
-        let posX = screenFrame.midX - (hudWidth / 2.0)
-        let gapBelowNotch: CGFloat = 10
-        let posY: CGFloat
-        let safeTop = screen.safeAreaInsets.top
-        if safeTop > 24.0 {
-            posY = screenFrame.maxY - safeTop - gapBelowNotch - height
-        } else {
-            let menuBarHeight = screen.frame.maxY - screen.visibleFrame.maxY
-            let bar = max(menuBarHeight, 28)
-            posY = screenFrame.maxY - bar - gapBelowNotch - height
-        }
-        return NSRect(x: posX, y: posY, width: hudWidth, height: height)
+        return HUDPlacement.frames(screen: screen.frame, visible: screen.visibleFrame,
+                                   safeTop: screen.safeAreaInsets.top,
+                                   size: CGSize(width: hudWidth, height: height),
+                                   reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion).rest
     }
 
     private var screen: NSScreen? {
@@ -263,10 +255,27 @@ public class NotchHUDWindowController: ObservableObject {
 
     /// Parked just past the top of the display so the capsule reads as sliding into the notch.
     private func tuckedFrame(height: CGFloat) -> NSRect? {
-        guard let rest = restFrame(height: height),
-              let screen else { return nil }
-        var tucked = rest
-        tucked.origin.y = screen.frame.maxY - 2
-        return tucked
+        guard let screen else { return nil }
+        return HUDPlacement.frames(screen: screen.frame, visible: screen.visibleFrame,
+                                   safeTop: screen.safeAreaInsets.top,
+                                   size: CGSize(width: hudWidth, height: height),
+                                   reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion).hidden
+    }
+}
+
+
+/// AppKit coordinates. Flat displays use a short floating reveal below the menu bar;
+/// notched displays keep the familiar reveal from the hardware edge.
+enum HUDPlacement {
+    static func frames(screen: CGRect, visible: CGRect, safeTop: CGFloat, size: CGSize,
+                       reduceMotion: Bool = false) -> (rest: CGRect, hidden: CGRect) {
+        let topInset = safeTop > 24 ? safeTop : max(28, screen.maxY - visible.maxY)
+        let width = min(size.width, max(1, visible.width - 24))
+        let height = min(size.height, max(1, screen.maxY - topInset - 10 - visible.minY - 12))
+        let x = min(max(screen.midX - width / 2, visible.minX + 12), visible.maxX - width - 12)
+        let rest = CGRect(x: x, y: screen.maxY - topInset - 10 - height, width: width, height: height)
+        var hidden = rest
+        if !reduceMotion { hidden.origin.y = safeTop > 24 ? screen.maxY - 2 : rest.minY + 12 }
+        return (rest, hidden)
     }
 }

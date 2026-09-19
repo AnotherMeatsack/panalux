@@ -120,6 +120,7 @@ public class MenuBarController: NSObject, NSMenuDelegate {
         hud.submenu = hudMenu
         menu.addItem(hud)
 
+        menu.addItem(action("Your Controls…", #selector(openControlHelp), key: "?", symbol: "questionmark.circle"))
         menu.addItem(action("Reference Card", #selector(openReferenceCard), key: "", symbol: "printer"))
         menu.addItem(action("Import Map…", #selector(importMap), key: "", symbol: "square.and.arrow.down"))
         menu.addItem(action("Export Map…", #selector(exportMap), key: "", symbol: "square.and.arrow.up"))
@@ -153,6 +154,8 @@ public class MenuBarController: NSObject, NSMenuDelegate {
         }
         return item
     }
+
+    @objc private func openControlHelp() { ControlHelpWindowController.shared.show() }
 
     @objc private func openStudio() {
         StudioWindowController.shared.show()

@@ -5,6 +5,7 @@ public struct NotchHUDView: View {
     @ObservedObject var settings = AppSettings.shared
     /// Which tangent is being edited, so a tangent is never invisible.
     @ObservedObject var rewind = RewindEngine.shared
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pinnedMode: ActiveDisplayMode = .idle
 
     public init() {}
@@ -54,6 +55,7 @@ public struct NotchHUDView: View {
         .frame(maxWidth: .infinity, alignment: .top)
         .environment(\.colorScheme, .dark)
         .animation(.easeOut(duration: 0.2), value: isExpanded)
+        .transaction { if reduceMotion { $0.animation = nil; $0.disablesAnimations = true } }
         .onAppear {
             if feed.mode != .idle {
                 pinnedMode = feed.mode
@@ -270,9 +272,14 @@ enum PhaseStyle {
 
 /// Liquid Glass is applied by NSGlassEffectView on macOS 26+. Older systems keep the frosted fallback.
 private struct HUDChrome: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
     func body(content: Content) -> some View {
-        if #available(macOS 26.0, *) {
-            content
+        if reduceTransparency {
+            content.background(Color(white: 0.10), in: RoundedRectangle(cornerRadius: 20))
+        } else if #available(macOS 26.0, *) {
+            content.background(Color.black.opacity(contrast == .increased ? 0.5 : 0.14), in: RoundedRectangle(cornerRadius: 20))
+                .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(.white.opacity(contrast == .increased ? 0.6 : 0.16), lineWidth: 0.75))
         } else {
             content.glassmorphism(cornerRadius: 20, specularAlpha: 0.35)
         }

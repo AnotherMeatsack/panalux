@@ -5,7 +5,9 @@ import AppKit
 struct IntroShowView: View {
     @ObservedObject var guide = GuideController.shared
     @State private var scene = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var playing = true
+    @State private var pausedElapsed: TimeInterval = 0
     @State private var sceneStart = Date()
     @FocusState private var focused: Bool
 
@@ -15,8 +17,8 @@ struct IntroShowView: View {
     var body: some View {
         ZStack {
             backdrop
-            TimelineView(.animation) { timeline in
-                let t = timeline.date.timeIntervalSince(sceneStart)
+            TimelineView(.animation(paused: !playing || reduceMotion)) { timeline in
+                let t = reduceMotion ? min(sceneLengths[scene] * 0.65, 8) : (playing ? timeline.date.timeIntervalSince(sceneStart) : pausedElapsed)
                 ZStack {
                     content(for: scene, t: t)
                         .id(scene)
@@ -27,7 +29,7 @@ struct IntroShowView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onChange(of: timeline.date) { _, now in
-                    if playing, scene < sceneCount - 1, now.timeIntervalSince(sceneStart) > sceneLengths[scene] {
+                    if playing, !reduceMotion, scene < sceneCount - 1, now.timeIntervalSince(sceneStart) > sceneLengths[scene] {
                         go(scene + 1)
                     }
                 }
@@ -45,9 +47,10 @@ struct IntroShowView: View {
         .onAppear { focused = true; sceneStart = Date() }
         .onKeyPress(.rightArrow) { go(scene + 1); return .handled }
         .onKeyPress(.leftArrow) { go(scene - 1); return .handled }
-        .onKeyPress(.space) { playing.toggle(); sceneStart = Date(); return .handled }
+        .onKeyPress(.space) { if !reduceMotion { togglePlayback() }; return .handled }
         .onKeyPress(.escape) { guide.finishIntro(startTour: false); return .handled }
         .environment(\.colorScheme, .dark)
+        .transaction { if reduceMotion { $0.animation = nil; $0.disablesAnimations = true } }
     }
 
     /// One frame of one scene, for rendering stills.
@@ -75,14 +78,21 @@ struct IntroShowView: View {
         return NSApplication.shared.applicationIconImage
     }
 
+    private func togglePlayback() {
+        if playing { pausedElapsed = Date().timeIntervalSince(sceneStart) }
+        else { sceneStart = Date().addingTimeInterval(-pausedElapsed) }
+        playing.toggle()
+    }
+
     private func go(_ next: Int) {
         guard next >= 0 else { return }
         guard next < sceneCount else {
             guide.finishIntro(startTour: true)
             return
         }
-        withAnimation(.smooth(duration: 0.7)) {
+        withAnimation(reduceMotion ? nil : .smooth(duration: 0.7)) {
             scene = next
+            pausedElapsed = 0
             sceneStart = Date()
         }
     }
@@ -113,23 +123,31 @@ struct IntroShowView: View {
             Spacer()
             HStack(spacing: 7) {
                 ForEach(0..<sceneCount, id: \.self) { i in
-                    Capsule()
-                        .fill(i == scene ? Color.white : Color.white.opacity(0.25))
-                        .frame(width: i == scene ? 22 : 7, height: 7)
-                        .onTapGesture { go(i) }
+                    Button { go(i) } label: {
+                        Capsule()
+                            .fill(i == scene ? Color.white : Color.white.opacity(0.25))
+                            .frame(width: i == scene ? 22 : 7, height: 7)
+                            .frame(minWidth: 24, minHeight: 28)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Slide \(i + 1) of \(sceneCount)")
+                    .accessibilityValue(i == scene ? "Current slide" : "")
                 }
             }
             .animation(.smooth, value: scene)
             Spacer()
             Button { go(scene - 1) } label: { Image(systemName: "chevron.left") }
                 .disabled(scene == 0)
-            Button {
-                playing.toggle()
-                sceneStart = Date()
-            } label: {
-                Image(systemName: playing ? "pause.fill" : "play.fill")
+                .accessibilityLabel("Previous slide")
+            if !reduceMotion {
+                Button { togglePlayback() } label: {
+                    Image(systemName: playing ? "pause.fill" : "play.fill")
+                }
+                .accessibilityLabel(playing ? "Pause intro" : "Resume intro")
             }
             Button { go(scene + 1) } label: { Image(systemName: "chevron.right") }
+                .accessibilityLabel(scene == sceneCount - 1 ? "Start hands-on tour" : "Next slide")
         }
         .buttonStyle(.bordered)
         .controlSize(.large)
@@ -493,14 +511,20 @@ struct IntroShowView: View {
 // MARK: - Pieces
 
 struct GlassCard: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
     /// Offscreen renders can't draw Liquid Glass; stills use the material fallback.
     static var forceFallback = false
 
     func body(content: Content) -> some View {
-        if #available(macOS 26.0, *), !Self.forceFallback {
-            content.glassEffect(.regular, in: .rect(cornerRadius: 24))
+        if reduceTransparency || Self.forceFallback {
+            content.background(LinearGradient(colors: [Color(white: 0.19), Color(white: 0.09)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 24))
+                .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(.white.opacity(contrast == .increased ? 0.6 : 0.2)))
+        } else if #available(macOS 26.0, *) {
+            content.glassEffect(.regular.tint(.black.opacity(0.18)), in: .rect(cornerRadius: 24))
         } else {
-            content.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            content.background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(.white.opacity(0.18)))
         }
     }
 }

@@ -29,6 +29,7 @@ public class AppCoordinator: ObservableObject {
     private var releasedForResolve = false
 
     private init() {
+        guard !AppRuntime.isRenderingStills else { return }
         checkRunningApps()
         startMonitoring()
     }
@@ -215,6 +216,10 @@ public class AppCoordinator: ObservableObject {
                 Thread.sleep(forTimeInterval: 0.5)
             }
             DispatchQueue.main.async {
+                guard running.allSatisfy(\.isTerminated) else {
+                    self.showError("Lightroom is still open. Finish any dialogs in Lightroom, then try Restart Lightroom again.")
+                    return
+                }
                 self.needsLightroomRestart = false
                 self.launchLightroomClassic()
             }

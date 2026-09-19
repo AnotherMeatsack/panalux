@@ -66,3 +66,11 @@ public enum AppPaths {
         try? FileManager.default.createDirectory(at: supportDir, withIntermediateDirectories: true)
     }
 }
+
+
+/// Offscreen stills must never start hardware, sockets, or migrate the user's map.
+enum AppRuntime {
+    static var isRenderingStills: Bool {
+        ProcessInfo.processInfo.environment["PANALUX_RENDER_DIR"] != nil
+    }
+}

@@ -226,6 +226,27 @@ public class CommandCatalog: ObservableObject {
             ]
         ))
 
+        cats.append(CommandCategory(
+            id: "tonecurve", title: "Tone Curve", icon: "point.topleft.down.curvedto.point.bottomright.up",
+            items: [
+                ("ParametricShadows", "Curve · Shadows", true),
+                ("ParametricDarks", "Curve · Darks", true),
+                ("ParametricLights", "Curve · Lights", true),
+                ("ParametricHighlights", "Curve · Highlights", true),
+                ("ParametricShadowSplit", "Curve · Shadow Split", true),
+                ("ParametricMidtoneSplit", "Curve · Midtone Split", true),
+                ("ParametricHighlightSplit", "Curve · Highlight Split", true),
+                ("CurveRefineSaturation", "Curve · Refine Saturation", true),
+                ("PointCurveBlacksUpDown", "Point Curve · Black Point", true),
+                ("PointCurveHighlightsUpDown", "Point Curve · White Point", true),
+                ("PointCurveLinear", "Point Curve · Linear", false),
+                ("PointCurveMediumContrast", "Point Curve · Medium Contrast", false),
+                ("PointCurveStrongContrast", "Point Curve · Strong Contrast", false)
+            ].map { id, title, parameter in
+                CatalogCommand(id: id, title: title, subtitle: parameter ? "Assign to a knob, ring or ball" : "Apply this point curve to the current photo", isParameter: parameter, icon: "waveform.path")
+            }
+        ))
+
         // 11. Develop Actions & Presets
         cats.append(CommandCategory(
             id: "actions",

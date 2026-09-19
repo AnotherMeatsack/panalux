@@ -36,6 +36,7 @@ public class AppSettings: ObservableObject {
     @AppStorage("quitPhotoshopWhenEmpty") public var quitPhotoshopWhenEmpty: Bool = false
     
     private init() {
+        guard !AppRuntime.isRenderingStills else { return }
         migrateHudDurationIfNeeded()
     }
     

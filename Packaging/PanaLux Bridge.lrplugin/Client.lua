@@ -199,7 +199,7 @@ LrTasks.startAsyncTask(
       FineDecrease                    = Limits.FineDecrease,
       FineIncrease                    = Limits.FineIncrease,
       FineOff                         = function() Limits.Fine() end,
-      FullRefresh                     = Limits.RefreshMidiController,
+      FullRefresh                     = function() PanaLuxRewind.PushSelection(true); Limits.RefreshMidiController() end,
       GetPluginInfo                   = DebugInfo.sendLog, -- not in db: internal use only
       GridViewStyle                   = LrApplicationView.gridViewStyle,
       HDREditMode                     = CU.fToggle01('HDREditMode'),
