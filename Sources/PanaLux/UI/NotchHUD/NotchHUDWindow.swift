@@ -186,8 +186,8 @@ public class NotchHUDWindowController: ObservableObject {
             // One row fits in the same box as a single readout, so nothing jumps.
             return readings.count > 3 ? 104 : 68
         case .rewind(let state):
-            // Header, the tape, a lane for each take, and the knobs. It grows with the takes.
-            return RewindView.height(takeCount: state.takes.count, hasKnobs: !state.knobs.isEmpty)
+            // Header, the tape, a lane for each tangent, and the knobs. It grows with the tangents.
+            return RewindView.height(tangentCount: state.tangents.count, hasKnobs: !state.knobs.isEmpty)
         default: return 68
         }
     }

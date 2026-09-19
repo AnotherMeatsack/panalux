@@ -3,7 +3,7 @@ import SwiftUI
 public struct NotchHUDView: View {
     @ObservedObject var feed = HUDFeed.shared
     @ObservedObject var settings = AppSettings.shared
-    /// Which take is being edited, so a tangent is never invisible.
+    /// Which tangent is being edited, so a tangent is never invisible.
     @ObservedObject var rewind = RewindEngine.shared
     @State private var pinnedMode: ActiveDisplayMode = .idle
 
@@ -37,7 +37,7 @@ public struct NotchHUDView: View {
                             contentBody
                                 .id(kindKey)
                                 .transition(.blurReplace.combined(with: .opacity))
-                                .overlay(alignment: .topTrailing) { takeBadge }
+                                .overlay(alignment: .topTrailing) { tangentBadge }
                         }
                         .animation(.smooth(duration: 0.24), value: kindKey)
                         .animation(.smooth(duration: 0.18), value: nameKey)
@@ -66,12 +66,12 @@ public struct NotchHUDView: View {
         }
     }
 
-    /// On a tangent, every readout wears the take's badge. Rewind draws its own, and the original
+    /// On a tangent, every readout wears the tangent's badge. Rewind draws its own, and the original
     /// is the quiet default, so it only ever appears when it means something.
     @ViewBuilder
-    private var takeBadge: some View {
-        if let take = rewind.takeInfo, !isRewind {
-            TakeBadge(take)
+    private var tangentBadge: some View {
+        if let tangent = rewind.tangentInfo, !isRewind {
+            TangentBadge(tangent)
                 .padding(.top, 7)
                 .padding(.trailing, 10)
                 .transition(.scale(scale: 0.7, anchor: .topTrailing).combined(with: .opacity))

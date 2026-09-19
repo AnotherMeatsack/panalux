@@ -51,7 +51,7 @@ Every key has separate **On tap** and **While held** assignments. The table belo
 | **Hold User** | Upright and Transform. Knobs become perspective controls. Auto Color becomes Upright Auto while User is held. |
 | **Tap or hold Cursor** | Masks. Knobs adjust the selected mask, keeping matching controls in their Base positions. You can turn that behavior off in Settings and build a custom mask layout. |
 | **Hold Add Node** | Opens the circular mask tool wheel. Choose a tool and operation, then release to create it. Place it with the mouse. |
-| **Hold Undo** | Rewind+. Scrub your whole editing session one change at a time, replay it, and branch it into takes. Tap is still Undo. |
+| **Hold Undo** | Rewind+. Scrub your whole editing session one change at a time, replay it, and branch it into tangents. Tap is still Undo. |
 | **Hold Viewer** | Crop and Straighten. Knobs trim edges, the center ring straightens, and keys select aspect presets. |
 | **Hold Select** | Cull in Library. Keys rate, flag, and color-label photos. Rings scroll photos and zoom. |
 | **Tap Offset** | Temperature and tint on the rings, with global color on the right ball. |
@@ -90,7 +90,7 @@ Once a mask is selected, the matching adjustment knobs stay in familiar position
 
 Undo still undoes on a tap. Hold it and the whole editing session becomes a tape you can scrub, replay, and branch. (The plus is a joke. The feature isn't.)
 
-![Rewind+ with three takes: the tape, every take as a lane, and the twelve knobs at the playhead](Docs/screenshots/hud-rewind-takes.png)
+![Rewind+ with three tangents: the tape, every tangent as a lane, and the twelve knobs at the playhead](Docs/screenshots/hud-rewind-tangents.png)
 
 You get lost in an edit. You want to see exactly where it went wrong, stop at the last place you liked, and start again from there without losing the other way you were going. That is what this does.
 
@@ -98,7 +98,7 @@ You get lost in an edit. You want to see exactly where it went wrong, stop at th
 
 **Play it back.** Play and Play Reverse replay your edits as they happened; press the same key again to pause, or use Stop. Long stretches where you were not touching anything play through in half a second. The left ring is a fine speed dial for slow motion and the right ring is a coarse one, from 0.05× to 32×, and both catch at 1×.
 
-**Takes.** Roll back, let go, and edit: that starts a take. The notch says so, and every readout wears that take's badge from then on, so you always know you are on a tangent. The other line is kept whole. Prev / Next Node hop between takes at the same moment, so you can flip between where each one ended up. This is the part Lightroom's history panel cannot do.
+**Tangents.** Roll back, let go, and edit: that starts a tangent. The notch says so, and every readout wears that tangent's badge from then on, so you always know you are on a tangent. The other line is kept whole. Prev / Next Node hop between tangents at the same moment, so you can flip between where each one ended up. This is the part Lightroom's history panel cannot do.
 
 This is not Lightroom's history panel. PanaLux records every develop value the plugin reports, whether a knob here or the mouse in Lightroom moved it, and captures a whole settings table around anything structural — a mask, a crop, a preset, a paste — so landing on one of those puts it back exactly.
 
@@ -111,14 +111,14 @@ While Undo is held:
 | **Right ring** | Playback speed, coarse. |
 | **Play / Play Reverse** | Replay forward or backward. Same key again pauses. |
 | **Stop** | Pause where you are. |
-| **Prev / Next Node** | Hop to the previous or next take. |
-| **Add Node** | Start a new take here. |
+| **Prev / Next Node** | Hop to the previous or next tangent. |
+| **Add Node** | Start a new tangent here. |
 | **Add Keyframe** | Mark this — "I liked it". |
 | **Prev / Next Keyframe** | Step to the previous or next landmark. |
 | **Next Still** | Back to now. |
 | **Wipe Still** | Hold to peek at now without leaving the past. |
 
-Letting go of Undo leaves the photo wherever the playhead is, and that take is the one you are editing. You can stop anywhere.
+Letting go of Undo leaves the photo wherever the playhead is, and that tangent is the one you are editing. You can stop anywhere.
 
 The feel is yours to tune: **Settings > Rewind** has click size and spin speed, and they apply on the next turn.
 

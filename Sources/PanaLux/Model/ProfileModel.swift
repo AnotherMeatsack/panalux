@@ -542,7 +542,7 @@ public struct Profile: Codable, Equatable {
             }
         }
         if seen < 13 {
-            // v13: Prev/Next Node hop between takes while Rewind is held. Only keys the layer
+            // v13: Prev/Next Node hop between tangents while Rewind is held. Only keys the layer
             // has not already given a job are filled.
             if var rewind = p.layers["REWIND"], let shipped = factory.layers["REWIND"] {
                 var buttons = rewind.buttons ?? [:]

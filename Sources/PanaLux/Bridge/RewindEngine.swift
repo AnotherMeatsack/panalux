@@ -31,16 +31,16 @@ public final class RewindEngine: ObservableObject {
     /// Fires whenever the readout should be redrawn (scrub, playback, landmark, branch).
     public let changed = PassthroughSubject<RewindState, Never>()
 
-    /// Which take is being edited, or nil on the original. The badge beside every readout is
+    /// Which tangent is being edited, or nil on the original. The badge beside every readout is
     /// this, so it is never possible to forget you are on a tangent.
-    @Published public private(set) var takeInfo: TakeInfo?
+    @Published public private(set) var tangentInfo: TangentInfo?
 
-    public enum TakeEvent: Equatable {
-        /// A new take began. `parent` is the line it left, `at` where on the tape.
+    public enum TangentEvent: Equatable {
+        /// A new tangent began. `parent` is the line it left, `at` where on the tape.
         case started(name: String, parent: String, at: TimeInterval)
         case switched(name: String)
     }
-    public let takeEvents = PassthroughSubject<TakeEvent, Never>()
+    public let tangentEvents = PassthroughSubject<TangentEvent, Never>()
 
     public weak var output: RewindOutput?
     /// The twelve knobs as they are mapped right now, for the rolling readout.
@@ -61,7 +61,7 @@ public final class RewindEngine: ObservableObject {
     private var lastSent: [String: Double] = [:]
     private var appliedKeyframeID: String?
     private var lastScrubAt: Date = .distantPast
-    /// How busy each take was, by slice of the session. Worked out once per rewind: nothing
+    /// How busy each tangent was, by slice of the session. Worked out once per rewind: nothing
     /// is recorded while the hold is on, so it cannot change under the playhead.
     private var laneActivity: [String: [Float]] = [:]
     private var laneSpan: (start: TimeInterval, end: TimeInterval) = (0, 1)
@@ -438,7 +438,7 @@ public final class RewindEngine: ObservableObject {
         if let branch {
             _ = captureKeyframe(kind: .branch, label: branch.name, at: wall, time: at, values: values)
             let parent = branch.parent.flatMap { trail?.branch($0)?.name } ?? "Original"
-            takeEvents.send(.started(name: branch.name, parent: parent, at: at))
+            tangentEvents.send(.started(name: branch.name, parent: parent, at: at))
         }
         refreshTakeInfo()
         rebuildLaneActivity()
@@ -446,15 +446,15 @@ public final class RewindEngine: ObservableObject {
         publish(caption: reason)
     }
 
-    // MARK: - Takes
+    // MARK: - Tangents
 
-    /// Move to the next or previous take, keeping your place in time. Standing at the end of a
-    /// take lands you at the end of the next, so hopping compares where each one finished.
+    /// Move to the next or previous tangent, keeping your place in time. Standing at the end of a
+    /// tangent lands you at the end of the next, so hopping compares where each one finished.
     /// The photo follows at once, so it is an A/B you can flip as fast as you can press.
-    public func hopTake(forward: Bool) {
+    public func hopTangent(forward: Bool) {
         guard isRewinding, let current = trail, let before = currentPlayback() else { return }
         guard current.branches.count > 1 else {
-            publish(caption: "Only one take so far")
+            publish(caption: "No other tangents yet")
             return
         }
         pausePlayback(announce: false)
@@ -473,20 +473,20 @@ public final class RewindEngine: ObservableObject {
         refreshTakeInfo()
         scheduleSave()
         let name = trail.activeBranch.name
-        takeEvents.send(.switched(name: name))
+        tangentEvents.send(.switched(name: name))
         publish(caption: "\(name) · " + stepCaption(for: playhead, in: after))
     }
 
     /// The badge's contents: nil on the original, so it only ever appears on a tangent.
     private func refreshTakeInfo() {
         guard let trail, trail.activeBranch.parent != nil else {
-            if takeInfo != nil { takeInfo = nil }
+            if tangentInfo != nil { tangentInfo = nil }
             return
         }
         let index = trail.branches.firstIndex { $0.id == trail.activeBranchID } ?? 0
-        let next = TakeInfo(name: trail.activeBranch.name, colorIndex: index,
+        let next = TangentInfo(name: trail.activeBranch.name, colorIndex: index,
                             number: index + 1, total: trail.branches.count)
-        if takeInfo != next { takeInfo = next }
+        if tangentInfo != next { tangentInfo = next }
     }
 
     private func rebuildLaneActivity() {
@@ -509,11 +509,11 @@ public final class RewindEngine: ObservableObject {
         }
     }
 
-    private func makeLanes() -> [TakeLane] {
+    private func makeLanes() -> [TangentLane] {
         guard let trail else { return [] }
         let path = Set(trail.lineage().map(\.id))
         return trail.branches.enumerated().map { index, b in
-            TakeLane(id: b.id, name: b.name, colorIndex: index, start: b.forkTime, tip: b.localTip,
+            TangentLane(id: b.id, name: b.name, colorIndex: index, start: b.forkTime, tip: b.localTip,
                      parentID: b.parent, isActive: b.id == trail.activeBranchID,
                      isOnPath: path.contains(b.id),
                      activity: laneActivity[b.id] ?? [Float](repeating: 0, count: RewindEngine.laneBuckets))
@@ -689,10 +689,10 @@ public final class RewindEngine: ObservableObject {
             isReverse: isPlaying && playDirection < 0,
             stepNumber: max(0, playback.stepIndex(atOrBefore: playhead) + 1),
             stepCount: playback.stepTimes.count,
-            takes: makeLanes(),
-            takeNumber: (trail?.branches.firstIndex { $0.id == trail?.activeBranchID } ?? 0) + 1,
-            takeCount: trail?.branches.count ?? 1,
-            takeColorIndex: trail?.branches.firstIndex { $0.id == trail?.activeBranchID } ?? 0,
+            tangents: makeLanes(),
+            tangentNumber: (trail?.branches.firstIndex { $0.id == trail?.activeBranchID } ?? 0) + 1,
+            tangentCount: trail?.branches.count ?? 1,
+            tangentColorIndex: trail?.branches.firstIndex { $0.id == trail?.activeBranchID } ?? 0,
             steps: playback.steps(around: playhead, half: tapeWindow * 1.4, cap: 500),
             spanStart: laneSpan.start,
             spanEnd: laneSpan.end

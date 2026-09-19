@@ -62,19 +62,19 @@ public struct TrailMark: Identifiable, Equatable {
     }
 }
 
-/// One take, drawn as a lane: where its own line runs, how busy it was, and where it came from.
-public struct TakeLane: Equatable, Identifiable {
+/// One tangent, drawn as a lane: where its own line runs, how busy it was, and where it came from.
+public struct TangentLane: Equatable, Identifiable {
     public let id: String
     public let name: String
-    /// Position in the order takes were made, which is also which colour it wears.
+    /// Position in the order tangents were made, which is also which colour it wears.
     public let colorIndex: Int
-    /// Where this take's own line begins (the moment it left its parent) and where it ends.
+    /// Where this tangent's own line begins (the moment it left its parent) and where it ends.
     public let start: TimeInterval
     public let tip: TimeInterval
     public let parentID: String?
-    /// The take being edited and looked at right now.
+    /// The tangent being edited and looked at right now.
     public let isActive: Bool
-    /// Part of the line that leads to the active take, so it is drawn as history, not as a stranger.
+    /// Part of the line that leads to the active tangent, so it is drawn as history, not as a stranger.
     public let isOnPath: Bool
     /// How much happened in each slice of the whole session, 0…1.
     public let activity: [Float]
@@ -93,11 +93,11 @@ public struct TakeLane: Equatable, Identifiable {
     }
 }
 
-/// Which take the editing is on, for the badge that rides beside every readout.
-public struct TakeInfo: Equatable {
+/// Which tangent the editing is on, for the badge that rides beside every readout.
+public struct TangentInfo: Equatable {
     public let name: String
     public let colorIndex: Int
-    /// 1-based, in the order takes were made.
+    /// 1-based, in the order tangents were made.
     public let number: Int
     public let total: Int
 
@@ -135,12 +135,12 @@ public struct RewindState: Equatable {
     /// "212 of 640": where the playhead stands among the things that changed.
     public var stepNumber: Int
     public var stepCount: Int
-    /// Every take, for the lanes.
-    public var takes: [TakeLane]
-    /// 1-based position of the active take, and how many there are.
-    public var takeNumber: Int
-    public var takeCount: Int
-    public var takeColorIndex: Int
+    /// Every tangent, for the lanes.
+    public var tangents: [TangentLane]
+    /// 1-based position of the active tangent, and how many there are.
+    public var tangentNumber: Int
+    public var tangentCount: Int
+    public var tangentColorIndex: Int
     /// The steps around the playhead, for the tape's ticks.
     public var steps: [TimeInterval]
     /// The stretch of time the lanes cover.
@@ -153,7 +153,7 @@ public struct RewindState: Equatable {
                 isAtTip: Bool = true, caption: String = "Now", speed: Double = 0,
                 rate: Double = 1, isPlaying: Bool = false, isReverse: Bool = false,
                 stepNumber: Int = 0, stepCount: Int = 0,
-                takes: [TakeLane] = [], takeNumber: Int = 1, takeCount: Int = 1, takeColorIndex: Int = 0,
+                tangents: [TangentLane] = [], tangentNumber: Int = 1, tangentCount: Int = 1, tangentColorIndex: Int = 0,
                 steps: [TimeInterval] = [], spanStart: TimeInterval = 0, spanEnd: TimeInterval = 0) {
         self.origin = origin
         self.tip = tip
@@ -171,18 +171,18 @@ public struct RewindState: Equatable {
         self.isReverse = isReverse
         self.stepNumber = stepNumber
         self.stepCount = stepCount
-        self.takes = takes
-        self.takeNumber = takeNumber
-        self.takeCount = takeCount
-        self.takeColorIndex = takeColorIndex
+        self.tangents = tangents
+        self.tangentNumber = tangentNumber
+        self.tangentCount = tangentCount
+        self.tangentColorIndex = tangentColorIndex
         self.steps = steps
         self.spanStart = spanStart
         self.spanEnd = spanEnd
     }
 
-    /// One colour per take, in the order they were made. The original wears the amber Rewind
+    /// One colour per tangent, in the order they were made. The original wears the amber Rewind
     /// has always had; the rest are picked to stay apart from it and from each other.
-    public static let takePalette: [Color] = [
+    public static let tangentPalette: [Color] = [
         Color(red: 1.00, green: 0.70, blue: 0.25),   // original: amber
         Color(red: 0.36, green: 0.80, blue: 1.00),   // cyan
         Color(red: 0.75, green: 0.52, blue: 1.00),   // violet
@@ -190,8 +190,8 @@ public struct RewindState: Equatable {
         Color(red: 1.00, green: 0.42, blue: 0.55),   // rose
         Color(red: 0.98, green: 0.90, blue: 0.40)    // lemon
     ]
-    public static func takeColor(_ index: Int) -> Color {
-        takePalette[((index % takePalette.count) + takePalette.count) % takePalette.count]
+    public static func tangentColor(_ index: Int) -> Color {
+        tangentPalette[((index % tangentPalette.count) + tangentPalette.count) % tangentPalette.count]
     }
 
     /// "1×", "0.25×", "12×": as short as the number allows.
@@ -240,7 +240,7 @@ final class RewindMotion {
     private(set) var pulse: Double = 0
     /// 0…1 how fast the tape is moving, so the tape can lean into its own speed.
     private(set) var speed: Double = 0
-    /// Per take, how "lit" its lane is: eases toward 1 for the active one.
+    /// Per tangent, how "lit" its lane is: eases toward 1 for the active one.
     private(set) var glow: [String: Double] = [:]
 
     private var velocity: Double = 0
@@ -266,7 +266,7 @@ final class RewindMotion {
             position = target
             window = max(1, state.window)
             lastStep = state.stepNumber
-            for lane in state.takes { glow[lane.id] = lane.isActive ? 1 : 0 }
+            for lane in state.tangents { glow[lane.id] = lane.isActive ? 1 : 0 }
         }
         let dt = lastTime == 0 ? 1.0 / 120.0 : min(1.0 / 30.0, max(0, now - lastTime))
         lastTime = now
@@ -299,7 +299,7 @@ final class RewindMotion {
         let rel = abs(velocity) / max(0.5, window)
         speed += (min(1, rel * 1.6) - speed) * (1 - exp(-dt * 9))
 
-        for lane in state.takes {
+        for lane in state.tangents {
             let now = glow[lane.id] ?? 0
             glow[lane.id] = now + ((lane.isActive ? 1 : 0) - now) * (1 - exp(-dt * 10))
         }
@@ -308,9 +308,9 @@ final class RewindMotion {
 
 // MARK: - The badge
 
-/// Which take you are on. It rides beside every readout, so you cannot forget you are on a
-/// tangent, and it is the same colour as that take's lane and playhead everywhere else.
-public struct TakeBadge: View {
+/// Which tangent you are on. It rides beside every readout, so you cannot forget you are on a
+/// tangent, and it is the same colour as that tangent's lane and playhead everywhere else.
+public struct TangentBadge: View {
     public let name: String
     public let colorIndex: Int
     public var detail: String?
@@ -321,12 +321,12 @@ public struct TakeBadge: View {
         self.detail = detail
     }
 
-    public init(_ info: TakeInfo) {
+    public init(_ info: TangentInfo) {
         self.init(name: info.name, colorIndex: info.colorIndex, detail: "\(info.number) of \(info.total)")
     }
 
     public var body: some View {
-        let color = RewindState.takeColor(colorIndex)
+        let color = RewindState.tangentColor(colorIndex)
         HStack(spacing: 5) {
             Circle()
                 .fill(color)
@@ -387,7 +387,7 @@ public struct TrailTrack: View {
         let headX = size.width * 0.5
         let scale = size.width / CGFloat(window)
         let base = size.height * 0.60
-        let color = RewindState.takeColor(state.takeColorIndex)
+        let color = RewindState.tangentColor(state.tangentColorIndex)
         let pulse = CGFloat(motion.pulse)
 
         // The line the ticks stand on.
@@ -432,7 +432,7 @@ public struct TrailTrack: View {
             let near = CGFloat(exp(-pow(d / 34, 2)))
             let isBranch = item.mark.kind == .branch
             let tint = isBranch
-                ? RewindState.takeColor(state.takes.first { $0.name == item.mark.label }?.colorIndex ?? 1)
+                ? RewindState.tangentColor(state.tangents.first { $0.name == item.mark.label }?.colorIndex ?? 1)
                 : Color.white
             let radius: CGFloat = 8 * (1 + 0.32 * near + 0.22 * pulse * near)
             let center = CGPoint(x: item.x, y: base - 33)
@@ -551,11 +551,11 @@ public struct TrailTrack: View {
     }
 }
 
-// MARK: - The takes
+// MARK: - The tangents
 
-/// Every take as a lane over the whole session, with the playhead running down through all of
-/// them. Forks curve off the line they left; the take being edited is lit and the rest sit back.
-struct TakesMap: View {
+/// Every tangent as a lane over the whole session, with the playhead running down through all of
+/// them. Forks curve off the line they left; the tangent being edited is lit and the rest sit back.
+struct TangentsMap: View {
     let state: RewindState
     let motion: RewindMotion
     let now: TimeInterval
@@ -564,27 +564,27 @@ struct TakesMap: View {
     static let labelWidth: CGFloat = 64
     static let maxRows = 5
 
-    static func height(for takeCount: Int) -> CGFloat {
-        CGFloat(min(max(1, takeCount), maxRows)) * rowHeight + 8
+    static func height(for tangentCount: Int) -> CGFloat {
+        CGFloat(min(max(1, tangentCount), maxRows)) * rowHeight + 8
     }
 
-    /// At most five lanes; when there are more, the window follows the active take.
-    static func visible(_ takes: [TakeLane]) -> [TakeLane] {
-        guard takes.count > maxRows else { return takes }
-        let active = takes.firstIndex { $0.isActive } ?? 0
-        let first = min(max(0, active - maxRows / 2), takes.count - maxRows)
-        return Array(takes[first..<(first + maxRows)])
+    /// At most five lanes; when there are more, the window follows the active tangent.
+    static func visible(_ tangents: [TangentLane]) -> [TangentLane] {
+        guard tangents.count > maxRows else { return tangents }
+        let active = tangents.firstIndex { $0.isActive } ?? 0
+        let first = min(max(0, active - maxRows / 2), tangents.count - maxRows)
+        return Array(tangents[first..<(first + maxRows)])
     }
 
     var body: some View {
         Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
             _ = now
-            TakesMap.draw(&ctx, size: size, state: state, motion: motion)
+            TangentsMap.draw(&ctx, size: size, state: state, motion: motion)
         }
     }
 
     static func draw(_ ctx: inout GraphicsContext, size: CGSize, state: RewindState, motion: RewindMotion) {
-        let lanes = visible(state.takes)
+        let lanes = visible(state.tangents)
         guard !lanes.isEmpty else { return }
         let x0 = labelWidth
         let plotWidth = max(1, size.width - x0 - 6)
@@ -598,12 +598,12 @@ struct TakesMap: View {
         let pulse = CGFloat(motion.pulse)
 
         for (row, lane) in lanes.enumerated() {
-            let color = RewindState.takeColor(lane.colorIndex)
+            let color = RewindState.tangentColor(lane.colorIndex)
             let glow = CGFloat(motion.glow[lane.id] ?? (lane.isActive ? 1 : 0))
             let cy = y(row)
             let dim = 0.40 + 0.60 * Double(glow)
 
-            // The lit lane: a quiet wash behind the take being edited.
+            // The lit lane: a quiet wash behind the tangent being edited.
             if glow > 0.01 {
                 ctx.fill(
                     Path(roundedRect: CGRect(x: 2, y: cy - rowHeight / 2 + 1, width: size.width - 4, height: rowHeight - 2), cornerRadius: 7),
@@ -655,9 +655,9 @@ struct TakesMap: View {
             }
         }
 
-        // The playhead, down through every take.
+        // The playhead, down through every tangent.
         let px = x(position)
-        let lineColor = RewindState.takeColor(state.takeColorIndex)
+        let lineColor = RewindState.tangentColor(state.tangentColorIndex)
         ctx.fill(Path(CGRect(x: px - 0.6, y: 2, width: 1.2, height: size.height - 4)),
                  with: .color(lineColor.opacity(0.65)))
         if let activeRow = lanes.firstIndex(where: { $0.isActive }) {
@@ -712,7 +712,7 @@ struct KnobRoll: View {
     }
 }
 
-/// The whole Rewind readout: which take you are on, the tape under the playhead, every take as
+/// The whole Rewind readout: which tangent you are on, the tape under the playhead, every tangent as
 /// a lane, and what the twelve knobs read right here.
 public struct RewindView: View {
     public let state: RewindState
@@ -723,8 +723,8 @@ public struct RewindView: View {
     }
 
     /// The window is sized to this: header, tape, lanes, knobs, and the padding between.
-    public static func height(takeCount: Int, hasKnobs: Bool) -> CGFloat {
-        let lanes = TakesMap.height(for: takeCount)
+    public static func height(tangentCount: Int, hasKnobs: Bool) -> CGFloat {
+        let lanes = TangentsMap.height(for: tangentCount)
         return 54 + 112 + 8 + lanes + (hasKnobs ? 8 + 70 : 0) + 14
     }
 
@@ -737,8 +737,8 @@ public struct RewindView: View {
                 VStack(spacing: 8) {
                     TrailTrack(state: state, motion: motion, now: now)
                         .frame(height: 112)
-                    TakesMap(state: state, motion: motion, now: now)
-                        .frame(height: TakesMap.height(for: state.takes.count))
+                    TangentsMap(state: state, motion: motion, now: now)
+                        .frame(height: TangentsMap.height(for: state.tangents.count))
                 }
             }
             .padding(.horizontal, 14)
@@ -751,7 +751,7 @@ public struct RewindView: View {
         .padding(.bottom, 4)
     }
 
-    private var accent: Color { RewindState.takeColor(state.takeColorIndex) }
+    private var accent: Color { RewindState.tangentColor(state.tangentColorIndex) }
 
     private var header: some View {
         HStack(spacing: 10) {
@@ -764,10 +764,10 @@ public struct RewindView: View {
                     Text("REWIND")
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
-                    TakeBadge(name: state.takeCount > 1 || state.branchName != nil ? (state.branchName ?? "Original") : "Original",
-                              colorIndex: state.takeColorIndex,
-                              detail: state.takeCount > 1 ? "\(state.takeNumber) of \(state.takeCount)" : nil)
-                        .id(state.takeNumber)
+                    TangentBadge(name: state.tangentCount > 1 || state.branchName != nil ? (state.branchName ?? "Original") : "Original",
+                              colorIndex: state.tangentColorIndex,
+                              detail: state.tangentCount > 1 ? "\(state.tangentNumber) of \(state.tangentCount)" : nil)
+                        .id(state.tangentNumber)
                         .transition(.scale(scale: 0.8).combined(with: .opacity))
                 }
                 Text(state.caption)
@@ -780,7 +780,7 @@ public struct RewindView: View {
             transportMeter
         }
         .padding(.horizontal, 14)
-        .animation(.smooth(duration: 0.3), value: state.takeNumber)
+        .animation(.smooth(duration: 0.3), value: state.tangentNumber)
     }
 
     /// What the transport is doing and how fast, with where you stand among the steps.

@@ -235,14 +235,14 @@ public struct EditTrail: Codable, Equatable {
     /// The parent keeps its whole future; this is the one thing Lightroom's history cannot do.
     @discardableResult
     public mutating func fork(at t: TimeInterval, name: String? = nil, wall: Date = Date()) -> TrailBranch {
-        let takeNumber = branches.count + 1
-        // A take leaves the line that owns this moment. When the playhead is earlier than the
-        // active take's own start, that is one of its ancestors, not the active take itself:
+        let tangentNumber = branches.count + 1
+        // A tangent leaves the line that owns this moment. When the playhead is earlier than the
+        // active tangent's own start, that is one of its ancestors, not the active tangent itself:
         // hanging it off the active one would put its start before its parent's.
         let path = lineage()
         let owner = path.last(where: { $0.forkTime <= t })?.id ?? path.first?.id ?? activeBranchID
         let branch = TrailBranch(
-            name: name ?? "Take \(takeNumber)",
+            name: name ?? "Tangent \(tangentNumber)",
             parent: owner,
             forkTime: t,
             clockOrigin: wall
@@ -253,7 +253,23 @@ public struct EditTrail: Codable, Equatable {
         return branch
     }
 
-    /// Make another take the one being edited. Its clock picks up just after its own tip, so the
+    /// Tangents were first called takes, and a trail written then has "Take 2" on disk. They are
+    /// "Tangent 2" now. The fork's landmark carries the same name, and the tape finds a fork's
+    /// colour by matching the two, so both are renamed together.
+    public mutating func renameLegacyTakes() {
+        func renamed(_ name: String) -> String? {
+            guard name.hasPrefix("Take "), Int(name.dropFirst(5)) != nil else { return nil }
+            return "Tangent " + name.dropFirst(5)
+        }
+        for bi in branches.indices {
+            if let new = renamed(branches[bi].name) { branches[bi].name = new }
+            for ki in branches[bi].keyframes.indices where branches[bi].keyframes[ki].kind == .branch {
+                if let new = renamed(branches[bi].keyframes[ki].label) { branches[bi].keyframes[ki].label = new }
+            }
+        }
+    }
+
+    /// Make another tangent the one being edited. Its clock picks up just after its own tip, so the
     /// next edit lands after what it already has.
     public mutating func activate(_ id: String, at wall: Date = Date()) {
         guard branch(id) != nil, id != activeBranchID else { return }
@@ -606,6 +622,7 @@ public enum TrailStore {
         if trail.branch(trail.activeBranchID) == nil, let first = trail.branches.first {
             trail.activeBranchID = first.id
         }
+        trail.renameLegacyTakes()
         return trail.branches.isEmpty ? nil : trail
     }
 

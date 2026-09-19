@@ -204,15 +204,15 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             }
             .store(in: &cancellables)
 
-        // A take that starts because you edited from the past would otherwise begin in silence.
+        // A tangent that starts because you edited from the past would otherwise begin in silence.
         // Say so, and say the other line is safe. (Branching by key already has its own message.)
-        rewind.takeEvents
+        rewind.tangentEvents
             .sink { [weak self] event in
                 guard let self, !RewindEngine.shared.isRewinding else { return }
                 if case .started(let name, let parent, let at) = event {
                     self.triggerActionDisplay(
                         name: "REWIND",
-                        label: "New take · \(name) from \(RewindEngine.clock(at)) · \(parent) is kept",
+                        label: "\(name) started at \(RewindEngine.clock(at)) · \(parent) is kept",
                         phase: .done,
                         duration: 4
                     )
@@ -1382,8 +1382,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         case RewindCommands.play: rewind.play(forward: true)
         case RewindCommands.playReverse: rewind.play(forward: false)
         case RewindCommands.pause: rewind.pausePlayback()
-        case RewindCommands.takePrevious: rewind.hopTake(forward: false)
-        case RewindCommands.takeNext: rewind.hopTake(forward: true)
+        case RewindCommands.tangentPrevious: rewind.hopTangent(forward: false)
+        case RewindCommands.tangentNext: rewind.hopTangent(forward: true)
         case RewindCommands.previous: rewind.step(forward: false)
         case RewindCommands.next: rewind.step(forward: true)
         case RewindCommands.peek: rewind.setPeeking(true)

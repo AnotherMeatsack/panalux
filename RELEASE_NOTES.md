@@ -2,7 +2,7 @@
 
 **Now featuring Rewind+.** Hold Undo and watch your edit un-edit itself. Then branch it.
 
-![Rewind+ with three takes](Docs/screenshots/hud-rewind-takes.png)
+![Rewind+ with three tangents](Docs/screenshots/hud-rewind-tangents.png)
 
 ## Rewind+
 
@@ -10,8 +10,8 @@ Undo still undoes on a tap. Hold it and the whole editing session becomes a tape
 
 - **The centre ring is a jog wheel.** One click is one thing you changed, so you can stop on the exact number you had, in a thirty-second edit or a two-hour one. Turn faster and it accelerates smoothly to cross a long session; stop turning and it holds.
 - **Play it back.** Play and Play Reverse replay your edits as they happened. The same key again pauses; Stop pauses too. Long quiet stretches play through in half a second. The left ring is a fine speed dial and the right a coarse one, 0.05× to 32×, both catching at 1×.
-- **Takes.** Edit from a rolled-back moment and a new take starts, with a notice, and every readout wears that take's badge while you are on it. The line you left is kept whole. Prev / Next Node hop between takes at the same moment, or from the end of one to the end of the next, so you can flip between where each finished.
-- **A timeline worth looking at.** A large readout on a display-rate timeline: the playhead glides on a critically damped spring, the ticks under it swell and blip with each step, the tape re-zooms to how densely you were editing, and every take is a lane with forks curving off. The panel widens for it and grows with the number of takes. The notch shows what changed at each step, where you are among them, and what all twelve knobs read there.
+- **Tangents.** Edit from a rolled-back moment and a new tangent starts, with a notice, and every readout wears that tangent's badge while you are on it. The line you left is kept whole. Prev / Next Node hop between tangents at the same moment, or from the end of one to the end of the next, so you can flip between where each finished.
+- **A timeline worth looking at.** A large readout on a display-rate timeline: the playhead glides on a critically damped spring, the ticks under it swell and blip with each step, the tape re-zooms to how densely you were editing, and every tangent is a lane with forks curving off. The panel widens for it and grows with the number of tangents. The notch shows what changed at each step, where you are among them, and what all twelve knobs read there.
 - **Tune the feel** in Settings > Rewind: click size and spin speed apply on the next turn.
 - **Landmarks and nothing lost.** A whole settings table is captured around a mask, crop, preset, or paste, so landing on one restores it exactly. Rolling back never truncates the future. Add Keyframe marks a moment; Wipe Still peeks at now; Next Still returns to it.
 

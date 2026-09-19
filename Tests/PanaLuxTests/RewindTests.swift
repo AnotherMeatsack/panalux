@@ -87,25 +87,43 @@ final class EditTrailTests: XCTestCase {
         trail.record(param: "Exposure", value: 0.6, at: 10.0)
         trail.record(param: "Exposure", value: 0.7, at: 30.0)
         let original = trail.activeBranchID
-        let second = trail.fork(at: 20.0, wall: Date())                  // Take 2 leaves the original at 20 s
+        let second = trail.fork(at: 20.0, wall: Date())                  // Tangent 2 leaves the original at 20 s
         trail.record(param: "Contrast", value: 0.8, at: 25.0)
 
-        // Rewinding to 5 s and editing while Take 2 is active: 5 s belongs to the original, not to
-        // Take 2 (which only begins at 20 s), so that is where the new take must hang.
+        // Rewinding to 5 s and editing while Tangent 2 is active: 5 s belongs to the original, not to
+        // Tangent 2 (which only begins at 20 s), so that is where the new tangent must hang.
         let third = trail.fork(at: 5.0, wall: Date())
-        XCTAssertEqual(third.parent, original, "a take cannot start before its parent does")
+        XCTAssertEqual(third.parent, original, "a tangent cannot start before its parent does")
         XCTAssertEqual(trail.lineage().map(\.id), [original, third.id])
 
-        // And one from later than Take 2's start does hang off Take 2.
+        // And one from later than Tangent 2's start does hang off Tangent 2.
         trail.activate(second.id)
         let fourth = trail.fork(at: 22.0, wall: Date())
         XCTAssertEqual(fourth.parent, second.id)
-        // Every take can still be played back from the start, in order.
+        // Every tangent can still be played back from the start, in order.
         for id in [original, second.id, third.id, fourth.id] {
             let playback = trail.playback(on: id)
             XCTAssertEqual(playback.stepTimes, playback.stepTimes.sorted(), id)
             XCTAssertLessThanOrEqual(playback.start, playback.tip)
         }
+    }
+
+    func testTangentsMadeWhenTheyWereCalledTakesAreRenamedOnLoad() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var trail = EditTrail(photoID: "cat:9")
+        trail.record(param: "Exposure", value: 0.6, at: 10)
+        let old = trail.fork(at: 5, name: "Take 2")
+        _ = trail.addKeyframe(TrailKeyframe(t: 5, kind: .branch, label: "Take 2"))
+        _ = trail.fork(at: 6, name: "Tangent 3")                          // already new: left alone
+        _ = trail.fork(at: 7, name: "Take here")                          // a name of someone's own: left alone
+        try TrailStore.save(trail, in: dir)
+
+        let loaded = try XCTUnwrap(TrailStore.load(photoID: "cat:9", in: dir))
+        XCTAssertEqual(loaded.branches.map(\.name), ["Original", "Tangent 2", "Tangent 3", "Take here"])
+        let fork = loaded.branches.first { $0.id == old.id }
+        XCTAssertEqual(fork?.keyframes.first { $0.kind == .branch }?.label, "Tangent 2",
+                       "the landmark and the tangent still share a name, so the tape can colour it")
     }
 
     func testActivatingATakeContinuesItsClockAfterItsOwnTip() {
@@ -136,7 +154,7 @@ final class EditTrailTests: XCTestCase {
         let parentID = trail.activeBranchID
         let parentEvents = trail.activeBranch.events
 
-        let branch = trail.fork(at: 10.0, name: "Take 2")
+        let branch = trail.fork(at: 10.0, name: "Tangent 2")
         trail.record(param: "Exposure", value: 0.1, at: 11.0)
 
         // The parent is untouched: its whole future is still there.
@@ -161,10 +179,10 @@ final class EditTrailTests: XCTestCase {
         var trail = EditTrail(photoID: "cat:1")
         trail.record(param: "Exposure", value: 0.2, at: 1.0)
         let first = trail.activeBranchID
-        _ = trail.fork(at: 2.0, name: "Take 2")
+        _ = trail.fork(at: 2.0, name: "Tangent 2")
         trail.record(param: "Exposure", value: 0.4, at: 3.0)
         let second = trail.activeBranchID
-        _ = trail.fork(at: 3.5, name: "Take 3")
+        _ = trail.fork(at: 3.5, name: "Tangent 3")
         trail.record(param: "Exposure", value: 0.6, at: 4.0)
 
         XCTAssertEqual(trail.branches.count, 3)
@@ -172,7 +190,7 @@ final class EditTrailTests: XCTestCase {
         XCTAssertEqual(trail.playback(on: second).value(of: "Exposure", at: 10) ?? 0, 0.4, accuracy: 0.0001)
         XCTAssertEqual(trail.playback().value(of: "Exposure", at: 10) ?? 0, 0.6, accuracy: 0.0001)
         // The line the playhead is on knows where the others left it.
-        XCTAssertEqual(trail.forks(of: second).map(\.name), ["Take 3"])
+        XCTAssertEqual(trail.forks(of: second).map(\.name), ["Tangent 3"])
     }
 
     func testLandmarksAndSnapping() {
@@ -223,7 +241,7 @@ final class EditTrailTests: XCTestCase {
         _ = trail.addKeyframe(TrailKeyframe(id: "k1", t: 0, kind: .open, label: "Opened",
                                             values: ["Exposure": 0.5], blob: "BASE64=="))
         gesture(&trail, param: "Exposure", from: 0.5, to: 0.8, start: 1.0)
-        _ = trail.fork(at: 1.2, name: "Take 2")
+        _ = trail.fork(at: 1.2, name: "Tangent 2")
         trail.record(param: "Contrast", value: 0.25, at: 2.0)
         XCTAssertTrue(trail.attachBlob("MASKS==", toKeyframe: "k1"))
 
@@ -436,7 +454,7 @@ final class RewindEngineTests: XCTestCase {
         engine.scrub(units: -600, now: Date())
         engine.startBranch()
         XCTAssertEqual(engine.trail?.branches.count, 2)
-        XCTAssertEqual(engine.state.branchName, "Take 2")
+        XCTAssertEqual(engine.state.branchName, "Tangent 2")
         XCTAssertEqual(engine.trail?.playback(on: originalID).value(of: "Exposure", at: 20) ?? 0,
                        0.9, accuracy: 0.0001)
         // Branching again forks the branch, and still keeps both parents.
@@ -846,12 +864,12 @@ final class RewindTransportTests: XCTestCase {
 }
 
 
-/// Takes: how you get onto one, how you tell, and how you move between them.
-final class RewindTakesTests: XCTestCase {
+/// Tangents: how you get onto one, how you tell, and how you move between them.
+final class RewindTangentsTests: XCTestCase {
     private var dir: URL!
     private var lightroom: FakeLightroom!
     private var engine: RewindEngine!
-    private var events: [RewindEngine.TakeEvent] = []
+    private var events: [RewindEngine.TangentEvent] = []
     private var subscription: Any?
 
     override func setUp() {
@@ -866,7 +884,7 @@ final class RewindTakesTests: XCTestCase {
         lightroom.values = ["Exposure": 0.5]
         engine.setActivePhoto("cat:1")
         events = []
-        subscription = engine.takeEvents.sink { [unowned self] in self.events.append($0) }
+        subscription = engine.tangentEvents.sink { [unowned self] in self.events.append($0) }
     }
 
     override func tearDown() {
@@ -883,8 +901,8 @@ final class RewindTakesTests: XCTestCase {
                       at: branch.clockOrigin.addingTimeInterval(seconds - branch.forkTime))
     }
 
-    /// Original: 0.6 at 10 s, 0.9 at 30 s. Then rewind to 15 s and edit: Take 2 starts there.
-    private func makeSecondTake() {
+    /// Original: 0.6 at 10 s, 0.9 at 30 s. Then rewind to 15 s and edit: Tangent 2 starts there.
+    private func makeSecondTangent() {
         edit(0.6, at: 10)
         edit(0.9, at: 30)
         engine.beginRewind()
@@ -895,16 +913,16 @@ final class RewindTakesTests: XCTestCase {
 
     func testThereIsNoBadgeOnTheOriginal() {
         edit(0.6, at: 10)
-        XCTAssertNil(engine.takeInfo)
+        XCTAssertNil(engine.tangentInfo)
     }
 
     func testEditingFromThePastStartsATakeSaysSoAndKeepsTheOtherLine() {
-        makeSecondTake()
+        makeSecondTangent()
         XCTAssertEqual(engine.trail?.branches.count, 2)
-        XCTAssertEqual(engine.takeInfo, TakeInfo(name: "Take 2", colorIndex: 1, number: 2, total: 2))
+        XCTAssertEqual(engine.tangentInfo, TangentInfo(name: "Tangent 2", colorIndex: 1, number: 2, total: 2))
         XCTAssertEqual(events.count, 1)
         if case .started(let name, let parent, let at)? = events.first {
-            XCTAssertEqual(name, "Take 2")
+            XCTAssertEqual(name, "Tangent 2")
             XCTAssertEqual(parent, "Original")
             XCTAssertEqual(at, 10, accuracy: 0.05)
         } else {
@@ -916,62 +934,62 @@ final class RewindTakesTests: XCTestCase {
     }
 
     func testHoppingKeepsYourPlaceAndTheAB() {
-        makeSecondTake()
+        makeSecondTangent()
         engine.beginRewind()
-        XCTAssertEqual(engine.state.takeNumber, 2)
-        XCTAssertEqual(engine.state.takes.map(\.name), ["Original", "Take 2"])
-        XCTAssertEqual(engine.state.takes.filter(\.isActive).map(\.name), ["Take 2"])
-        XCTAssertEqual(lightroom.values["Exposure"] ?? 0, 0.2, accuracy: 0.0001, "Take 2 finished at 0.2")
+        XCTAssertEqual(engine.state.tangentNumber, 2)
+        XCTAssertEqual(engine.state.tangents.map(\.name), ["Original", "Tangent 2"])
+        XCTAssertEqual(engine.state.tangents.filter(\.isActive).map(\.name), ["Tangent 2"])
+        XCTAssertEqual(lightroom.values["Exposure"] ?? 0, 0.2, accuracy: 0.0001, "Tangent 2 finished at 0.2")
 
-        // At the end of Take 2, hopping lands at the end of the original: compare the results.
-        engine.hopTake(forward: true)
-        XCTAssertEqual(engine.state.takeNumber, 1)
-        XCTAssertEqual(engine.takeInfo, nil)
+        // At the end of Tangent 2, hopping lands at the end of the original: compare the results.
+        engine.hopTangent(forward: true)
+        XCTAssertEqual(engine.state.tangentNumber, 1)
+        XCTAssertEqual(engine.tangentInfo, nil)
         XCTAssertEqual(lightroom.values["Exposure"] ?? 0, 0.9, accuracy: 0.0001, "the original finished at 0.9")
         XCTAssertTrue(engine.state.isAtTip)
 
         // And back. It wraps.
-        engine.hopTake(forward: true)
-        XCTAssertEqual(engine.state.takeNumber, 2)
+        engine.hopTangent(forward: true)
+        XCTAssertEqual(engine.state.tangentNumber, 2)
         XCTAssertEqual(lightroom.values["Exposure"] ?? 0, 0.2, accuracy: 0.0001)
     }
 
     func testHoppingFromTheMiddleStaysAtTheSameMoment() {
-        makeSecondTake()
+        makeSecondTangent()
         engine.beginRewind()
-        engine.scrub(units: -40, now: Date())                            // off the tip, into Take 2's line
+        engine.scrub(units: -40, now: Date())                            // off the tip, into Tangent 2's line
         let here = engine.state.playhead
         XCTAssertFalse(engine.state.isAtTip)
-        engine.hopTake(forward: false)
+        engine.hopTangent(forward: false)
         XCTAssertEqual(engine.state.playhead, min(here, engine.state.tip), accuracy: 0.0001)
         XCTAssertFalse(engine.state.isAtTip)
     }
 
     func testHoppingThenEditingContinuesThatTake() {
-        makeSecondTake()
+        makeSecondTangent()
         engine.beginRewind()
-        engine.hopTake(forward: true)                                    // onto the original, at its tip
+        engine.hopTangent(forward: true)                                    // onto the original, at its tip
         engine.endRewind()
-        // The original is the take being edited again, so this lands on it, not on Take 2.
+        // The original is the tangent being edited again, so this lands on it, not on Tangent 2.
         XCTAssertEqual(engine.trail?.activeBranch.name, "Original")
         let before = engine.trail!.activeBranch.events.count
         edit(0.95, at: 36)                                               // well after Lightroom has settled
-        XCTAssertEqual(engine.trail?.branches.count, 2, "still no new take: we were at its tip")
+        XCTAssertEqual(engine.trail?.branches.count, 2, "still no new tangent: we were at its tip")
         XCTAssertEqual(engine.trail!.activeBranch.events.count, before + 1)
     }
 
     func testOneTakeHasNothingToHopTo() {
         edit(0.6, at: 10)
         engine.beginRewind()
-        engine.hopTake(forward: true)
-        XCTAssertEqual(engine.state.takeCount, 1)
-        XCTAssertTrue(engine.state.caption.contains("Only one take"), engine.state.caption)
+        engine.hopTangent(forward: true)
+        XCTAssertEqual(engine.state.tangentCount, 1)
+        XCTAssertTrue(engine.state.caption.contains("No other tangents"), engine.state.caption)
     }
 
     func testEveryTakeGetsALaneWithItsOwnActivity() {
-        makeSecondTake()
+        makeSecondTangent()
         engine.beginRewind()
-        let lanes = engine.state.takes
+        let lanes = engine.state.tangents
         XCTAssertEqual(lanes.count, 2)
         XCTAssertEqual(lanes[1].parentID, lanes[0].id)
         XCTAssertGreaterThan(lanes[0].activity.max() ?? 0, 0)
@@ -1069,17 +1087,17 @@ final class RewindMotionTests: XCTestCase {
 
     func testTheActiveLaneEasesOnRatherThanSnapping() {
         let motion = RewindMotion()
-        let a = TakeLane(id: "a", name: "Original", colorIndex: 0, start: 0, tip: 10, parentID: nil,
+        let a = TangentLane(id: "a", name: "Original", colorIndex: 0, start: 0, tip: 10, parentID: nil,
                          isActive: true, isOnPath: true, activity: [])
-        let b = TakeLane(id: "b", name: "Take 2", colorIndex: 1, start: 4, tip: 10, parentID: "a",
+        let b = TangentLane(id: "b", name: "Tangent 2", colorIndex: 1, start: 4, tip: 10, parentID: "a",
                          isActive: false, isOnPath: false, activity: [])
         var s = state(playhead: 5, step: 1)
-        s.takes = [a, b]
+        s.tangents = [a, b]
         motion.advance(s, now: 1000)
         XCTAssertEqual(motion.glow["a"] ?? 0, 1, accuracy: 0.001)
         // Hop: b becomes active.
-        s.takes = [TakeLane(id: "a", name: "Original", colorIndex: 0, start: 0, tip: 10, parentID: nil, isActive: false, isOnPath: false, activity: []),
-                   TakeLane(id: "b", name: "Take 2", colorIndex: 1, start: 4, tip: 10, parentID: "a", isActive: true, isOnPath: true, activity: [])]
+        s.tangents = [TangentLane(id: "a", name: "Original", colorIndex: 0, start: 0, tip: 10, parentID: nil, isActive: false, isOnPath: false, activity: []),
+                   TangentLane(id: "b", name: "Tangent 2", colorIndex: 1, start: 4, tip: 10, parentID: "a", isActive: true, isOnPath: true, activity: [])]
         motion.advance(s, now: 1000.008)
         let early = motion.glow["b"] ?? 0
         XCTAssertGreaterThan(early, 0)

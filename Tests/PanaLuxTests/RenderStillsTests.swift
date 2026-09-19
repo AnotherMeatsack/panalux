@@ -72,7 +72,7 @@ final class RenderStillsTests: XCTestCase {
             ("rewind-crowded", .rewind(RewindSamples.crowded)),
             ("rewind-playing", .rewind(RewindSamples.playing)),
             ("rewind-reverse", .rewind(RewindSamples.reversing)),
-            ("rewind-takes", .rewind(RewindSamples.threeTakes))
+            ("rewind-tangents", .rewind(RewindSamples.threeTangents))
         ]
         for (name, mode) in modes {
             let height = NotchHUDWindowController.height(for: mode)
@@ -82,15 +82,15 @@ final class RenderStillsTests: XCTestCase {
                 .background(RoundedRectangle(cornerRadius: 22).fill(Color(white: 0.15)))
             try save(view, size: CGSize(width: width, height: height), name: "hud-\(name)")
         }
-        // A tangent: every readout wears the take's badge.
+        // A tangent: every readout wears the tangent's badge.
         let badgeView = readoutView(.knob(name: "Y Gamma", param: "Exposure", value: 0.62, displayValue: "+0.35 EV", isFine: false, angleDegrees: 40))
             .overlay(alignment: .topTrailing) {
-                TakeBadge(TakeInfo(name: "Take 2", colorIndex: 1, number: 2, total: 3))
+                TangentBadge(TangentInfo(name: "Tangent 2", colorIndex: 1, number: 2, total: 3))
                     .padding(.top, 7).padding(.trailing, 10)
             }
             .frame(width: 400, height: 68)
             .background(RoundedRectangle(cornerRadius: 22).fill(Color(white: 0.15)))
-        try save(badgeView, size: CGSize(width: 400, height: 68), name: "hud-knob-take")
+        try save(badgeView, size: CGSize(width: 400, height: 68), name: "hud-knob-tangent")
         // Rewind: the notch while you scrub your own session.
         let detailKnobs: [KnobCell] = [
             KnobCell(label: "Blacks", value: "-12", isOverlay: false),
@@ -129,7 +129,7 @@ final class RenderStillsTests: XCTestCase {
                 DesignTrailMark(ago: 134, kind: .fork(takes: 2)),
                 DesignTrailMark(ago: 96, kind: .mark),
             ],
-            takeName: "Take 3 · warmer", otherTakes: 2, editsBack: 19, knobs: detailKnobs)
+            takeName: "Tangent 3 · warmer", otherTakes: 2, editsBack: 19, knobs: detailKnobs)
         for (name, st) in [("rewind-design", designScrubbing), ("rewind-design-branch", designBranched)] {
             let v = DesignRewindView(state: st)
                 .frame(width: 400, height: 152)
@@ -227,25 +227,25 @@ enum RewindSamples {
     }
 
     static func lane(_ name: String, _ index: Int, from: Double, to: Double, parent: String?,
-                     active: Int, path: Set<Int>) -> TakeLane {
-        TakeLane(id: "t\(index)", name: name, colorIndex: index, start: from, tip: to,
+                     active: Int, path: Set<Int>) -> TangentLane {
+        TangentLane(id: "t\(index)", name: name, colorIndex: index, start: from, tip: to,
                  parentID: parent, isActive: index == active, isOnPath: path.contains(index),
                  activity: activity(from: from, to: to, salt: index * 3))
     }
 
-    static func oneTake(active: Bool = true) -> [TakeLane] {
+    static func oneTangent(active: Bool = true) -> [TangentLane] {
         [lane("Original", 0, from: 0, to: 230, parent: nil, active: 0, path: [0])]
     }
 
-    static func twoTakes(active: Int) -> [TakeLane] {
+    static func twoTangents(active: Int) -> [TangentLane] {
         [lane("Original", 0, from: 0, to: 230, parent: nil, active: active, path: active == 0 ? [0] : [0, 1]),
-         lane("Take 2", 1, from: 92, to: 190, parent: "t0", active: active, path: active == 1 ? [0, 1] : [1])]
+         lane("Tangent 2", 1, from: 92, to: 190, parent: "t0", active: active, path: active == 1 ? [0, 1] : [1])]
     }
 
-    static func threeTakes(active: Int) -> [TakeLane] {
+    static func threeTangents(active: Int) -> [TangentLane] {
         [lane("Original", 0, from: 0, to: 230, parent: nil, active: active, path: [0]),
-         lane("Take 2", 1, from: 92, to: 190, parent: "t0", active: active, path: active == 1 ? [0, 1] : [1]),
-         lane("Take 3", 2, from: 141, to: 214, parent: "t1", active: active, path: active == 2 ? [0, 1, 2] : [2])]
+         lane("Tangent 2", 1, from: 92, to: 190, parent: "t0", active: active, path: active == 1 ? [0, 1] : [1]),
+         lane("Tangent 3", 2, from: 141, to: 214, parent: "t1", active: active, path: active == 2 ? [0, 1, 2] : [2])]
     }
 
     static let now = RewindState(
@@ -253,7 +253,7 @@ enum RewindSamples {
         marks: marks, knobs: knobs(rolledBack: 0), branchName: nil,
         isPeeking: false, isAtTip: true, caption: "Now", speed: 0,
         stepNumber: 640, stepCount: 640,
-        takes: oneTake(), takeNumber: 1, takeCount: 1, takeColorIndex: 0,
+        tangents: oneTangent(), tangentNumber: 1, tangentCount: 1, tangentColorIndex: 0,
         steps: steps(around: 230, half: 48), spanStart: 0, spanEnd: 240
     )
 
@@ -262,7 +262,7 @@ enum RewindSamples {
         marks: marks, knobs: knobs(rolledBack: 0.7), branchName: nil,
         isPeeking: false, isAtTip: false, caption: "Exposure +0.35 EV", speed: 0.75,
         stepNumber: 212, stepCount: 640,
-        takes: oneTake(), takeNumber: 1, takeCount: 1, takeColorIndex: 0,
+        tangents: oneTangent(), tangentNumber: 1, tangentCount: 1, tangentColorIndex: 0,
         steps: steps(around: 92, half: 48), spanStart: 0, spanEnd: 240
     )
 
@@ -272,7 +272,7 @@ enum RewindSamples {
         marks: marks, knobs: knobs(rolledBack: 0.5), branchName: nil,
         isPeeking: false, isAtTip: false, caption: "2 minutes back", speed: 0.1,
         rate: 0.25, isPlaying: true, stepNumber: 301, stepCount: 640,
-        takes: oneTake(), takeNumber: 1, takeCount: 1, takeColorIndex: 0,
+        tangents: oneTangent(), tangentNumber: 1, tangentCount: 1, tangentColorIndex: 0,
         steps: steps(around: 104, half: 30), spanStart: 0, spanEnd: 240
     )
 
@@ -282,7 +282,7 @@ enum RewindSamples {
         marks: marks, knobs: knobs(rolledBack: 0.3), branchName: nil,
         isPeeking: false, isAtTip: false, caption: "a minute back", speed: 0.5,
         rate: 4, isPlaying: true, isReverse: true, stepNumber: 402, stepCount: 640,
-        takes: oneTake(), takeNumber: 1, takeCount: 1, takeColorIndex: 0,
+        tangents: oneTangent(), tangentNumber: 1, tangentCount: 1, tangentColorIndex: 0,
         steps: steps(around: 141, half: 90), spanStart: 0, spanEnd: 240
     )
 
@@ -291,35 +291,35 @@ enum RewindSamples {
         marks: marks, knobs: knobs(rolledBack: 0), branchName: nil,
         isPeeking: true, isAtTip: false, caption: "Now (peek)", speed: 0,
         stepNumber: 640, stepCount: 640,
-        takes: oneTake(), takeNumber: 1, takeCount: 1, takeColorIndex: 0,
+        tangents: oneTangent(), tangentNumber: 1, tangentCount: 1, tangentColorIndex: 0,
         steps: steps(around: 230, half: 48), spanStart: 0, spanEnd: 240
     )
 
-    /// On a tangent: two takes, the second one lit.
+    /// On a tangent: two lines, the second one lit.
     static let branched = RewindState(
         origin: 0, tip: 190, playhead: 120, window: 34,
-        marks: marks + [TrailMark(id: "fork", time: 92, label: "Take 2", kind: .branch, branchName: "Take 2")],
-        knobs: knobs(rolledBack: 0.35), branchName: "Take 2",
-        isPeeking: false, isAtTip: false, caption: "Take 2 · Contrast +11", speed: 0.2,
+        marks: marks + [TrailMark(id: "fork", time: 92, label: "Tangent 2", kind: .branch, branchName: "Tangent 2")],
+        knobs: knobs(rolledBack: 0.35), branchName: "Tangent 2",
+        isPeeking: false, isAtTip: false, caption: "Tangent 2 · Contrast +11", speed: 0.2,
         stepNumber: 388, stepCount: 702,
-        takes: twoTakes(active: 1), takeNumber: 2, takeCount: 2, takeColorIndex: 1,
+        tangents: twoTangents(active: 1), tangentNumber: 2, tangentCount: 2, tangentColorIndex: 1,
         steps: steps(around: 120, half: 48, to: 190), spanStart: 0, spanEnd: 240
     )
 
-    /// Three takes, each left from a different moment, the newest one lit.
-    static let threeTakesState = RewindState(
+    /// Three tangents, each left from a different moment, the newest one lit.
+    static let threeTangentsState = RewindState(
         origin: 0, tip: 214, playhead: 176, window: 34,
         marks: marks + [
-            TrailMark(id: "fork2", time: 92, label: "Take 2", kind: .branch, branchName: "Take 2"),
-            TrailMark(id: "fork3", time: 141, label: "Take 3", kind: .branch, branchName: "Take 3")
+            TrailMark(id: "fork2", time: 92, label: "Tangent 2", kind: .branch, branchName: "Tangent 2"),
+            TrailMark(id: "fork3", time: 141, label: "Tangent 3", kind: .branch, branchName: "Tangent 3")
         ],
-        knobs: knobs(rolledBack: 0.2), branchName: "Take 3",
-        isPeeking: false, isAtTip: false, caption: "Take 3 · Temp 5650 K", speed: 0.3,
+        knobs: knobs(rolledBack: 0.2), branchName: "Tangent 3",
+        isPeeking: false, isAtTip: false, caption: "Tangent 3 · Temp 5650 K", speed: 0.3,
         stepNumber: 471, stepCount: 702,
-        takes: threeTakes(active: 2), takeNumber: 3, takeCount: 3, takeColorIndex: 2,
+        tangents: threeTangents(active: 2), tangentNumber: 3, tangentCount: 3, tangentColorIndex: 2,
         steps: steps(around: 176, half: 48, to: 214), spanStart: 0, spanEnd: 240
     )
-    static var threeTakes: RewindState { threeTakesState }
+    static var threeTangents: RewindState { threeTangentsState }
 
     /// Four landmarks inside a few seconds. Their labels must not print on top of each other.
     static let crowded = RewindState(
@@ -329,12 +329,12 @@ enum RewindSamples {
             TrailMark(id: "b", time: 63, label: "Paste Settings", kind: .paste),
             TrailMark(id: "c", time: 66, label: "Mark", kind: .mark),
             TrailMark(id: "d", time: 70, label: "Crop", kind: .crop),
-            TrailMark(id: "e", time: 74, label: "Take 3", kind: .branch, branchName: "Take 3")
+            TrailMark(id: "e", time: 74, label: "Tangent 3", kind: .branch, branchName: "Tangent 3")
         ],
         knobs: knobs(rolledBack: 0.5), branchName: nil,
         isPeeking: false, isAtTip: false, caption: "Mark", speed: 0.1,
         stepNumber: 120, stepCount: 300,
-        takes: oneTake(), takeNumber: 1, takeCount: 1, takeColorIndex: 0,
+        tangents: oneTangent(), tangentNumber: 1, tangentCount: 1, tangentColorIndex: 0,
         steps: steps(around: 66, half: 48), spanStart: 0, spanEnd: 240
     )
 }
