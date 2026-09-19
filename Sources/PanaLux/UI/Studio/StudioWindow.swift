@@ -67,6 +67,7 @@ public struct StudioWindowView: View {
         } message: {
             Text("The tour moved this photo so you could watch it on another screen. Keep those edits, or restore what it looked like before.")
         }
+        .onDisappear { engine.setProgrammingButtons(false) }
         .onChange(of: guide.showSettings) { _, _ in syncSettingsLock() }
         .onChange(of: engine.lastButtonName) { _, name in
             if let name, PanelLayout.isButton(name) { selectedControl = name }
@@ -104,6 +105,15 @@ public struct StudioWindowView: View {
         }
 
         ToolbarItemGroup(placement: .primaryAction) {
+            Toggle(isOn: Binding(get: { engine.isProgrammingButtons }, set: { engine.setProgrammingButtons($0) })) {
+                Label("Program Buttons", systemImage: "hand.point.down")
+            }
+            .help("Learn any button’s tap or hold without sending edits to Lightroom. Drop an action to assign it.")
+            Button { TangentWindowController.shared.show() } label: {
+                Label("Tangents", systemImage: "arrow.triangle.branch")
+            }
+            .help("Name, compare and merge selected settings from your saved tangents")
+
             Button { ControlHelpWindowController.shared.show() } label: {
                 Label("Your Controls", systemImage: "questionmark.circle")
             }

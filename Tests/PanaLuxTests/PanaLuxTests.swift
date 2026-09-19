@@ -158,6 +158,7 @@ final class CommandCatalogTests: XCTestCase {
                 && !$0.hasPrefix(WheelReset.prefix)
                 && !PointerCommands.isPointer($0)
                 && !RewindCommands.isRewind($0)
+                && !KeyCommands.isKey($0)
                 && LightroomMenuActions.item($0) == nil
         }.sorted()
         XCTAssertEqual(missing, [], "Factory map uses commands MIDI2LR doesn't have")
@@ -868,5 +869,80 @@ final class ReportedParameterRangeTests: XCTestCase {
         XCTAssertEqual(rows.first(where: { $0.id == "Y_LIFT" })?.action, CommandDatabase.shared.label(for: "Texture"))
         XCTAssertEqual(rows.first(where: { $0.id == "WIPE_STILL" })?.action, "Before / After (Toggle)")
         XCTAssertEqual(rows.first(where: { $0.id == "WIPE_STILL" })?.hold, LayerNames.defaultTitle("DETAIL"))
+    }
+}
+
+final class RuntimeOwnershipTests: XCTestCase {
+    func testExclusiveOwnershipAcrossPathsAndRelease() {
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        var first: SingleInstance? = SingleInstance()
+        let second = SingleInstance()
+        XCTAssertTrue(first!.acquire(at: path))
+        XCTAssertFalse(second.acquire(at: path))
+        first = nil
+        XCTAssertTrue(second.acquire(at: path))
+    }
+
+    func testBypassUsesRepeatableBackslashToggle() throws {
+        let profile = Profile.loadDefault()
+        XCTAssertEqual(profile.buttons["BYPASS"]?.action, KeyCommands.beforeAfter)
+        let shortcut = try XCTUnwrap(KeyCommands.parse(KeyCommands.beforeAfter))
+        XCTAssertEqual(LightroomKeys.keyCodes[shortcut.key], 42)
+        XCTAssertTrue(shortcut.flags.isEmpty)
+        // The assignment remains an ordinary editable button binding.
+        var custom = profile
+        custom.buttons["BYPASS"] = ButtonBinding(action: "Pick")
+        XCTAssertEqual(custom.buttons["BYPASS"]?.action, "Pick")
+    }
+
+    func testHeldRewindStartsWhenPhotoIdentityArrives() throws {
+        let engine = StudioEngine.shared
+        let rewind = RewindEngine.shared
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let originalLayers = engine.activeLayers
+        rewind.storeDirectory = dir
+        defer {
+            engine.activeLayers = originalLayers
+            rewind.setActivePhoto(nil)
+            RewindEngine.saveQueue.sync {}
+            rewind.storeDirectory = nil
+            try? FileManager.default.removeItem(at: dir)
+        }
+        engine.activeLayers = ["REWIND"]
+        engine.lightroomActivePhotoDidChange(id: nil)
+        XCTAssertFalse(rewind.isRewinding)
+        engine.lightroomActivePhotoDidChange(id: "test:late-selection")
+        XCTAssertTrue(rewind.isRewinding)
+        rewind.endRewind(announce: false)
+        engine.activeLayers = []
+        engine.lightroomActivePhotoDidChange(id: "test:after-release")
+        XCTAssertFalse(rewind.isRewinding)
+    }
+}
+
+final class CompleteButtonMappingTests: XCTestCase {
+    func testEveryPhysicalButtonAcceptsShortcutAndRewindHolds() {
+        let engine = StudioEngine.shared
+        let saved = engine.profile
+        let layers = engine.activeLayers
+        let editing = engine.mapEditLayer
+        defer { engine.profile = saved; engine.activeLayers = layers; engine.mapEditLayer = editing }
+        engine.activeLayers = []; engine.mapEditLayer = nil
+        for control in HardwareMap.shared.buttonBitToControl.values {
+            let tap = engine.profile.buttons[control]?.action
+            engine.applyDroppedCommand(commandId: KeyCommands.beforeAfter, ontoControl: control, preferHold: true)
+            XCTAssertEqual(engine.profile.buttons[control]?.hold_action, KeyCommands.beforeAfter, control)
+            XCTAssertEqual(engine.profile.buttons[control]?.action, tap, control)
+            engine.applyDroppedCommand(commandId: RewindCommands.mark, ontoControl: control, preferHold: true)
+            XCTAssertEqual(engine.profile.buttons[control]?.hold_action, RewindCommands.mark, control)
+            engine.applyDroppedCommand(commandId: "lr_menu:select_all", ontoControl: control, preferHold: true)
+            XCTAssertEqual(engine.profile.buttons[control]?.hold_action, "lr_menu:select_all", control)
+        }
+        engine.mapEditLayer = "MASK"
+        engine.applyDroppedCommand(commandId: "Pick", ontoControl: "NEXT_CLIP", preferHold: false)
+        engine.applyDroppedCommand(commandId: KeyCommands.beforeAfter, ontoControl: "NEXT_CLIP", preferHold: true)
+        XCTAssertEqual(engine.profile.layers["MASK"]?.buttons?["NEXT_CLIP"]?.action, "Pick")
+        XCTAssertEqual(engine.profile.layers["MASK"]?.buttons?["NEXT_CLIP"]?.hold_action, KeyCommands.beforeAfter)
     }
 }

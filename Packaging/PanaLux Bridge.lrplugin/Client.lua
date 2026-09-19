@@ -858,6 +858,7 @@ LrTasks.startAsyncTask(
       local lastfullrefresh = 0
       -- parameters: name of parameter, midi value to update, true if no bezel, true if ignore pickup
       return function(param, midi_value_update, silent, force)
+        if type(midi_value_update) ~= 'number' then return end
         if LrApplication.activeCatalog():getTargetPhoto() == nil then return end--unable to update param
         local lr_value_update
         if LrApplicationView.getCurrentModuleName() ~= 'develop' then
@@ -870,7 +871,9 @@ LrTasks.startAsyncTask(
         local current_time = os.clock()
         local midi_val_to_lr_val = MIDIValueToLRValue(param, midi_value_update)
         local param_val = getValue(param)
-        if force or (math.abs(midi_value_update - LRValueToMIDIValue(param)) <= PICKUP_THRESHOLD) or (paramlastmoved[param] ~= nil and paramlastmoved[param] + 0.5 > current_time) then -- pickup succeeded
+        local current_midi = LRValueToMIDIValue(param)
+        if type(midi_val_to_lr_val) ~= 'number' or type(current_midi) ~= 'number' then return end
+        if force or (math.abs(midi_value_update - current_midi) <= PICKUP_THRESHOLD) or (paramlastmoved[param] ~= nil and paramlastmoved[param] + 0.5 > current_time) then -- pickup succeeded
           paramlastmoved[param] = current_time
           lr_value_update = midi_val_to_lr_val
           if lr_value_update ~= param_val then
@@ -921,6 +924,7 @@ LrTasks.startAsyncTask(
       --Don't need to clamp limited parameters without pickup, as MIDI controls will still work
       --if value is outside limits range
       value = MIDIValueToLRValue(param, midi_value)
+      if type(value) ~= 'number' or type(getValue(param)) ~= 'number' then return end
       if value ~= getValue(param) then
         MIDI2LR.PARAM_OBSERVER[param] = value
         setValue(param, value, MIDI2LR.AltOpt)
@@ -966,12 +970,15 @@ LrTasks.startAsyncTask(
               local midi_val_bottom = LRValueToMIDIValue('CropBottom')
               local midi_val_top = LRValueToMIDIValue('CropTop')
               local midi_val_left = LRValueToMIDIValue('CropLeft')
+              if midi_val_bottom and midi_val_top and midi_val_left then
               MIDI2LR.SERVER:send(string.format('CropBottomRight %g\nCropBottomLeft %g\nCropAll %g\nCropTopRight %g\nCropTopLeft %g\nCropMoveVertical %g\nCropMoveHorizontal %g\n',
                   midi_val_bottom,midi_val_bottom,midi_val_bottom,midi_val_top,midi_val_top,midi_val_top,midi_val_left))
+              end
               for param in pairs(Database.Parameters) do
                 local lrvalue = getValue(param)
                 if observer[param] ~= lrvalue and type(lrvalue) == 'number' then --testing for MIDI2LR.SERVER.send kills responsiveness
-                  MIDI2LR.SERVER:send(string.format('%s %g\n', param, LRValueToMIDIValue(param,lrvalue)))
+                  local normalized = LRValueToMIDIValue(param,lrvalue)
+                  if normalized then MIDI2LR.SERVER:send(string.format('%s %g\n', param, normalized)) end
                   observer[param] = lrvalue
                   LastParam = param
                 end

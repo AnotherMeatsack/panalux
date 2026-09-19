@@ -414,7 +414,7 @@ struct IntroShowView: View {
         let readoutHeight = RewindView.height(tangentCount: 2, hasKnobs: true)
         return VStack(spacing: 22) {
             headline("Hold Undo. Rewind+.",
-                     "Your whole edit becomes a tape. Step through every change, play it back, and start a tangent from any moment. Nothing is ever lost.",
+                     "Turn slowly for precise stops, faster to travel. Edit from the past to start a tangent; your earlier version stays saved.",
                      t: t)
             HStack(spacing: 34) {
                 PanelStage(t: t, knobLabels: IntroModes.base, labelColor: accent, changed: frame.changedKnobs,
@@ -427,6 +427,9 @@ struct IntroShowView: View {
                     .scaleEffect(0.96 + 0.04 * frame.readoutOpacity)
             }
             .opacity(fade(t, from: 0.3))
+            Text("Tangents → choose a source → check sliders → Merge into New Tangent")
+                .font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Text(frame.step)
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                 .foregroundStyle(accent)
@@ -439,14 +442,14 @@ struct IntroShowView: View {
     private func safetyScene(_ t: TimeInterval) -> some View {
         let items: [(String, String, String)] = [
             ("arrow.uturn.backward", "Undo", "⌘Z takes back any change to your map."),
-            ("clock.arrow.circlepath", "Backups", "Saved at launch and before every big change."),
+            ("hand.point.down", "Program Buttons", "Press any key for its tap. Hold for While held. Drop an action."),
             ("pause.fill", "Pause", "Practice on the panel. Nothing reaches the photo."),
             ("house.fill", "Back to Base", "One click turns every mode off."),
             ("magnifyingglass", "Find Anything", "⌘K searches every Lightroom command."),
-            ("exclamationmark.bubble.fill", "Plain Answers", "If a knob does nothing, the readout says why.")
+            ("arrow.triangle.branch", "Tangents", "Name versions and merge selected sliders into a new tangent.")
         ]
         return VStack(spacing: 30) {
-            headline("You can’t break anything.", "Experiment freely. PanaLux always keeps a way back.", t: t)
+            headline("Make it yours.", "Program buttons safely, keep versions, and undo map changes.", t: t)
             Grid(horizontalSpacing: 18, verticalSpacing: 18) {
                 ForEach(0..<2, id: \.self) { row in
                     GridRow {

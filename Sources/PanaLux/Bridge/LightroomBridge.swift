@@ -181,6 +181,8 @@ public class LightroomBridge: ObservableObject {
                 self.recvBuffer = ""
                 self.publishConnection()
                 self.readIncomingFeedback(on: conn)
+                // The first refresh may precede the feedback socket. Resend identity now.
+                self.requestFullRefresh(force: true)
             case .failed, .waiting, .cancelled:
                 if self.recvReady {
                     self.recvReady = false

@@ -129,6 +129,8 @@ public enum RewindCommands {
     /// Analog: the playback speed dial. The fine one is for slow motion, the coarse one for
     /// getting anywhere quickly. Clockwise is faster on both.
     public static let speedFine = "rewind:speed_fine"
+    public static let landmarks = "rewind:landmarks"
+    public static let tangents = "rewind:tangents"
     public static let speed = "rewind:speed"
     /// Keys: play forward, play backward, and stop where it is.
     public static let play = "rewind:play"
@@ -148,10 +150,12 @@ public enum RewindCommands {
 
     public static func isRewind(_ id: String) -> Bool { id.hasPrefix(prefix) }
     /// Knobs and rings drive these; everything else is a key.
-    public static func isAnalog(_ id: String) -> Bool { id == scrub || id == speed || id == speedFine }
+    public static func isAnalog(_ id: String) -> Bool { id == scrub || id == speed || id == speedFine || id == landmarks || id == tangents }
 
     public static func title(_ id: String) -> String {
         switch id {
+        case landmarks: return "Previous / next landmark"
+        case tangents: return "Previous / next tangent"
         case scrub: return "Scrub the trail"
         case speed: return "Playback speed"
         case speedFine: return "Playback speed, fine"

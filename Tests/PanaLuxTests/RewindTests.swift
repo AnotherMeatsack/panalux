@@ -49,15 +49,37 @@ final class EditTrailTests: XCTestCase {
         XCTAssertEqual(playback.value(of: "Exposure", at: 31.0) ?? 0, 0.2, accuracy: 0.0001)
     }
 
+    func testContinuousScrubDoesNotBlendDiscreteSwitchesOrStructuralEdits() {
+        var trail = EditTrail(photoID: "discrete")
+        trail.record(param: "EnableLensCorrections", value: 0, at: 1)
+        trail.record(param: "EnableLensCorrections", value: 1, at: 1.1)
+        trail.record(param: "Exposure", value: 0.2, at: 2)
+        trail.record(param: "Exposure", value: 0.8, at: 2.1)
+        trail.addKeyframe(TrailKeyframe(t: 2.1, kind: .preset, label: "Preset", values: ["Exposure": 0.8]))
+        XCTAssertEqual(trail.playback().values(at: 1.05, interpolateGaps: true)["EnableLensCorrections"], 0)
+        XCTAssertEqual(trail.playback().values(at: 2.05, interpolateGaps: true)["Exposure"], 0.2)
+    }
+
+    func testDenseIncrementHistoryDoesNotMergeOrThin() {
+        var trail = EditTrail(photoID: "dense")
+        for i in 0...40_001 {
+            trail.record(param: "Exposure", value: Double(i % 1000) / 1000, at: Double(i) * 0.001)
+        }
+        XCTAssertEqual(trail.activeBranch.events.count, 40_002)
+        let tape = trail.playback()
+        XCTAssertEqual(tape.stepTimes.count, 40_002)
+        XCTAssertEqual(tape.step(from: tape.tip, by: -1), 40.000, accuracy: 1e-9)
+    }
+
     func testEveryChangeIsAStepAndTheEndsAreAlwaysPlacesToStand() {
         var trail = EditTrail(photoID: "cat:1")
-        // A trackball's hue and saturation land a few milliseconds apart: one move, one step.
+        // Even closely spaced updates remain individually accessible.
         trail.record(param: "GradeHue", value: 0.30, at: 2.000)
         trail.record(param: "GradeSat", value: 0.40, at: 2.010)
         trail.record(param: "Exposure", value: 0.60, at: 5.0)
         trail.record(param: "Exposure", value: 0.70, at: 9.0)
         let steps = trail.playback().stepTimes
-        XCTAssertEqual(steps.count, 4, "start, the trackball move, two exposure changes")
+        XCTAssertEqual(steps.count, 5, "start, both trackball updates, two exposure changes")
         XCTAssertEqual(steps.first ?? -1, trail.playback().start, accuracy: 0.0001)
         XCTAssertEqual(steps.last ?? -1, 9.0, accuracy: 0.0001, "the last step is where it ends up")
     }
@@ -688,6 +710,41 @@ final class RewindTransportTests: XCTestCase {
         for i in 1...10 { edit(0.5 + Double(i) * 0.03, at: Double(i) * 10.0) }
     }
 
+    func testSelectiveMergePreservesBothSourcesAndUncheckedSettings() {
+        edit(0.3, at: 10)
+        edit(0.4, at: 11, param: "Contrast")
+        let original = engine.trail!.activeBranchID
+        engine.startBranch(reason: "Alternative")
+        edit(0.8, at: 20)
+        edit(0.9, at: 21, param: "Contrast")
+        let alternative = engine.trail!.activeBranchID
+        engine.selectTangent(original)
+        XCTAssertEqual(lightroom.values["Contrast"] ?? -1, 0.4, accuracy: 0.00001)
+        let before = engine.trail!
+        XCTAssertTrue(engine.mergeParameters(from: alternative, names: ["Exposure"]))
+        XCTAssertEqual(lightroom.values["Exposure"] ?? -1, 0.8, accuracy: 0.00001)
+        XCTAssertEqual(lightroom.values["Contrast"] ?? -1, 0.4, accuracy: 0.00001)
+        XCTAssertEqual(engine.trail!.branches.count, 3)
+        XCTAssertEqual(engine.trail!.branch(original), before.branch(original))
+        XCTAssertEqual(engine.trail!.branch(alternative), before.branch(alternative))
+        XCTAssertFalse(engine.mergeParameters(from: alternative, names: []))
+    }
+
+    func testFractionalScrubInterpolatesSparseHistoryAndReversesImmediately() {
+        edit(0.2, at: 10)
+        edit(0.8, at: 20)
+        engine.beginRewind()
+        let now = Date()
+        engine.scrub(units: -10, now: now)
+        XCTAssertEqual(engine.state.playhead, 17.5, accuracy: 0.0001)
+        XCTAssertEqual(lightroom.values["Exposure"] ?? -1, 0.65, accuracy: 0.0001)
+        engine.scrub(units: 5, now: now.addingTimeInterval(0.3))
+        XCTAssertEqual(engine.state.playhead, 18.75, accuracy: 0.0001)
+        XCTAssertEqual(lightroom.values["Exposure"] ?? -1, 0.725, accuracy: 0.0001)
+        engine.endRewind()
+        XCTAssertEqual(lightroom.values["Exposure"] ?? -1, 0.725, accuracy: 0.0001)
+    }
+
     func testOneClickOfTheRingIsExactlyOneStep() {
         tenEdits()
         engine.beginRewind()
@@ -790,18 +847,18 @@ final class RewindTransportTests: XCTestCase {
     }
 
     func testAQuietStretchPlaysThroughInAFractionOfItsLength() {
-        edit(0.6, at: 1.0)
-        edit(0.9, at: 601.0)                                            // ten minutes later
+        edit(0.6, at: 2.0)
+        edit(0.9, at: 602.0)                                            // ten minutes later
         engine.beginRewind()
         engine.scrub(units: -40_000, now: Date())
         // Stand just after the first edit and play: the ten minutes must not take ten minutes.
-        engine.scrub(units: 40, now: Date().addingTimeInterval(1))      // one click: onto the first edit
+        engine.scrub(units: 80, now: Date().addingTimeInterval(1))      // one click: onto the first edit
         let start = engine.state.playhead
-        XCTAssertEqual(start, 1.0, accuracy: 0.0001)
+        XCTAssertEqual(start, 2.0, accuracy: 0.0001)
         engine.play(forward: true)
         engine.advancePlayback(by: 0.6)
         XCTAssertGreaterThan(engine.state.playhead - start, 300, "the quiet is compressed")
-        XCTAssertLessThanOrEqual(engine.state.playhead, 601.0 + 0.0001)
+        XCTAssertLessThanOrEqual(engine.state.playhead, 602.0 + 0.0001)
     }
 
     func testPlayStopsAtNowAndPressingTheSameDirectionPauses() {
@@ -1353,5 +1410,15 @@ final class HUDPlacementTests: XCTestCase {
         XCTAssertEqual(motion.position, RewindSamples.scrubbing.playhead)
         XCTAssertEqual(motion.speed, 0)
         XCTAssertEqual(motion.pulse, 0)
+    }
+}
+
+final class RewindEdgeTimingTests: XCTestCase {
+    func testBriefStopsHoldBrightnessAndLongStopsFadeSmoothly() {
+        XCTAssertEqual(RewindEdgeEffect.glowEnergy(age: 0), 1)
+        XCTAssertEqual(RewindEdgeEffect.glowEnergy(age: 0.34), 1)
+        XCTAssertEqual(RewindEdgeEffect.glowEnergy(age: 0.625), 0.5, accuracy: 0.000001)
+        XCTAssertEqual(RewindEdgeEffect.glowEnergy(age: 0.9), 0, accuracy: 0.000001)
+        XCTAssertEqual(RewindEdgeEffect.glowEnergy(age: 0), 1, "resumed input immediately restores the hold")
     }
 }

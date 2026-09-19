@@ -749,7 +749,8 @@ local function ResetAllSaturationAdjustment()
     local bezelname = (Database.CmdTrans.ResetAllSaturationAdjustment and Database.CmdTrans.ResetAllSaturationAdjustment[Database.LatestPVSupported]) or "ResetAllSaturationAdjustment"
     LrDialogs.showBezel(bezelname..'  '..LrStringUtils.numberToStringWithSeparators(0, 0))
   end
-  MIDI2LR.SERVER:send(string.format('%s %g\n', "AllSaturationAdjustment", LRValueToMIDIValue("SaturationAdjustmentRed")))
+  local normalized = LRValueToMIDIValue("SaturationAdjustmentRed")
+  if normalized then MIDI2LR.SERVER:send(string.format('%s %g\n', "AllSaturationAdjustment", normalized)) end
 end
 
 local cropbezel = LOC('$$$/AgCameraRawNamedSettings/SaveNamedDialog/Crop=Crop')..' ' -- no need to recompute each time we crop

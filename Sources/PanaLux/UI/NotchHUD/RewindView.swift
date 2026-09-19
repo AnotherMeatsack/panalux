@@ -392,8 +392,8 @@ public struct TrailTrack: View {
     }
 
     static func draw(_ ctx: inout GraphicsContext, size: CGSize, state: RewindState, motion: RewindMotion) {
-        let position = motion.position.isNaN ? state.playhead : motion.position
-        let window = max(0.5, motion.window)
+        let position = state.playhead
+        let window = max(0.5, state.window)
         let headX = size.width * 0.5
         let scale = size.width / CGFloat(window)
         let base = size.height * 0.60
@@ -604,7 +604,7 @@ struct TangentsMap: View {
         }
         func y(_ row: Int) -> CGFloat { 4 + rowHeight * CGFloat(row) + rowHeight / 2 }
         let rowOf = Dictionary(uniqueKeysWithValues: lanes.enumerated().map { ($1.id, $0) })
-        let position = motion.position.isNaN ? state.playhead : motion.position
+        let position = state.playhead
         let pulse = CGFloat(motion.pulse)
 
         for (row, lane) in lanes.enumerated() {

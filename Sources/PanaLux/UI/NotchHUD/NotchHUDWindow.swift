@@ -18,6 +18,7 @@ public class NotchHUDWindowController: ObservableObject {
 
     static func width(for mode: ActiveDisplayMode) -> CGFloat {
         if case .rewind = mode, AppSettings.shared.hudStyle != "minimal" { return rewindWidth }
+        if case .layerBanner(_, _, _, _, _, let grid) = mode, !grid.isEmpty { return 620 }
         return 400
     }
     /// The height the window is at or animating to. `window.frame` lags during animations.
@@ -182,7 +183,7 @@ public class NotchHUDWindowController: ObservableObject {
         switch mode {
         case .idle: return 48
         case .layerBanner(_, _, _, _, _, let grid):
-            return grid.isEmpty ? 68 : 124
+            return grid.isEmpty ? 92 : 154
         case .multi(let readings):
             // One row fits in the same box as a single readout, so nothing jumps.
             return readings.count > 3 ? 104 : 68

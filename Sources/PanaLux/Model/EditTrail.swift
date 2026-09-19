@@ -102,7 +102,7 @@ public struct EditTrail: Codable, Equatable {
     public static let gestureGap: TimeInterval = 0.4
     /// A resumed session starts this far after the tip rather than hours later.
     public static let resumeGap: TimeInterval = 1.0
-    /// Above this, the oldest dense runs are thinned. Keyframes are never dropped.
+    /// Legacy thinning threshold, retained for decoding/tests; recording no longer thins events.
     public static let maxEventsPerBranch = 40_000
 
     public var version: Int
@@ -200,14 +200,12 @@ public struct EditTrail: Codable, Equatable {
         // Lightroom resends every value after any action, so most reports say nothing changed.
         // The tape only needs the moments a number actually moved.
         if let last = events[window...].last(where: { $0.param == param }),
-           abs(last.value - value) < 0.00001 {
+           abs(last.value - value) < 0.000000001 {
             return false
         }
         let clamped = max(0.0, min(1.0, value))
         branches[index].events.append(TrailEvent(t: max(t, branches[index].forkTime), param: param, value: clamped))
-        if branches[index].events.count > EditTrail.maxEventsPerBranch {
-            EditTrail.thin(&branches[index].events)
-        }
+        // Preserve every recorded increment, including in long sessions.
         return true
     }
 
@@ -345,9 +343,8 @@ public struct TrailPlayback: Equatable {
     /// Every parameter any tangent ever touched, at the first value the trail saw for it. Hopping
     /// to a line that never touched a slider still has to put it back where it started.
     public let baseline: [String: Double]
-    /// Samples closer together than this are one step: a trackball's hue and saturation land a
-    /// few milliseconds apart and are a single move.
-    public static let stepMerge: TimeInterval = 0.03
+    /// Only identical timestamps share a stop; every recorded increment remains accessible.
+    public static let stepMerge: TimeInterval = 1e-9
 
     public static func == (lhs: TrailPlayback, rhs: TrailPlayback) -> Bool {
         lhs.series == rhs.series && lhs.keyframes == rhs.keyframes
@@ -429,12 +426,12 @@ public struct TrailPlayback: Equatable {
 
     /// The photo as it stood at `t`. Inside a gesture the value is interpolated, so scrubbing
     /// is continuous; between gestures the earlier value simply held, so the playhead steps.
-    public func values(at t: TimeInterval) -> [String: Double] {
+    public func values(at t: TimeInterval, interpolateGaps: Bool = false) -> [String: Double] {
         // Sliders this line never touched but another tangent did: put back where they started.
         var out = baseline.filter { series[$0.key] == nil }
         for (p, v) in seed(at: t)?.values ?? [:] { out[p] = v }
         for (param, events) in series {
-            guard let value = value(of: param, in: events, at: t) else { continue }
+            guard let value = value(of: param, in: events, at: t, interpolateGaps: interpolateGaps) else { continue }
             out[param] = value
         }
         return out
@@ -448,16 +445,24 @@ public struct TrailPlayback: Equatable {
     /// The table to start from. Before the first landmark there is nothing recorded yet, so the
     /// first landmark — the photo as it arrived — is the honest baseline.
     private func seed(at t: TimeInterval) -> TrailKeyframe? {
-        keyframe(at: t) ?? keyframes.first
+        keyframe(at: t) ?? keyframes.first(where: { $0.kind == .open })
     }
 
-    private func value(of param: String, in events: [TrailEvent], at t: TimeInterval) -> Double? {
+    private func value(of param: String, in events: [TrailEvent], at t: TimeInterval, interpolateGaps: Bool = false) -> Double? {
         guard let i = lastIndex(in: events, atOrBefore: t) else { return nil }
-        let a = events[i]
+        var a = events[i]
+        if let frame = seed(at: t), frame.t <= t, frame.t > a.t, let value = frame.values[param] {
+            a = TrailEvent(t: frame.t, param: param, value: value)
+        }
         guard i + 1 < events.count else { return a.value }
         let b = events[i + 1]
         let span = b.t - a.t
-        guard span > 0, span <= EditTrail.gestureGap else { return a.value }
+        guard span > 0 else { return a.value }
+        let structural = keyframes.contains { $0.t > a.t && $0.t <= b.t && ![.open, .mark, .branch].contains($0.kind) }
+        let continuous = interpolateGaps && !structural && !param.hasPrefix("local_")
+            && !param.hasPrefix("Crop") && !param.contains("Enable") && !param.contains("Mode")
+        guard !structural, !param.contains("Enable"), !param.contains("Mode"),
+              span <= EditTrail.gestureGap || continuous else { return a.value }
         let f = min(1.0, max(0.0, (t - a.t) / span))
         return a.value + (b.value - a.value) * f
     }
@@ -578,6 +583,22 @@ public struct TrailPlayback: Equatable {
         for k in lo..<hi { gaps.append(stepTimes[k + 1] - stepTimes[k]) }
         gaps.sort()
         return gaps[gaps.count / 2]
+    }
+
+    public func fractionalPosition(at time: TimeInterval) -> Double {
+        guard !stepTimes.isEmpty else { return 0 }
+        let index = max(0, stepIndex(atOrBefore: time))
+        guard index + 1 < stepTimes.count else { return Double(index) }
+        let gap = stepTimes[index + 1] - stepTimes[index]
+        return Double(index) + min(1, max(0, (time - stepTimes[index]) / max(1e-9, gap)))
+    }
+
+    public func time(atFractionalPosition position: Double) -> TimeInterval {
+        guard !stepTimes.isEmpty else { return start }
+        let bounded = min(Double(stepTimes.count - 1), max(0, position))
+        let index = Int(bounded.rounded(.down))
+        guard index + 1 < stepTimes.count else { return stepTimes[index] }
+        return stepTimes[index] + (stepTimes[index + 1] - stepTimes[index]) * (bounded - Double(index))
     }
 
     /// How long the stretch of quiet around `t` is, when `t` sits inside one.

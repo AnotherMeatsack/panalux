@@ -18,7 +18,7 @@ public enum ControlClipboard: Equatable {
 extension StudioEngine {
     /// Held mode wins, so holding a key on the panel edits what you are holding.
     public var effectiveEditLayer: String? {
-        overlayLayerName ?? mapEditLayer
+        isProgrammingButtons ? mapEditLayer : (overlayLayerName ?? mapEditLayer)
     }
 
     /// Drop a catalog command onto an SVG control. Hold overlays win while a key is down.
@@ -33,6 +33,11 @@ extension StudioEngine {
     public func applyDroppedCommand(commandId: String, ontoControl control: String, preferHold: Bool? = nil) {
         let item = CommandDatabase.shared.catalogCommand(for: commandId)
 
+        if PanelLayout.isButton(control) {
+            let held = preferHold ?? (inspectorHoldEdit == control || programmingHoldControl == control)
+            assignButtonCommand(control, item: item, preferHold: held)
+            return
+        }
         if PanelLayout.isBall(control) {
             guard item.isParameter else {
                 mapStatusMessage = "Trackballs take sliders or color wheels."
@@ -82,7 +87,7 @@ extension StudioEngine {
         } ?? heldProgramButton
     }
 
-    private func assignInLayer(_ layerName: String, control: String, item: CatalogCommand) {
+    private func assignInLayer(_ layerName: String, control: String, item: CatalogCommand, preferHold: Bool = false) {
         var layer = profile.layers[layerName] ?? LayerSpec()
         let title = layerTitle(layerName)
         if PanelLayout.isBall(control) {
@@ -107,13 +112,13 @@ extension StudioEngine {
                 layer.knobs = knobs
             }
         } else {
-            guard !item.isParameter || item.id.contains(":") else {
+            guard preferHold || !item.isParameter || item.id.contains(":") else {
                 mapStatusMessage = "Inside a mode, keys fire commands. Put sliders on knobs."
                 return
             }
             var buttons = layer.buttons ?? [:]
-            var spec = ButtonBinding()
-            applyTapItem(&spec, item)
+            var spec = buttons[control] ?? ButtonBinding()
+            if preferHold { applyHoldItem(&spec, item) } else { applyTapItem(&spec, item) }
             buttons[control] = spec
             layer.buttons = buttons
         }
@@ -173,7 +178,7 @@ extension StudioEngine {
 
     func assignButtonCommand(_ control: String, item: CatalogCommand, preferHold: Bool) {
         if let layer = effectiveEditLayer {
-            assignInLayer(layer, control: control, item: item)
+            assignInLayer(layer, control: control, item: item, preferHold: preferHold)
             return
         }
         var spec = profile.buttons[control] ?? ButtonBinding()
@@ -232,7 +237,7 @@ extension StudioEngine {
             spec.hold_action = item.id
         } else if item.isParameter {
             spec.holdProgram = AnalogProgram.focused(item.id)
-        } else if !item.id.contains(":") {
+        } else if KeyCommands.isKey(item.id) || RewindCommands.isRewind(item.id) || LightroomMenuActions.item(item.id) != nil || item.id.hasPrefix(WheelReset.prefix) || !item.id.contains(":") {
             spec.hold_action = item.id
         }
     }
@@ -306,7 +311,10 @@ extension StudioEngine {
             spec.knobs?[control] = nil
             spec.rings?[control] = nil
             spec.balls?[control] = nil
-            spec.buttons?[control] = nil
+            if PanelLayout.isButton(control), slot != .both, var button = spec.buttons?[control] {
+                if slot == .tap { button.clearTap() } else { button.clearHold() }
+                spec.buttons?[control] = button
+            } else { spec.buttons?[control] = nil }
             if let v = activeVariants[layer] { spec.variants?[v]?.knobs?[control] = nil }
             profile.layers[layer] = spec
             mapStatusMessage = "\(PanelLayout.shortLabel(forControl: control)) passes through to Base in \(layerTitle(layer))"

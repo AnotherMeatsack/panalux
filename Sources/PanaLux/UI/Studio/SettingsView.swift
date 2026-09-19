@@ -192,6 +192,17 @@ public struct SettingsView: View {
                 }
             }
             .help("How quickly a hard spin crosses a long session. Turning the ring slowly is always one step per click, whatever this says.")
+            Button("Use navigation rings while rewinding") {
+                var layer = engine.profile.layers["REWIND"] ?? LayerSpec()
+                var rings = layer.rings ?? [:]
+                rings["RING_GAMMA"] = RingBinding(param: RewindCommands.scrub)
+                rings["RING_LIFT"] = RingBinding(param: RewindCommands.landmarks)
+                rings["RING_GAIN"] = RingBinding(param: RewindCommands.tangents)
+                layer.rings = rings
+                engine.profile.layers["REWIND"] = layer
+            }
+            Text("Optional: centre ring travels, left ring visits landmarks, right ring compares tangents. Trackballs rest while rewinding; release Undo to grade. Map Undo restores your previous assignments.")
+                .font(.caption).foregroundStyle(.secondary)
             Button("Reset Rewind feel") {
                 settings.rewindClickUnits = 40
                 settings.rewindAcceleration = 0.5
@@ -199,7 +210,7 @@ public struct SettingsView: View {
         } header: {
             Text("Rewind")
         } footer: {
-            Text("Hold Undo, then turn the centre ring. Play, Play Reverse and Stop run your edits back at the pace set by the outer rings.")
+            Text("Hold Undo and use the centre ring for all scrub travel. Its speed controls distance automatically. Other ring assignments stay as you set them.")
         }
     }
 
@@ -274,6 +285,7 @@ public struct SettingsView: View {
 
     private var aboutSection: some View {
         Section("About") {
+            Button("Check for Updates…") { AppUpdater.shared.checkForUpdates() }
             LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")
             Text("PanaLux is a free, unofficial, open-source macOS app. It is not affiliated with, endorsed by, or related to Blackmagic Design, Adobe, or Apple. It talks to a Micro Color Panel you already purchased and to Lightroom Classic through PanaLux Bridge, a lightly modified copy of the free community plugin MIDI2LR (GPL-3.0). You are not buying anything.")
                 .font(.callout)

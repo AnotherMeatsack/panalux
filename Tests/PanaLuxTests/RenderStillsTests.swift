@@ -25,6 +25,15 @@ final class RenderStillsTests: XCTestCase {
         try png.write(to: dir.appendingPathComponent(name + ".png"))
     }
 
+    func testRenderRewindEdges() throws {
+        try XCTSkipIf(outDir == nil, "set PANALUX_RENDER_DIR to render")
+        try save(RewindEdgeEffect(phase: 0.4, energy: 1, direction: -1, state: RewindSamples.scrubbing)
+            .background(Color(red: 0.05, green: 0.06, blue: 0.08)),
+                 size: CGSize(width: 1440, height: 900), name: "rewind-edges")
+        try save(RewindEdgeEffect(phase: 0, energy: 0, direction: -1, reduceMotion: true)
+            .background(Color.black), size: CGSize(width: 1280, height: 800), name: "rewind-edges-reduced")
+    }
+
     func testRenderIntro() throws {
         try XCTSkipIf(outDir == nil, "set PANALUX_RENDER_DIR to render")
         let moments: [Int: [Double]] = [0: [3], 1: [3], 2: [4], 3: [4], 4: [0.8, 2.0, 3.6, 5.2, 8.0], 5: [0.5, 1.5, 4.0, 6.5], 6: [0.4, 1.0, 2.5, 3.7, 4.9, 6.2], 7: [0.8, 3.5, 6.9, 9.0, 11.8, 14.5, 17.5, 20.0, 22.5], 8: [5], 9: [2]]

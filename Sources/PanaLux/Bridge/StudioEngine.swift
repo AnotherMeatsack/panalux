@@ -67,11 +67,25 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     @Published public var isLiveGradingEnabled: Bool = true
     /// Pause: nothing reaches Lightroom or Photoshop. The HUD says what would have happened.
     @Published public var isOutputPaused: Bool = false
+    @Published public private(set) var isProgrammingButtons = false
+    @Published public private(set) var programmingHoldControl: String?
+    private var programmingHoldWork: DispatchWorkItem?
+    private var programmingPressed = Set<String>()
+
+    public func setProgrammingButtons(_ enabled: Bool) {
+        if enabled { returnToBase(announce: false) }
+        programmingHoldWork?.cancel()
+        programmingHoldControl = nil
+        programmingPressed.removeAll()
+        inspectorHoldEdit = nil
+        isProgrammingButtons = enabled
+    }
+
     /// Settings is on screen: the panel previews only and nothing reaches Lightroom.
     @Published public private(set) var isSettingsOpen: Bool = false
 
-    var outputBlocked: Bool { isOutputPaused || isSettingsOpen }
-    var blockedWord: String { isSettingsOpen ? "Settings open" : "Paused" }
+    var outputBlocked: Bool { isOutputPaused || isSettingsOpen || isProgrammingButtons }
+    var blockedWord: String { isProgrammingButtons ? "Programming" : (isSettingsOpen ? "Settings open" : "Paused") }
 
     public func setSettingsOpen(_ open: Bool) {
         guard open != isSettingsOpen else { return }
@@ -622,6 +636,28 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     }
 
     private func applyButton(_ name: String, isDown: Bool) {
+        if isProgrammingButtons {
+            if isDown {
+                programmingPressed.insert(name)
+                lastButtonName = name
+                programmingHoldControl = nil
+                inspectorHoldEdit = nil
+                programmingHoldWork?.cancel()
+                let work = DispatchWorkItem { [weak self] in
+                    guard let self, self.isProgrammingButtons, self.programmingPressed.contains(name) else { return }
+                    self.programmingHoldControl = name
+                    self.inspectorHoldEdit = name
+                    self.mapStatusMessage = "Drop an action on \(PanelLayout.label(forControl: name)) to set While held."
+                }
+                programmingHoldWork = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + holdThreshold, execute: work)
+            } else {
+                programmingPressed.remove(name)
+                programmingHoldWork?.cancel()
+            }
+            return
+        }
+
         if isDown {
             pendingHoldReleases[name]?.cancel()
             pendingHoldReleases[name] = nil
@@ -850,32 +886,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         }
 
         if let psAction = spec.ps {
-            let returning = PhotoshopBridge.shared.isPhotoshopLikelyHoldingDocument()
-            // Grab Still means "send the bracket" once photos have been gathered, so
-            // the blend workflow needs no second key.
-            let sendsBracket = !returning && bracketCount > 0 && psAction == "smart_roundtrip"
-            let resolved = sendsBracket ? "bracket_roundtrip" : psAction
-            let opening = sendsBracket
-                ? "Sending \(bracketCount) photo\(bracketCount == 1 ? "" : "s") to Photoshop…"
-                : "Sending to Photoshop…"
-            triggerActionDisplay(
-                name: name,
-                label: returning ? "Saving back to Lightroom…" : opening,
-                phase: .working,
-                hold: true
-            )
-            PhotoshopBridge.shared.autoAlign = AppSettings.shared.autoAlignLayers
-            if sendsBracket { clearBracketCount() }
-            PhotoshopBridge.shared.executeAction(resolved) { result in
-                DispatchQueue.main.async {
-                    switch result {
-                    case .success(let message):
-                        self.triggerActionDisplay(name: name, label: message, phase: .done)
-                    case .failure(let error):
-                        self.triggerActionDisplay(name: name, label: error.localizedDescription, phase: .failed, duration: 8)
-                    }
-                }
-            }
+            runPhotoshopAction(psAction, name: name)
             return
         }
 
@@ -928,10 +939,41 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         }
     }
 
+    private func runPhotoshopAction(_ psAction: String, name: String) {
+            let returning = PhotoshopBridge.shared.isPhotoshopLikelyHoldingDocument()
+            // Grab Still means "send the bracket" once photos have been gathered, so
+            // the blend workflow needs no second key.
+            let sendsBracket = !returning && bracketCount > 0 && psAction == "smart_roundtrip"
+            let resolved = sendsBracket ? "bracket_roundtrip" : psAction
+            let opening = sendsBracket
+                ? "Sending \(bracketCount) photo\(bracketCount == 1 ? "" : "s") to Photoshop…"
+                : "Sending to Photoshop…"
+            triggerActionDisplay(
+                name: name,
+                label: returning ? "Saving back to Lightroom…" : opening,
+                phase: .working,
+                hold: true
+            )
+            PhotoshopBridge.shared.autoAlign = AppSettings.shared.autoAlignLayers
+            if sendsBracket { clearBracketCount() }
+            PhotoshopBridge.shared.executeAction(resolved) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let message):
+                        self.triggerActionDisplay(name: name, label: message, phase: .done)
+                    case .failure(let error):
+                        self.triggerActionDisplay(name: name, label: error.localizedDescription, phase: .failed, duration: 8)
+                    }
+                }
+            }
+    }
+
     /// Keys and the command palette both come through here.
     public func runKeyCommand(_ id: String, key: String = "PALETTE") {
         guard !outputBlocked else { return }
-        if LightroomMenuActions.item(id) != nil {
+        if Self.photoshopActionIDs.contains(id) {
+            runPhotoshopAction(id, name: key)
+        } else if LightroomMenuActions.item(id) != nil {
             runMenuAction(id, key: key)
         } else if id.hasPrefix(WheelReset.prefix) {
             resetWheel(String(id.dropFirst(WheelReset.prefix.count)), key: key)
@@ -1003,6 +1045,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             }
             if outputBlocked {
                 triggerActionDisplay(name: name, label: "Paused · \(CommandDatabase.shared.label(for: press))", phase: .blocked, hold: true)
+            } else if Self.photoshopActionIDs.contains(press) || LightroomMenuActions.item(press) != nil || press.hasPrefix(WheelReset.prefix) {
+                runKeyCommand(press, key: name)
             } else if KeyCommands.isKey(press) {
                 typeKey(press, name: name, hold: true)
             } else if PointerCommands.isPointer(press) {
@@ -1213,6 +1257,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             driveRewind(b.param, control: name, deltaUnits: deltaUnits)
             return
         }
+        guard !RewindEngine.shared.isRewinding else { return }
         GuideController.shared.hardwareEvent(.analogMoved(name))
         driveAnalog(control: name, param: b.param, scale: b.scale, deltaUnits: deltaUnits, isFine: isFine, isRing: false, context: context)
     }
@@ -1264,6 +1309,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             drivePointerResize(control: name, delta: deltaUnits)
             return
         }
+        guard !RewindEngine.shared.isRewinding else { return }
         GuideController.shared.hardwareEvent(.analogMoved(name))
         driveAnalog(control: name, param: b.param, scale: b.scale, deltaUnits: deltaUnits, isFine: isFine, isRing: true, context: context)
     }
@@ -1356,8 +1402,9 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     private func driveRewind(_ command: String, control: String, deltaUnits: Double) {
         GuideController.shared.hardwareEvent(.analogMoved(control))
         let rewind = RewindEngine.shared
+        if !rewind.isRewinding, activeLayers.contains("REWIND") { beginRewind() }
         guard rewind.isRewinding else {
-            notice(control, "Hold Undo to rewind")
+            notice(control, activeLayers.contains("REWIND") ? "Waiting for Lightroom’s photo · check PanaLux Bridge" : "Hold Undo to rewind")
             return
         }
         guard !outputBlocked else {
@@ -1368,6 +1415,17 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         rewind.clickUnits = AppSettings.shared.rewindClickUnits
         rewind.acceleration = AppSettings.shared.rewindAcceleration
         switch command {
+        case RewindCommands.landmarks, RewindCommands.tangents:
+            var accumulator = repeatAccumulators[control] ?? (0, .distantPast)
+            if accumulator.units * deltaUnits < 0 { accumulator.units = 0 }
+            accumulator.units += deltaUnits
+            let steps = Int(accumulator.units / max(1, rewind.clickUnits))
+            accumulator.units -= Double(steps) * max(1, rewind.clickUnits)
+            repeatAccumulators[control] = accumulator
+            for _ in 0..<min(32, abs(steps)) {
+                if command == RewindCommands.landmarks { rewind.step(forward: steps > 0) }
+                else { rewind.hopTangent(forward: steps > 0) }
+            }
         case RewindCommands.speed: rewind.adjustSpeed(units: deltaUnits, fine: false)
         case RewindCommands.speedFine: rewind.adjustSpeed(units: deltaUnits, fine: true)
         default: rewind.scrub(units: deltaUnits)
@@ -1381,6 +1439,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         if rewind.photoID == nil, let id = LightroomBridge.shared.activePhotoID {
             rewind.setActivePhoto(id)
         }
+        if rewind.photoID == nil { LightroomBridge.shared.requestFullRefresh() }
         rewind.beginRewind()
         collapseTimer?.invalidate()
         guard rewind.isRewinding else {
@@ -1454,6 +1513,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     }
 
     private func handleTrackballAxis(_ axisName: String, deltaUnits: Double, isFine: Bool) {
+        guard !RewindEngine.shared.isRewinding else { return }
         guard let lastUnderscore = axisName.lastIndex(of: "_") else { return }
         let ballName = String(axisName[..<lastUnderscore])
         let axis = String(axisName[axisName.index(after: lastUnderscore)...])
@@ -1882,7 +1942,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         let v = variant ?? activeVariants[layer]
         let resolvedHint: String
         if layer == "MASK" {
-            resolvedHint = hint ?? "Knobs grade this mask · place with the mouse"
+            resolvedHint = hint ?? "Edit selected mask"
         } else {
             resolvedHint = hint ?? layerTitle(layer)
         }
@@ -2258,6 +2318,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     public func lightroomActivePhotoDidChange(id: String?) {
         RewindEngine.shared.knobParams = currentKnobParams()
         RewindEngine.shared.setActivePhoto(id)
+        // Preserve a held request when selection arrives after Undo went down.
+        if id != nil, activeLayers.contains("REWIND") { beginRewind() }
     }
 
     /// The twelve knobs as they are mapped right now, for the rolling readout.

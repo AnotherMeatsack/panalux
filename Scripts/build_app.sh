@@ -18,7 +18,7 @@ echo "==> Building ${APP_NAME} ${VERSION} (release)"
 swift build -c release ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"}
 BIN_DIR="$(swift build -c release ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"} --show-bin-path)"
 
-APP_BUNDLE="${APP_NAME}.app"
+APP_BUNDLE="${PANALUX_APP_BUNDLE:-${APP_NAME}.app}"
 CONTENTS="${APP_BUNDLE}/Contents"
 rm -rf "$APP_BUNDLE"
 mkdir -p "${CONTENTS}/MacOS" "${CONTENTS}/Resources"
@@ -37,6 +37,12 @@ chmod +x "${CONTENTS}/MacOS/${APP_NAME}"
 if [[ -d "${BIN_DIR}/${APP_NAME}_${APP_NAME}.bundle" ]]; then
     cp -R "${BIN_DIR}/${APP_NAME}_${APP_NAME}.bundle" "${CONTENTS}/Resources/"
 fi
+# SwiftPM links Sparkle; the standalone app must embed its signed framework and helpers.
+SPARKLE_ROOT="${DIR}/.build/artifacts/sparkle/Sparkle"
+mkdir -p "${CONTENTS}/Frameworks"
+ditto "${SPARKLE_ROOT}/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework" "${CONTENTS}/Frameworks/Sparkle.framework"
+cp "${SPARKLE_ROOT}/LICENSE" "${CONTENTS}/Resources/Sparkle-LICENSE.txt"
+SPARKLE_PUBLIC_KEY="$(cat Packaging/SparklePublicKey.txt)"
 cp Sources/PanaLux/Resources/* "${CONTENTS}/Resources/"
 cp Packaging/AppIcon.icns "${CONTENTS}/Resources/AppIcon.icns"
 # The Lightroom plugin PanaLux installs for the user (GPL-3.0, see its NOTICE.txt).
@@ -60,6 +66,12 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <key>LSApplicationCategoryType</key><string>public.app-category.photography</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
+    <key>SUFeedURL</key><string>https://github.com/AnotherMeatsack/panalux/releases/latest/download/appcast.xml</string>
+    <key>SUPublicEDKey</key><string>${SPARKLE_PUBLIC_KEY}</string>
+    <key>SUEnableAutomaticChecks</key><true/>
+    <key>SUAutomaticallyUpdate</key><false/>
+    <key>SUSendProfileInfo</key><false/>
+    <key>SUVerifyUpdateBeforeExtraction</key><true/>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
     <key>NSHumanReadableCopyright</key><string>Free and open source (MIT). Not affiliated with Blackmagic Design, Adobe, or Apple.</string>
@@ -110,6 +122,15 @@ if [[ -n "$SIGN_IDENTITY" ]]; then
         exit 1
     fi
     echo "==> Signing with ${SIGN_NAME:-$SIGN_IDENTITY}"
+    # Sign Sparkle from the inside out, preserving the upstream helper entitlements.
+    SPARKLE_FRAMEWORK="${CONTENTS}/Frameworks/Sparkle.framework"
+    for component in "${SPARKLE_FRAMEWORK}/Versions/B/XPCServices/Downloader.xpc" \
+                     "${SPARKLE_FRAMEWORK}/Versions/B/XPCServices/Installer.xpc" \
+                     "${SPARKLE_FRAMEWORK}/Versions/B/Autoupdate" \
+                     "${SPARKLE_FRAMEWORK}/Versions/B/Updater.app" \
+                     "${SPARKLE_FRAMEWORK}"; do
+        codesign --force --options runtime --timestamp --preserve-metadata=entitlements --sign "$SIGN_IDENTITY" "$component"
+    done
     # Sign inside out: nested code first, then the bundle.
     find "$APP_BUNDLE" -name "*.bundle" -type d -print0 | while IFS= read -r -d '' nested; do
         codesign --force --sign "$SIGN_IDENTITY" "$nested"
@@ -124,7 +145,7 @@ if [[ -n "$SIGN_IDENTITY" ]]; then
         # All this signature is for is a stable identity, so permissions survive.
         codesign --force --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
     fi
-    codesign --verify --strict --verbose=2 "$APP_BUNDLE"
+    codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
 else
     echo "==> Ad-hoc signing (set PANALUX_SIGN_IDENTITY for a notarizable build)"
     codesign --force --deep --sign - "$APP_BUNDLE"
@@ -134,4 +155,4 @@ if strings -a "${CONTENTS}/MacOS/${APP_NAME}" | grep -q "${HOME}"; then
     echo "!! Warning: the binary still contains your home folder path." >&2
 fi
 
-echo "Built ${DIR}/${APP_BUNDLE}"
+echo "Built ${APP_BUNDLE}"

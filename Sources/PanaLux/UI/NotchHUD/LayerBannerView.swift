@@ -75,10 +75,10 @@ struct KnobRowGrid: View {
                             .foregroundColor(cell.isOverlay ? accent : .white.opacity(0.3))
                     }
                     Text(cell.label)
-                        .font(.system(size: 8.5, weight: cell.isOverlay ? .semibold : .regular, design: .rounded))
+                        .font(.system(size: 10, weight: cell.isOverlay ? .semibold : .regular, design: .rounded))
                         .foregroundColor(cell.isOverlay ? .white : .white.opacity(0.35))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.6)
+                        .minimumScaleFactor(0.85)
                         .layoutPriority(1)
                     Spacer(minLength: 2)
                     // Where that slider is sitting, so the mode can be read without
@@ -93,7 +93,7 @@ struct KnobRowGrid: View {
                     }
                 }
                 .padding(.horizontal, 5)
-                .frame(height: 18)
+                .frame(height: 24)
                 .background(
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
                         .fill(cell.isOverlay ? accent.opacity(0.14) : Color.white.opacity(0.04))
@@ -178,11 +178,11 @@ struct ControlFlashView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(title.uppercased())
+                    Text(title)
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     if let variant {
                         Text(variant.uppercased())
                             .font(.system(size: 8, weight: .bold, design: .rounded))
@@ -199,7 +199,7 @@ struct ControlFlashView: View {
 
                 if !chips.isEmpty {
                     HStack(spacing: 6) {
-                        ForEach(chips, id: \.self) { chip in
+                        ForEach(Array(chips.prefix(2)), id: \.self) { chip in
                             Text(chip)
                                 .font(.system(size: 8, weight: .bold, design: .rounded))
                                 .foregroundColor(.white.opacity(0.7))
@@ -213,7 +213,7 @@ struct ControlFlashView: View {
                 }
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: 2)
 
             HStack(spacing: 3) {
                 if let roleSymbol {
@@ -223,6 +223,7 @@ struct ControlFlashView: View {
                 Text(role)
                     .font(.system(size: 8, weight: .bold, design: .rounded))
             }
+            .fixedSize()
             .foregroundColor(accent)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)

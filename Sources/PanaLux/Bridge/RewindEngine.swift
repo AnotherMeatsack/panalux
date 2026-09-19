@@ -61,6 +61,7 @@ public final class RewindEngine: ObservableObject {
     private var playhead: TimeInterval = 0
     /// The playhead is behind the tip, so the next edit starts a branch instead of overwriting.
     private var detached = false
+    private var detachedValues: [String: Double]?
     private var peeking = false
     /// The photo as it stood when the hold began. Rolling forward returns to exactly this.
     private var tipValues: [String: Double] = [:]
@@ -93,6 +94,8 @@ public final class RewindEngine: ObservableObject {
     private var jogRemainder: Double = 0
     /// Clicks per second, smoothed so one quick packet in a slow turn does not throw the playhead.
     private var jogRate: Double = 0
+    private var continuousScrub = false
+    private var scrubDirection = 0.0
 
     // MARK: Transport
     public private(set) var isPlaying = false
@@ -124,6 +127,7 @@ public final class RewindEngine: ObservableObject {
         // The trail being left behind has to be on disk before the next one is read.
         flush(synchronously: true)
         endRewind(announce: false)
+        detachedValues = nil
         photoID = id
         historyUnavailableMessage = nil
         pendingSnapshots.removeAll()
@@ -166,7 +170,7 @@ public final class RewindEngine: ObservableObject {
         guard wall >= ignoreRecordsUntil else { return }
         // Lightroom confirms what Rewind just wrote. That is the playback coming back, not an
         // edit: recording it would tape over the trail, and worse, would look like a new branch.
-        if let sent = lastSent[param], abs(sent - value) < 0.003 { return }
+        if let sent = lastSent[param], abs(sent - value) < 0.000001 { return }
         lastSent[param] = nil
         if detached {
             startBranch(reason: "Edited from the past", at: wall)
@@ -250,6 +254,8 @@ public final class RewindEngine: ObservableObject {
     /// UNDO came up. The photo stays wherever the playhead is — that is the point.
     public func endRewind(announce: Bool = true) {
         guard isRewinding else { return }
+        detachedValues = currentPlayback()?.values(at: playhead, interpolateGaps: continuousScrub)
+        finishScrub()
         stopPlaybackTimer()
         isPlaying = false
         isRewinding = false
@@ -280,26 +286,28 @@ public final class RewindEngine: ObservableObject {
     /// Centre ring. One click is one thing that changed: every value you had is somewhere the
     /// playhead can stop. Turn faster and it travels; stop turning and it holds exactly there.
     public func scrub(units: Double, now: Date = Date()) {
-        guard isRewinding, let playback = currentPlayback() else { return }
-        // Taking hold of the ring takes over from playback.
+        guard units.isFinite, units != 0, isRewinding, let playback = currentPlayback() else { return }
         pausePlayback(announce: false)
-        let gap = max(0.001, min(0.5, now.timeIntervalSince(lastScrubAt)))
+        let elapsed = now.timeIntervalSince(lastScrubAt)
+        let direction = units < 0 ? -1.0 : 1.0
+        if elapsed > 0.2 || direction != scrubDirection { jogRate = 0 }
+        scrubDirection = direction
+        let gap = max(0.001, min(0.5, elapsed))
         lastScrubAt = now
-        // Turning back the other way starts a fresh click rather than paying off the old one.
-        if units * jogRemainder < 0 { jogRemainder = 0 }
-        jogRemainder += units
-        let clicks = Int((jogRemainder / max(1, clickUnits)).rounded(.towardZero))
-        guard clicks != 0 else { return }
-        jogRemainder -= Double(clicks) * clickUnits
-
         let instant = abs(units) / gap / max(1, clickUnits)
         jogRate = jogRate * 0.6 + instant * 0.4
-        let reach = RewindEngine.jogMultiplier(rate: jogRate, stepCount: playback.stepTimes.count,
-                                               acceleration: acceleration)
-        playhead = playback.step(from: playhead, by: clicks * reach)
+        let reach = Double(RewindEngine.jogMultiplier(rate: jogRate, stepCount: playback.stepTimes.count,
+                                                      acceleration: acceleration))
+        // Fractional stops respond to every packet. A whole slow click still lands exactly on
+        // the adjacent edit; reversing never waits for a remainder or a trailing animation.
+        let position = playback.fractionalPosition(at: playhead)
+        playhead = playback.time(atFractionalPosition: position + units / max(1, clickUnits) * reach)
+        continuousScrub = true
         apply(playback)
         publish(caption: stepCaption(for: playhead, in: playback))
     }
+
+    private func finishScrub() { continuousScrub = false }
 
     /// The rings on either side. Left is the fine dial and right is the coarse one; turning
     /// either clockwise is faster. It is a dial on a log scale, so slow motion has as much room
@@ -329,6 +337,7 @@ public final class RewindEngine: ObservableObject {
     /// Play forward or backward at the dial's speed. Pressing the direction it is already going
     /// pauses, so one key does both jobs.
     public func play(forward: Bool) {
+        finishScrub()
         guard isRewinding, let playback = currentPlayback() else { return }
         if isPlaying && (playDirection > 0) == forward {
             pausePlayback()
@@ -404,6 +413,7 @@ public final class RewindEngine: ObservableObject {
 
     /// One key back to now.
     public func jumpToTip() {
+        finishScrub()
         guard isRewinding, let playback = currentPlayback() else { return }
         stopPlaybackTimer()
         isPlaying = false
@@ -415,6 +425,7 @@ public final class RewindEngine: ObservableObject {
     }
 
     public func step(forward: Bool) {
+        finishScrub()
         guard isRewinding, let playback = currentPlayback() else { return }
         pausePlayback(announce: false)
         let target = forward ? playback.nextLandmark(after: playhead)?.t
@@ -427,6 +438,7 @@ public final class RewindEngine: ObservableObject {
 
     /// Hold to see the tip without moving the playhead. A/B without leaving the past.
     public func setPeeking(_ on: Bool) {
+        finishScrub()
         guard isRewinding, let playback = currentPlayback(), peeking != on else { return }
         peeking = on
         apply(playback)
@@ -447,10 +459,10 @@ public final class RewindEngine: ObservableObject {
     }
 
     /// One press, new tangent. The abandoned line is kept, whole.
-    public func startBranch(reason: String = "Branch", at wall: Date = Date()) {
+    public func startBranch(reason: String = "Branch", at wall: Date = Date(), baseline: [String: Double]? = nil) {
         guard let existing = trail else { return }
         let at = isRewinding || detached ? playhead : existing.tipTime
-        let values = currentPlayback()?.values(at: at) ?? existing.playback().values(at: at)
+        let values = baseline ?? (detached ? detachedValues : nil) ?? currentPlayback()?.values(at: at, interpolateGaps: continuousScrub) ?? existing.playback().values(at: at)
         let branch = trail?.fork(at: at, wall: wall)
         detached = false
         playback = nil
@@ -472,6 +484,7 @@ public final class RewindEngine: ObservableObject {
     /// tangent lands you at the end of the next, so hopping compares where each one finished.
     /// The photo follows at once, so it is an A/B you can flip as fast as you can press.
     public func hopTangent(forward: Bool) {
+        finishScrub()
         guard isRewinding, let current = trail, let before = currentPlayback() else { return }
         guard current.branches.count > 1 else {
             publish(caption: "No other tangents yet")
@@ -495,6 +508,77 @@ public final class RewindEngine: ObservableObject {
         let name = trail.activeBranch.name
         tangentEvents.send(.switched(name: name))
         publish(caption: "\(name) · " + stepCaption(for: playhead, in: after))
+    }
+
+    /// Open a saved tangent at its latest recorded state. This is an explicit user action.
+    public func selectTangent(_ id: String) {
+        guard let existing = trail, existing.branch(id) != nil, existing.activeBranchID != id else { return }
+        finishScrub()
+        let wasRewinding = isRewinding
+        if !wasRewinding { beginRewind() }
+        pausePlayback(announce: false)
+        trail?.activate(id)
+        playback = nil
+        guard let tape = currentPlayback() else { return }
+        playhead = tape.tip
+        peeking = false
+        appliedKeyframeID = nil
+        apply(tape)
+        applyKeyframeIfNeeded(at: playhead, in: tape)
+        refreshTakeInfo()
+        rebuildLaneActivity()
+        scheduleSave()
+        publish(caption: trail?.activeBranch.name ?? "Tangent")
+        if !wasRewinding { endRewind(announce: false) }
+    }
+
+    public func renameTangent(_ id: String, to name: String) {
+        let clean = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(80))
+        guard !clean.isEmpty, let index = trail?.branches.firstIndex(where: { $0.id == id }) else { return }
+        trail?.branches[index].name = clean
+        refreshTakeInfo()
+        scheduleSave()
+        publish(caption: "Named “\(clean)”")
+    }
+
+    /// Only normalized slider values are eligible. Opaque mask/settings tables are never mixed.
+    public func mergeCandidates(from id: String) -> [String: Double] {
+        guard let trail, trail.branch(id) != nil, id != trail.activeBranchID else { return [:] }
+        let source = trail.playback(on: id)
+        let current = output?.rewindKnownValues() ?? trail.playback().values(at: trail.tipTime)
+        return source.values(at: source.tip).filter { name, value in
+            value.isFinite && current[name] != nil && abs((current[name] ?? value) - value) > 0.000001
+                && !name.hasPrefix("local_") && !name.hasPrefix("Crop")
+        }
+    }
+
+    /// Fork the destination before applying selected sliders. Both complete source lines survive.
+    @discardableResult
+    public func mergeParameters(from id: String, names: Set<String>) -> Bool {
+        finishScrub()
+        guard let existing = trail, id != existing.activeBranchID, let source = existing.branch(id) else { return false }
+        let candidates = mergeCandidates(from: id).filter { names.contains($0.key) }
+        guard !candidates.isEmpty else { return false }
+        let wasRewinding = isRewinding
+        if !wasRewinding { beginRewind() }
+        pausePlayback(announce: false)
+        let destinationName = existing.activeBranch.name
+        startBranch(reason: "Merge from \(source.name)", baseline: output?.rewindKnownValues())
+        guard let mergedID = trail?.activeBranchID else { return false }
+        renameTangent(mergedID, to: "\(destinationName) + \(source.name)")
+        let moment = playhead + 0.001
+        for (name, value) in candidates { _ = trail?.record(param: name, value: value, at: moment) }
+        playback = nil
+        playhead = moment
+        peeking = false
+        if let tape = currentPlayback() { apply(tape) }
+        // The branch snapshot describes the state before the merge; never restore it over these sliders.
+        detached = false
+        rebuildLaneActivity()
+        scheduleSave()
+        publish(caption: "Merged \(candidates.count) settings · originals kept")
+        if !wasRewinding { endRewind(announce: false) }
+        return true
     }
 
     /// The badge's contents: nil on the original, so it only ever appears on a tangent.
@@ -551,11 +635,11 @@ public final class RewindEngine: ObservableObject {
 
     private func apply(_ playback: TrailPlayback) {
         guard let output else { return }
-        let past = playback.values(at: playhead)
+        let past = playback.values(at: playhead, interpolateGaps: continuousScrub)
         for (param, pastValue) in past {
             // Peeking shows now without moving the playhead; otherwise the photo is the past.
             let shown = peeking ? (tipValues[param] ?? pastValue) : pastValue
-            if let sent = lastSent[param], abs(sent - shown) < 0.0008 { continue }
+            if let sent = lastSent[param], abs(sent - shown) < 0.000001 { continue }
             lastSent[param] = shown
             output.rewindSetParameter(param, value: shown)
         }
@@ -581,7 +665,7 @@ public final class RewindEngine: ObservableObject {
     }
 
     /// How close the playhead has to be to count as standing on a landmark.
-    static let landmarkWindow: TimeInterval = 0.25
+    static let landmarkWindow: TimeInterval = 0.000001
 
     // MARK: - Readout
 
@@ -661,7 +745,7 @@ public final class RewindEngine: ObservableObject {
 
     func buildState(caption: String) -> RewindState {
         guard let playback = currentPlayback() else { return .empty }
-        let values = peeking ? tipValues : playback.values(at: playhead)
+        let values = peeking ? tipValues : playback.values(at: playhead, interpolateGaps: continuousScrub)
         var knobs: [RewindKnobValue] = []
         for entry in knobParams {
             let value = values[entry.param] ?? LightroomBridge.neutralValue(for: entry.param)

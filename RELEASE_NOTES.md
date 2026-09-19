@@ -1,3 +1,22 @@
+# PanaLux v1.2.0
+
+Rewind responds to every small ring movement, with precise recorded stops and velocity-sensitive travel. Sparse continuous slider edits interpolate while scrubbing; discrete and structural changes keep their boundaries. The timeline and stronger rounded perimeter ticks follow the same playhead without delayed position easing. The edge light holds briefly at pauses, then fades.
+
+- One PanaLux process owns the panel, bridge and overlays, even when launched from different copies. Rewind retries a held request when Lightroom supplies the photo identity late.
+- PanaLux Bridge 6.3.0.5 resends photo identity on refresh and tolerates missing mask values/ranges without nil arithmetic. Reload the updated plugin in Lightroom's Plug-in Manager.
+- **Program Buttons** lets every physical button select its tap or hold without sending edits. Drop an action onto the selected key. Holds accept keyboard shortcuts and Rewind actions; mode-specific tap/hold assignments remain separate.
+- **Tangents** names saved versions, opens a chosen version and merges checked recorded sliders into a new tangent. Both sources stay saved. This merge excludes local mask sliders and crop; it does not merge opaque mask/settings tables.
+- **BYPASS** defaults to the repeatable Lightroom backslash Before/After toggle. Existing saved maps keep their assignments; choose **Before / After (Toggle)** to change one.
+- Wider mode readouts and shorter mask instructions improve legibility. The intro and tour explain programming, fractional travel, tangents and merging.
+- An optional Settings layout uses the centre ring for travel, left for landmarks and right for tangents. Existing outer-ring assignments are preserved until chosen. Trackballs rest during Rewind; release Undo to grade.
+- Sparkle updates are available from **Check for Updates…**, backed by signed update archives and an HTTPS feed. Earlier releases require one manual upgrade to gain this feature.
+
+This release is Developer ID signed. Notarization remains unavailable while the Apple account issue is unresolved. Real mask/crop settings-table fidelity remains dependent on Lightroom SDK behavior; the nil-value regression checks do not establish complete structural roundtrip coverage.
+
+See [update publishing instructions](Docs/UPDATES.md).
+
+---
+
 # PanaLux v1.1.0
 
 **Now featuring Rewind+.** Hold Undo and watch your edit un-edit itself. Then branch it.

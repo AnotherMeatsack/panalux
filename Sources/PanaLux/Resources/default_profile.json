@@ -216,7 +216,7 @@
       "enter_layer": "MASK"
     },
     "BYPASS": {
-      "action": "lr_menu:select_all"
+      "action": "key:\\"
     },
     "DISABLE": {
       "action": "lr_menu:sync"

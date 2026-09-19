@@ -109,11 +109,7 @@ public struct MapInspectorView: View {
                             .disabled(KeyCommands.parse("key:" + shortcutText.trimmingCharacters(in: .whitespaces)) == nil)
                         }.padding(.top, 6)
                     }
-                    if let layer = editLayer {
-                        layerKeyCard(c, layer: layer)
-                    } else {
-                        buttonSlots(c)
-                    }
+                    buttonSlots(c)
                 } else if PanelLayout.isBall(c) {
                     ballCard(c)
                 } else {
@@ -142,9 +138,13 @@ public struct MapInspectorView: View {
             if let new, !PanelLayout.isButton(new) {
                 // keep inspectorHoldEdit
             } else {
-                engine.inspectorHoldEdit = (isButton && assignSlot == .hold && editLayer == nil) ? new : nil
+                engine.inspectorHoldEdit = (isButton && assignSlot == .hold) ? new : nil
             }
             engine.mapStatusMessage = ""
+        }
+        .onChange(of: engine.programmingHoldControl) { _, held in
+            if let held { selectedControl = held; assignSlot = .hold }
+            else if engine.isProgrammingButtons { assignSlot = .tap }
         }
         .onChange(of: assignSlot) { _, slot in
             engine.inspectorHoldEdit = (isButton && slot == .hold) ? control : nil
@@ -226,7 +226,7 @@ public struct MapInspectorView: View {
             .background(engine.swapSource == c ? Capsule().fill(Color.accentColor.opacity(0.3)) : nil)
             .help("Trade assignments with another control of the same kind")
             Spacer()
-            if isButton && editLayer == nil {
+            if isButton {
                 Menu {
                     Button("Clear On Tap") { engine.clearControl(c, slot: .tap) }
                     Button("Clear While Held") { engine.clearControl(c, slot: .hold) }
@@ -249,7 +249,7 @@ public struct MapInspectorView: View {
     // MARK: Buttons
 
     private func buttonSlots(_ c: String) -> some View {
-        let spec = engine.profile.buttons[c]
+        let spec = editLayer.flatMap { engine.profile.layers[$0]?.buttons?[c] } ?? engine.profile.buttons[c]
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 slotCard(title: "On tap", detail: tapSummary(spec), active: assignSlot == .tap) {
@@ -260,7 +260,7 @@ public struct MapInspectorView: View {
                 }
             }
             Text(assignSlot == .hold
-                 ? "Pick a mode, Fine, Compare, or a slider. Or hold the key on the panel and drop sliders onto knobs."
+                 ? "Choose an action or mode for this hold. The tap stays unchanged."
                  : "Pick a command below, or drag a tile onto the key.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -497,7 +497,7 @@ public struct MapInspectorView: View {
 
     private var featuredTitle: String {
         guard let c = control else { return "Popular" }
-        if isButton { return assignSlot == .hold && editLayer == nil ? "For holding" : "Popular commands" }
+        if isButton { return assignSlot == .hold ? "For holding" : "Popular commands" }
         return PanelLayout.isRing(c) ? "Good on a ring" : "Popular sliders"
     }
 
@@ -508,7 +508,7 @@ public struct MapInspectorView: View {
                    "Temperature", "Tint", "Vibrance", "Saturation", "Texture", "Clarity", "Dehaze",
                    "PostCropVignetteAmount", "GrainAmount", "LensBlurAmount", "straightenAngle",
                    "NextPrev", "ZoomInOut", "PresetPreviousNext", "ChangeBrushSize"]
-        } else if assignSlot == .hold && editLayer == nil {
+        } else if assignSlot == .hold {
             ids = ["hold_layer:MIXER", "hold_layer:TRANSFORM", "hold_layer:MASK", "hold_layer:CROP",
                    "hold_layer:CULL", "hold_layer:TONE", "hold_layer:DETAIL", "hold_layer:EFFECTS",
                    "hold_layer:LENS", "hold_layer:PRESETS", "modifier:FINE", "hold_compare",
@@ -575,7 +575,7 @@ public struct MapInspectorView: View {
 
     private func currentKeyIds(_ c: String) -> Set<String> {
         if let layer = editLayer {
-            return ids(for: engine.profile.layers[layer]?.buttons?[c], hold: false)
+            return ids(for: engine.profile.layers[layer]?.buttons?[c], hold: assignSlot == .hold)
         }
         return ids(for: engine.profile.buttons[c], hold: assignSlot == .hold)
     }
@@ -604,7 +604,7 @@ public struct MapInspectorView: View {
     private func assign(_ item: CatalogCommand) {
         guard let c = control else { return }
         if isButton {
-            engine.applyDroppedCommand(commandId: item.id, ontoControl: c, preferHold: assignSlot == .hold && editLayer == nil)
+            engine.applyDroppedCommand(commandId: item.id, ontoControl: c, preferHold: assignSlot == .hold)
         } else {
             engine.applyDroppedCommand(commandId: item.id, ontoControl: c)
         }

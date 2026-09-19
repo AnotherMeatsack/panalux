@@ -123,6 +123,7 @@ local function GetMinMax(param, lr_value, ignorefineness)
     return lr_low, lr_max
   else --getminmax when fineness in effect, recalc limits if lr value outside of finelimits or limits missing
     lr_value = lr_value or LrDevelopController.getValue(param)
+    if type(lr_value) ~= 'number' then return nil end
     if FineLimits[param] ~= nil and FineLimits[param][1] <= lr_value and FineLimits[param][2] >= lr_value then
       return FineLimits[param][1], FineLimits[param][2]
     else
@@ -148,6 +149,7 @@ end
 local function ClampValue(param)
   local value = LrDevelopController.getValue(param)
   local min, max = GetMinMax(param, value)
+  if type(value) ~= 'number' or type(min) ~= 'number' or type(max) ~= 'number' or max <= min then return end
   if value < min then
     MIDI2LR.PARAM_OBSERVER[param] = min
     LrDevelopController.setValue(param, min)
@@ -163,6 +165,7 @@ local function MIDIValueToLRValue(param, midi_value)
   -- map midi range to develop parameter range
   -- expects midi_value 0.0-1.0, doesn't protect against out-of-range
   local min,max = GetMinMax(param)
+  if type(midi_value) ~= 'number' or type(min) ~= 'number' or type(max) ~= 'number' or max <= min then return nil end
   return midi_value * (max-min) + min
 end
 
@@ -171,6 +174,8 @@ local function LRValueToMIDIValue(param, lr_value) -- lr_value optional
   -- map develop parameter range to midi range
   lr_value = lr_value or LrDevelopController.getValue(param)
   local min,max = GetMinMax(param,lr_value)
+  -- A missing local value means no selected mask, not a slider at zero.
+  if type(lr_value) ~= 'number' or type(min) ~= 'number' or type(max) ~= 'number' or max <= min then return nil end
   local retval = (lr_value-min)/(max-min)
   if retval > 1 then return 1 end
   if retval < 0 then return 0 end
@@ -190,8 +195,10 @@ local function RefreshMidiController()
       local midi_val_bottom = LRValueToMIDIValue('CropBottom')
       local midi_val_top = LRValueToMIDIValue('CropTop')
       local midi_val_left = LRValueToMIDIValue('CropLeft')
+      if midi_val_bottom and midi_val_top and midi_val_left then
       MIDI2LR.SERVER:send(string.format('CropBottomRight %g\nCropBottomLeft %g\nCropAll %g\nCropTopRight %g\nCropTopLeft %g\nCropMoveVertical %g\nCropMoveHorizontal %g\n',
           midi_val_bottom,midi_val_bottom,midi_val_bottom,midi_val_top,midi_val_top,midi_val_top,midi_val_left))
+      end
       local sel_mask = LrDevelopController.getSelectedMask()
       for param,altparam in pairs(Database.Parameters) do
         LrTasks.yield()
@@ -208,7 +215,7 @@ local function RefreshMidiController()
           end
         end
         local min,max = GetMinMax(param,lrvalue)
-        if type(min) == 'number' and type(max) == 'number' and type(lrvalue) == 'number' then
+        if type(min) == 'number' and type(max) == 'number' and type(lrvalue) == 'number' and max > min then
           local midivalue = (lrvalue-min)/(max-min)
           if midivalue >= 1.0 then
             MIDI2LR.SERVER:send(string.format('%s 1.0\n', param))

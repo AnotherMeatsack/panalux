@@ -129,11 +129,16 @@ public class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(action("Take the Hands-On Tour", #selector(openTutorial), key: "", symbol: "sparkles"))
         menu.addItem(action("Setup Assistant…", #selector(openSetup), key: "", symbol: "checklist"))
         menu.addItem(action("Report a Bug…", #selector(reportBug), key: "", symbol: "exclamationmark.bubble"))
+        menu.addItem(action("Check for Updates…", #selector(checkForUpdates), key: "", symbol: "arrow.down.circle"))
+        menu.addItem(action("Tangents…", #selector(openTangents), key: "", symbol: "arrow.triangle.branch"))
         menu.addItem(action("Settings…", #selector(openSettings), key: ",", symbol: "gearshape"))
 
         menu.addItem(.separator())
         menu.addItem(action("Quit PanaLux", #selector(quitApp), key: "q", symbol: nil))
     }
+
+    @MainActor @objc private func checkForUpdates() { AppUpdater.shared.checkForUpdates() }
+    @objc private func openTangents() { TangentWindowController.shared.show() }
 
     private func status(_ text: String, ok: Bool?) -> NSMenuItem {
         let item = NSMenuItem(title: text, action: nil, keyEquivalent: "")

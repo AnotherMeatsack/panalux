@@ -17,3 +17,7 @@ are the plugin's command identifiers, which PanaLux needs in order to talk to it
 
 PanaLux uses only frameworks that ship with macOS (SwiftUI, AppKit, IOKit, Network, WebKit,
 ServiceManagement). It has no other third-party code or packages.
+
+## Sparkle
+
+PanaLux embeds Sparkle 2.10.0, the open-source macOS update framework. Its copyright and license are included in the app as `Sparkle-LICENSE.txt`. Source: https://github.com/sparkle-project/Sparkle

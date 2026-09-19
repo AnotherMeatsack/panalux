@@ -6,7 +6,7 @@ import tempfile
 
 root = Path(__file__).resolve().parents[2]
 lua = sys.argv[1] if len(sys.argv) > 1 else 'lua'
-for name in ('ReportedRangesTests.lua', 'PointCurveTests.lua'):
+for name in ('ReportedRangesTests.lua', 'PointCurveTests.lua', 'MissingValuesTests.lua'):
     subprocess.run([lua, str(root / 'Tests' / 'Bridge' / name)], cwd=root, check=True)
 source = (root / 'Packaging/PanaLux Bridge.lrplugin/ClientUtilities.lua').read_text()
 start = source.index('local function PointCurveUpDown(')

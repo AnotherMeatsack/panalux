@@ -2,7 +2,9 @@
 
 # PanaLux
 
-**One panel. Every job.** Now featuring **Rewind+**.
+**One panel. Every job.** Rewind+, tangents, and customizable controls.
+
+[What changed in 1.2.0](RELEASE_NOTES.md) · [Downloads](https://github.com/AnotherMeatsack/panalux/releases/latest)
 
 I bought a Micro Color Panel for Resolve. I also edit stills. I wanted the panel I already paid for to do more than one job.
 
@@ -18,12 +20,16 @@ macOS 14 or later, a Blackmagic Micro Color Panel connected over USB-C, and Ligh
 
 ## Install
 
-1. Download the DMG from this repository's Releases page.
-2. Drag PanaLux to Applications and open it.
+1. Download the ZIP or DMG from this repository's Releases page.
+2. Extract the ZIP if needed, then drag PanaLux to Applications and open it.
 3. PanaLux is not notarized. For the first launch, go to **System Settings > Privacy & Security > Open Anyway**.
 4. Run the setup assistant. Install PanaLux Bridge, then check the Lightroom and panel connections. Grant Accessibility permission for functions such as Photoshop, copy/paste, and sync.
 
 You can replay the intro from the menu bar. The hands-on tour advances when you actually turn a knob or hold a key. You can follow it with Lightroom on another display.
+
+Updates from 1.2 onward are available through **Check for Updates…** in the menu bar or Settings. Versions before 1.2 need a manual upgrade first.
+
+Open **Tangents** to name and compare versions or merge selected sliders into a new tangent. Both source versions survive. Masks and crop are excluded from selective slider merges.
 
 ## What the panel does
 
@@ -38,6 +44,8 @@ Use both hands. Several knobs, all three balls, and the rings can move together.
 ## Hold a key. Get a new panel.
 
 Hold Up Shift and the first eight knobs become the eight Color Mixer bands. Let go and they return to their previous jobs. A tap can also leave a mode on until you tap again.
+
+Turn on **Program Buttons** in the toolbar to assign without editing a photo. Press any physical button for **On tap**, or hold it for **While held**, then drop an action onto the key. Turn programming off when finished.
 
 Every key has separate **On tap** and **While held** assignments. The table below is the factory map, not a fixed set of rules.
 

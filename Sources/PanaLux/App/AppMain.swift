@@ -5,6 +5,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Before anything reads settings or the map.
         AppPaths.ensureSupportDir()
+        SingleInstance.enter()
         ProfileStore.backup(reason: "launch")
     }
 
@@ -14,7 +15,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         NotchHUDWindowController.shared.setup()
         ToolWheelWindowController.shared.setup()
+        RewindEdgeWindowController.shared.setup()
         MenuBarController.shared.setup()
+        AppUpdater.shared.start()
 
         let settings = AppSettings.shared
         let firstRun = !settings.hasCompletedOnboarding

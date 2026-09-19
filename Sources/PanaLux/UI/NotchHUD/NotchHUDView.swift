@@ -44,7 +44,7 @@ public struct NotchHUDView: View {
                         .animation(.smooth(duration: 0.18), value: nameKey)
                     }
                 }
-                .frame(minWidth: 260, maxWidth: isRewind ? NotchHUDWindowController.rewindWidth : 400)
+                .frame(minWidth: 260, maxWidth: NotchHUDWindowController.width(for: displayedMode))
                 .padding(.horizontal, 4)
                 .padding(.vertical, 2)
                 .modifier(HUDChrome())
