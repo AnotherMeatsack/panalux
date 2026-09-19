@@ -10,8 +10,8 @@ struct ControlHelpRow: Identifiable {
     static func rows(profile: Profile) -> [ControlHelpRow] {
         let db = CommandDatabase.shared
         func label(_ value: String?) -> String { value.map { db.label(for: $0) } ?? "Not assigned" }
-        var rows = PanelLayout.knobs.enumerated().map { i, id in
-            ControlHelpRow(id: id, control: "Knob \(i + 1) · \(PanelLayout.label(forControl: id))", action: label(profile.knobs[id]?.param), hold: "")
+        var rows = PanelLayout.knobs.map { id in
+            ControlHelpRow(id: id, control: PanelLayout.label(forControl: id), action: label(profile.knobs[id]?.param), hold: "")
         }
         rows += PanelLayout.rings.map { id in .init(id: id, control: PanelLayout.label(forControl: id), action: label(profile.rings[id]?.param), hold: "") }
         rows += PanelLayout.balls.map { id in
@@ -47,6 +47,12 @@ struct ControlHelpView: View {
     var close: () -> Void
     @State private var query = ""
 
+    private var matchingRows: [ControlHelpRow] {
+        ControlHelpRow.rows(profile: engine.currentHelpProfile()).filter {
+            query.isEmpty || "\($0.control) \($0.action) \($0.hold)".localizedCaseInsensitiveContains(query)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -69,9 +75,11 @@ struct ControlHelpView: View {
             }.font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(ControlHelpRow.rows(profile: engine.currentHelpProfile()).filter {
-                        query.isEmpty || "\($0.control) \($0.action) \($0.hold)".localizedCaseInsensitiveContains(query)
-                    }) { row in
+                    if matchingRows.isEmpty {
+                        Text("No matching controls. Try a key name or Lightroom command.")
+                            .foregroundStyle(.secondary).padding(.vertical, 24)
+                    }
+                    ForEach(matchingRows) { row in
                         HStack(alignment: .top, spacing: 12) {
                             Text(row.control).frame(width: 170, alignment: .leading)
                             Text(row.action).frame(maxWidth: .infinity, alignment: .leading)

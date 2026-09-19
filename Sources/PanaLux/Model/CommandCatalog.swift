@@ -237,8 +237,6 @@ public class CommandCatalog: ObservableObject {
                 ("ParametricMidtoneSplit", "Curve · Midtone Split", true),
                 ("ParametricHighlightSplit", "Curve · Highlight Split", true),
                 ("CurveRefineSaturation", "Curve · Refine Saturation", true),
-                ("PointCurveBlacksUpDown", "Point Curve · Black Point", true),
-                ("PointCurveHighlightsUpDown", "Point Curve · White Point", true),
                 ("PointCurveLinear", "Point Curve · Linear", false),
                 ("PointCurveMediumContrast", "Point Curve · Medium Contrast", false),
                 ("PointCurveStrongContrast", "Point Curve · Strong Contrast", false)
