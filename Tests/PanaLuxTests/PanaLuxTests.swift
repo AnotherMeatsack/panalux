@@ -301,6 +301,58 @@ final class CommandCatalogTests: XCTestCase {
         XCTAssertNotNil(CommandCatalog.shared.command(for: "ShoVwdevelop_before_after_horiz"))
     }
 
+    /// The save that needed two presses. Photoshop wrote the file but replied with nothing, and the
+    /// check that trusted the reply called it a failure. The path is now decided up front.
+    func testTheBlendIsSavedBesideTheSourceAndTheReplyDoesNotDecideIt() {
+        let stamp = "20260918-144245"
+        let fallback = "/Users/x/Pictures/Panel Handoff"
+
+        // The case from the log: the stack was opened from a RAW, so the blend goes beside it,
+        // exactly where the catalog already has the folder.
+        let raw = PhotoshopBridge.SavePlan(docPath: "/Volumes/T5/untitled folder 3/101EOSR5/235A0042.CR3",
+                                           docName: "235A0042.CR3", stamp: stamp, fallbackFolder: fallback)
+        XCTAssertFalse(raw.writable)
+        XCTAssertEqual(raw.primary, "/Volumes/T5/untitled folder 3/101EOSR5/235A0042-blend-20260918-144245.tif")
+        XCTAssertEqual(raw.alternate, "/Users/x/Pictures/Panel Handoff/235A0042-blend-20260918-144245.tif")
+
+        // Already a TIFF: saved in place, no new file.
+        let tif = PhotoshopBridge.SavePlan(docPath: "/Volumes/T5/a/b/235A0042-blend-x.tif",
+                                           docName: "235A0042-blend-x.tif", stamp: stamp, fallbackFolder: fallback)
+        XCTAssertTrue(tif.writable)
+        XCTAssertEqual(tif.primary, "/Volumes/T5/a/b/235A0042-blend-x.tif")
+
+        // An unsaved stack has no folder of its own, so it goes to the hand-off folder.
+        let untitled = PhotoshopBridge.SavePlan(docPath: "", docName: "Untitled-1", stamp: stamp, fallbackFolder: fallback)
+        XCTAssertFalse(untitled.writable)
+        XCTAssertEqual(untitled.primary, untitled.alternate)
+        XCTAssertEqual(untitled.primary, "/Users/x/Pictures/Panel Handoff/Untitled-1-blend-20260918-144245.tif")
+
+        // Only the last extension goes, and spaces are fine; a missing name falls back to the file's.
+        let dotted = PhotoshopBridge.SavePlan(docPath: "/v/IMG 0042.final.CR3", docName: "IMG 0042.final.CR3",
+                                              stamp: stamp, fallbackFolder: fallback)
+        XCTAssertEqual(dotted.primary, "/v/IMG 0042.final-blend-20260918-144245.tif")
+        let unnamed = PhotoshopBridge.SavePlan(docPath: "/v/IMG_1.CR3", docName: "", stamp: stamp, fallbackFolder: fallback)
+        XCTAssertEqual(unnamed.primary, "/v/IMG_1-blend-20260918-144245.tif")
+    }
+
+    func testAFileCountsAsSavedOnlyIfItIsFreshAndNotEmpty() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let good = dir.appendingPathComponent("good.tif").path
+        let empty = dir.appendingPathComponent("empty.tif").path
+        try Data(repeating: 1, count: 4096).write(to: URL(fileURLWithPath: good))
+        try Data().write(to: URL(fileURLWithPath: empty))
+
+        let before = Date().addingTimeInterval(-60)
+        XCTAssertEqual(PhotoshopBridge.freshFileSize(at: good, since: before), 4096)
+        XCTAssertNil(PhotoshopBridge.freshFileSize(at: empty, since: before), "an empty file is not a save")
+        XCTAssertNil(PhotoshopBridge.freshFileSize(at: dir.appendingPathComponent("missing.tif").path, since: before))
+        XCTAssertNil(PhotoshopBridge.freshFileSize(at: "", since: before))
+        // A file from an earlier press is not this press's save.
+        XCTAssertNil(PhotoshopBridge.freshFileSize(at: good, since: Date().addingTimeInterval(60)))
+    }
+
     func testCuratedTilesUseRealCommands() {
         // Local ids come from one list so a new Photoshop action can't quietly
         // slip past this check.

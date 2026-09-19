@@ -75,7 +75,7 @@ public class PhotoshopBridge {
         busyLock.lock()
         if isBusy {
             busyLock.unlock()
-            completion(.success("Still working…"))
+            completion(.success(phase == .blending ? "Saving your blend… one press is enough" : "Still working…"))
             return
         }
         isBusy = true
@@ -550,78 +550,142 @@ public class PhotoshopBridge {
         }
     }
     
+    /// Where a blend is saved, decided here rather than inside Photoshop's script. The script used to
+    /// work the path out itself and report it back, and for a document opened from a RAW that reply
+    /// came back empty even though the file was written: the check that trusted the reply then called
+    /// a good save a failure, and the key had to be pressed twice. Now the path is known up front and
+    /// "saved" means a fresh, non-empty file is on disk, whatever Photoshop says.
+    struct SavePlan: Equatable {
+        /// A document that is already a TIFF/PSD/JPEG/PNG file is saved in place; anything else
+        /// (a RAW the stack was opened from, an untitled stack) is saved as a new TIFF.
+        let writable: Bool
+        /// Beside the source photos, so Lightroom finds it; or the hand-off folder for an unsaved stack.
+        let primary: String
+        /// Where it goes if the first place refuses (a read-only drive).
+        let alternate: String
+
+        static let writableSuffixes = [".tif", ".tiff", ".psd", ".psb", ".jpg", ".jpeg", ".png"]
+
+        static func isWritable(_ path: String) -> Bool {
+            !path.isEmpty && writableSuffixes.contains { path.lowercased().hasSuffix($0) }
+        }
+
+        init(docPath: String, docName: String, stamp: String, fallbackFolder: String) {
+            writable = Self.isWritable(docPath)
+            let named = docName.isEmpty ? URL(fileURLWithPath: docPath).lastPathComponent : docName
+            var base = (named as NSString).deletingPathExtension
+            if base.isEmpty { base = "Untitled" }
+            let file = "\(base)-blend-\(stamp).tif"
+            alternate = (fallbackFolder as NSString).appendingPathComponent(file)
+            if writable {
+                primary = docPath
+            } else if docPath.isEmpty {
+                primary = alternate
+            } else {
+                primary = ((docPath as NSString).deletingLastPathComponent as NSString).appendingPathComponent(file)
+            }
+        }
+    }
+
+    /// The size of a file that was written after `since`, or nil when it is missing, empty or stale.
+    static func freshFileSize(at path: String, since: Date) -> Int? {
+        guard !path.isEmpty,
+              let attrs = try? FileManager.default.attributesOfItem(atPath: path),
+              let size = (attrs[.size] as? NSNumber)?.intValue, size > 0,
+              let modified = attrs[.modificationDate] as? Date, modified >= since else { return nil }
+        return size
+    }
+
+    /// A string as a JavaScript literal, quotes and backslashes and all.
+    private static func jsLiteral(_ text: String) -> String {
+        guard let data = try? JSONEncoder().encode(text), let out = String(data: data, encoding: .utf8) else {
+            return "\"\""
+        }
+        return out
+    }
+
     private func flattenAndSave() throws -> String {
         activatePhotoshop()
         Thread.sleep(forTimeInterval: 0.2)
         let saveTarget = targetDocumentID.map { "__d(\($0))" } ?? "app.activeDocument"
         let probe = (try? photoshopJS(
             Self.docByIDPrelude()
-            + "app.displayDialogs=DialogModes.NO; if(app.documents.length<1){'0|';} else { var d=\(saveTarget); if(!d){'0|';} else { var p=''; try{p=d.fullName.fsName;}catch(e){p='';} d.layers.length + '|' + p; } }"
+            + "app.displayDialogs=DialogModes.NO; if(app.documents.length<1){'0||';} else { var d=\(saveTarget); if(!d){'0||';} else { var p=''; try{p=d.fullName.fsName;}catch(e){p='';} d.layers.length + '|' + p + '|' + d.name; } }"
         )) ?? ""
-        let parts = probe.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)
+        let parts = probe.split(separator: "|", maxSplits: 2, omittingEmptySubsequences: false)
         let layerCount = Int(parts.first ?? "0") ?? 0
         let docPath = parts.count > 1 ? String(parts[1]) : ""
-        let isRaw = !docPath.isEmpty && ![".tif", ".tiff", ".psd", ".psb", ".jpg", ".jpeg", ".png"].contains(where: {
-            docPath.lowercased().hasSuffix($0)
-        })
-        if isRaw && layerCount <= 1 {
+        let docName = parts.count > 2 ? String(parts[2]) : ""
+        if !docPath.isEmpty, !SavePlan.isWritable(docPath), layerCount <= 1 {
             return "\(URL(fileURLWithPath: docPath).lastPathComponent) is a single-layer RAW. open the layered blend first"
         }
 
         let fallback = sourceFolder ?? handoffDir
         try FileManager.default.createDirectory(atPath: fallback, withIntermediateDirectories: true)
-        let stamp = Self.timestamp()
-        let fallbackJS = fallback.replacingOccurrences(of: "\\", with: "/").replacingOccurrences(of: "\"", with: "")
+        let plan = SavePlan(docPath: docPath, docName: docName, stamp: Self.timestamp(), fallbackFolder: fallback)
         let js = Self.docByIDPrelude() + """
         app.displayDialogs = DialogModes.NO;
         try {
           if (app.documents.length < 1) { throw "no document"; }
           var d = \(saveTarget);
           if (!d) { throw "the blend this send produced is no longer open"; }
-          var folder = null, base = d.name.replace(/\\.[^.]+$/, "");
-          try { folder = d.path.fsName; } catch (e) { folder = null; }
-          var writable = false;
-          try { writable = /\\.(psd|psb|tif|tiff|jpg|jpeg|png)$/i.test(d.fullName.fsName); } catch (e) { writable = false; }
           var o = new TiffSaveOptions();
           o.imageCompression = TIFFEncoding.TIFFLZW;
           o.layers = false;
           d.flatten();
           var out;
           try {
-            if (writable) {
+            if (\(plan.writable)) {
               d.save();
-              out = d.fullName.fsName;
+              out = \(Self.jsLiteral(plan.primary));
             } else {
-              if (folder === null) { folder = "\(fallbackJS)"; }
-              var f = new File(folder + "/" + base + "-blend-\(stamp).tif");
+              var f = new File(\(Self.jsLiteral(plan.primary)));
               d.saveAs(f, o, false, Extension.LOWERCASE);
               out = f.fsName;
             }
           } catch (eSave) {
-            folder = "\(fallbackJS)";
-            var f2 = new File(folder + "/" + base + "-blend-\(stamp).tif");
+            var f2 = new File(\(Self.jsLiteral(plan.alternate)));
             d.saveAs(f2, o, true, Extension.LOWERCASE);
             out = f2.fsName;
           }
           out;
         } catch (e) { "ERR:" + e; }
         """
-        let out = try photoshopJS(js).trimmingCharacters(in: .whitespacesAndNewlines)
-        if out.hasPrefix("ERR:") {
-            log("SAVE FAILED  \(out)")
-            throw makeError(500, "Photoshop couldn’t save: \(out.dropFirst(4))")
+        // A little slack: an external drive can stamp modification times to the whole second or two.
+        let startedAt = Date().addingTimeInterval(-3)
+        let reply = try photoshopJS(js).trimmingCharacters(in: .whitespacesAndNewlines)
+        if reply.hasPrefix("ERR:") {
+            log("SAVE FAILED  \(reply)")
+            throw makeError(500, "Photoshop couldn’t save: \(reply.dropFirst(4))")
         }
-        // Trust the disk, not the reply. The blend is only closed once a file with something in
-        // it is really there; until then it is still open and nothing has been lost.
-        let size = (try? FileManager.default.attributesOfItem(atPath: out)[.size] as? NSNumber)?.intValue ?? 0
-        guard !out.isEmpty, size > 0 else {
-            log("SAVE UNCONFIRMED  reply=\"\(out)\"  layers=\(layerCount)  doc=\(docPath.isEmpty ? "unsaved" : docPath)")
-            throw makeError(500, "Photoshop didn’t confirm the save. The blend is still open. Press Grab Still again.")
+
+        // Trust the disk, not the reply. The blend is closed only once a fresh file is really there;
+        // until then it is still open and nothing has been lost. The script is synchronous, so the
+        // file is normally there at once; the short wait is for a slow drive.
+        let candidates = [reply, plan.primary, plan.alternate].filter { !$0.isEmpty }
+        var savedPath = ""
+        var size = 0
+        for _ in 0..<20 {
+            if let hit = candidates.first(where: { Self.freshFileSize(at: $0, since: startedAt) != nil }),
+               let found = Self.freshFileSize(at: hit, since: startedAt) {
+                savedPath = hit
+                size = found
+                break
+            }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        guard !savedPath.isEmpty else {
+            log("SAVE UNCONFIRMED  reply=\"\(reply)\"  layers=\(layerCount)  wanted=\(plan.primary)")
+            throw makeError(500, "Photoshop didn’t write the file. The blend is still open. Press Grab Still again.")
+        }
+        if reply.isEmpty {
+            // Photoshop said nothing, but the file is there. Worth knowing, never worth failing over.
+            log("note: Photoshop returned no reply; the file is on disk")
         }
         closeActivePhotoshopDocument()
         targetDocumentID = nil
-        log("SAVED \(out)  (\(size / 1024) KB)")
-        return "Saved \(out)"
+        log("SAVED \(savedPath)  (\(size / 1024) KB)")
+        return "Saved \(savedPath)"
     }
 
     /// HUD-only. Do not call Photoshop JavaScript from the button-down path.
