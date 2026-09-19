@@ -452,6 +452,19 @@ final class RewindEngineTests: XCTestCase {
                        "letting go leaves the photo wherever the playhead is")
     }
 
+    func testImmediatePanelEditAfterReleaseBranchesFromExactPreview() {
+        start()
+        edit("Exposure", 0.2, secondsFromStart: 10)
+        edit("Exposure", 0.8, secondsFromStart: 20)
+        engine.beginRewind()
+        engine.scrub(units: -10)
+        let preview = lightroom.values["Exposure"]!
+        engine.endRewind()
+        engine.record(param: "Contrast", value: 0.7, userInitiated: true)
+        XCTAssertEqual(engine.trail!.branches.count, 2, "a real panel edit must bypass the echo-settle delay")
+        XCTAssertEqual(engine.trail!.activeBranch.keyframes.first?.values["Exposure"] ?? -1, preview, accuracy: 1e-6)
+    }
+
     func testBackToNowReturnsToTheTip() {
         start()
         edit("Exposure", 0.9, secondsFromStart: 4.0)
@@ -741,6 +754,10 @@ final class RewindTransportTests: XCTestCase {
         engine.scrub(units: 5, now: now.addingTimeInterval(0.3))
         XCTAssertEqual(engine.state.playhead, 18.75, accuracy: 0.0001)
         XCTAssertEqual(lightroom.values["Exposure"] ?? -1, 0.725, accuracy: 0.0001)
+        XCTAssertTrue(engine.state.caption.contains("Exposure"), engine.state.caption)
+        XCTAssertTrue(engine.state.caption.contains("back"), engine.state.caption)
+        engine.startBranch(reason: "Exact preview")
+        XCTAssertEqual(engine.trail!.activeBranch.keyframes.last?.values["Exposure"] ?? -1, 0.725, accuracy: 0.0001)
         engine.endRewind()
         XCTAssertEqual(lightroom.values["Exposure"] ?? -1, 0.725, accuracy: 0.0001)
     }
@@ -1420,5 +1437,28 @@ final class RewindEdgeTimingTests: XCTestCase {
         XCTAssertEqual(RewindEdgeEffect.glowEnergy(age: 0.625), 0.5, accuracy: 0.000001)
         XCTAssertEqual(RewindEdgeEffect.glowEnergy(age: 0.9), 0, accuracy: 0.000001)
         XCTAssertEqual(RewindEdgeEffect.glowEnergy(age: 0), 1, "resumed input immediately restores the hold")
+    }
+}
+
+final class RewindRefreshRegressionTests: XCTestCase {
+    func testRefreshBeyond64ControlsDoesNotCreatePhantomEdits() {
+        var trail = EditTrail(photoID: "test")
+        for i in 0..<150 { XCTAssertTrue(trail.record(param: "P\(i)", value: 0.5, at: 1)) }
+        for i in 0..<150 { XCTAssertFalse(trail.record(param: "P\(i)", value: 0.5, at: 2)) }
+        XCTAssertEqual(trail.activeBranch.events.count, 150)
+        XCTAssertTrue(trail.record(param: "P0", value: 0.50001, at: 3))
+    }
+
+    func testHistoricalRefreshNoiseIsFilteredWithoutDeletingSavedSamples() {
+        var trail = EditTrail(photoID: "test")
+        trail.record(param: "Exposure", value: 0.2, at: 1)
+        trail.record(param: "Exposure", value: 0.8, at: 10)
+        for i in 0..<150 {
+            trail.branches[0].events.append(TrailEvent(t: 10 + Double(i + 1) * 0.000001, param: "Exposure", value: 0.8))
+        }
+        let tape = trail.playback()
+        XCTAssertEqual(tape.series["Exposure"]?.count, 2)
+        XCTAssertLessThan(tape.stepTimes.count, 6)
+        XCTAssertEqual(trail.activeBranch.events.count, 152, "the saved history stays intact")
     }
 }

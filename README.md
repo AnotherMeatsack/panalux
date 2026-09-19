@@ -4,7 +4,7 @@
 
 **One panel. Every job.** Rewind+, tangents, and customizable controls.
 
-[What changed in 1.2.0](RELEASE_NOTES.md) · [Downloads](https://github.com/AnotherMeatsack/panalux/releases/latest)
+[What changed in 1.2.1](RELEASE_NOTES.md) · [Downloads](https://github.com/AnotherMeatsack/panalux/releases/latest)
 
 I bought a Micro Color Panel for Resolve. I also edit stills. I wanted the panel I already paid for to do more than one job.
 

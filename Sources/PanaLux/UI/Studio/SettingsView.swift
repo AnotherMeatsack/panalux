@@ -203,6 +203,7 @@ public struct SettingsView: View {
             }
             Text("Optional: centre ring travels, left ring visits landmarks, right ring compares tangents. Trackballs rest while rewinding; release Undo to grade. Map Undo restores your previous assignments.")
                 .font(.caption).foregroundStyle(.secondary)
+            Text(bridge.previewStatus).font(.caption).foregroundStyle(.secondary)
             Button("Reset Rewind feel") {
                 settings.rewindClickUnits = 40
                 settings.rewindAcceleration = 0.5

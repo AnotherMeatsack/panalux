@@ -1,3 +1,15 @@
+# PanaLux v1.2.1
+
+Restores useful feedback throughout fractional scrubbing: the current effect and interpolated value stay visible between recorded stops, with a detailed bottom readout and elapsed/total time.
+
+- Live previews now travel as coherent frames. PanaLux waits for Lightroom to apply and yield for rendering before sending the newest pending frame, preventing an ever-growing stream of individual slider updates. Bridge 6.3.0.6 must be reloaded in Lightroom Plug-in Manager; an older bridge falls back to legacy delivery.
+- Unchanged full-refresh reports no longer create hundreds of phantom editing stops. Existing redundant samples are skipped during playback without deleting saved history.
+- Tangent and mark snapshots wait behind pending preview delivery. The branch baseline retains the exact fractional slider values you chose, and a panel edit immediately after releasing Undo starts a tangent instead of being mistaken for a playback echo.
+
+Developer ID signed; not notarized. Selective merges still exclude mask and crop tables, whose complete Lightroom SDK roundtrip fidelity is not established.
+
+---
+
 # PanaLux v1.2.0
 
 Rewind responds to every small ring movement, with precise recorded stops and velocity-sensitive travel. Sparse continuous slider edits interpolate while scrubbing; discrete and structural changes keep their boundaries. The timeline and stronger rounded perimeter ticks follow the same playhead without delayed position easing. The edge light holds briefly at pauses, then fades.

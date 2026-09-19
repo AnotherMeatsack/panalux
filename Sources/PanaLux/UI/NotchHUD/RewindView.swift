@@ -718,7 +718,7 @@ struct KnobRoll: View {
                 )
             }
         }
-        .animation(.smooth(duration: 0.28), value: knobs)
+        .transaction { $0.animation = nil }
     }
 }
 
@@ -736,7 +736,7 @@ public struct RewindView: View {
     /// The window is sized to this: header, tape, lanes, knobs, and the padding between.
     public static func height(tangentCount: Int, hasKnobs: Bool) -> CGFloat {
         let lanes = TangentsMap.height(for: tangentCount)
-        return 66 + 112 + 8 + lanes + (hasKnobs ? 8 + 88 : 0) + 14
+        return 66 + 112 + 8 + lanes + (hasKnobs ? 8 + 88 : 0) + 44
     }
 
     public var body: some View {
@@ -752,6 +752,14 @@ public struct RewindView: View {
                         .frame(height: TangentsMap.height(for: state.tangents.count))
                 }
             }
+            .padding(.horizontal, 14)
+            HStack {
+                Text(state.caption).lineLimit(1).minimumScaleFactor(0.8)
+                Spacer(minLength: 4)
+                Text("\(RewindEngine.clock(state.playhead)) / \(RewindEngine.clock(state.tip))").monospacedDigit()
+            }
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.white.opacity(0.9))
             .padding(.horizontal, 14)
             if !state.knobs.isEmpty {
                 KnobRoll(knobs: state.knobs, accent: accent)
@@ -787,8 +795,8 @@ public struct RewindView: View {
                 Text(state.caption)
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundColor(.white.opacity(0.85))
-                    .lineLimit(1)
-                    .contentTransition(.opacity)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 6)
             transportMeter

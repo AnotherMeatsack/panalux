@@ -7,6 +7,7 @@ public protocol RewindOutput: AnyObject {
     /// Every develop value PanaLux currently believes in.
     func rewindKnownValues() -> [String: Double]
     func rewindRange(for param: String) -> ParameterRange?
+    func rewindSetParameters(_ values: [String: Double])
     func rewindSetParameter(_ name: String, value: Double)
     /// Ask the plugin for a full `getDevelopSettings()` table; the reply comes back by id.
     func rewindRequestSnapshot(token: String)
@@ -15,6 +16,9 @@ public protocol RewindOutput: AnyObject {
 }
 
 public extension RewindOutput {
+    func rewindSetParameters(_ values: [String: Double]) {
+        for (name, value) in values { rewindSetParameter(name, value: value) }
+    }
     func rewindRange(for param: String) -> ParameterRange? { nil }
 }
 
@@ -160,14 +164,14 @@ public final class RewindEngine: ObservableObject {
     // MARK: - Recording
 
     /// Every reported value change, whoever caused it — a knob, a mouse, a preset.
-    public func record(param: String, value: Double, at wall: Date = Date()) {
+    public func record(param: String, value: Double, at wall: Date = Date(), userInitiated: Bool = false) {
         // While scrubbing, the values coming back are our own playback. Recording them would
         // tape over the recording.
         guard !isRewinding, trail != nil else { return }
         guard !param.isEmpty else { return }
         // Letting go, or putting a settings table back, makes Lightroom resend everything a
         // moment later. None of that is editing, and none of it should start a branch.
-        guard wall >= ignoreRecordsUntil else { return }
+        guard userInitiated || wall >= ignoreRecordsUntil else { return }
         // Lightroom confirms what Rewind just wrote. That is the playback coming back, not an
         // edit: recording it would tape over the trail, and worse, would look like a new branch.
         if let sent = lastSent[param], abs(sent - value) < 0.000001 { return }
@@ -451,7 +455,7 @@ public final class RewindEngine: ObservableObject {
         // While rewinding, the mark belongs where the playhead is, not where the clock is.
         if isRewinding, let playback = currentPlayback() {
             _ = captureKeyframe(kind: .mark, label: "Mark", time: playhead,
-                                values: playback.values(at: playhead))
+                                values: playback.values(at: playhead, interpolateGaps: continuousScrub))
             publish(caption: "Marked")
         } else {
             _ = captureKeyframe(kind: .mark, label: "Mark")
@@ -636,13 +640,15 @@ public final class RewindEngine: ObservableObject {
     private func apply(_ playback: TrailPlayback) {
         guard let output else { return }
         let past = playback.values(at: playhead, interpolateGaps: continuousScrub)
+        var changed: [String: Double] = [:]
         for (param, pastValue) in past {
             // Peeking shows now without moving the playhead; otherwise the photo is the past.
             let shown = peeking ? (tipValues[param] ?? pastValue) : pastValue
             if let sent = lastSent[param], abs(sent - shown) < 0.000001 { continue }
             lastSent[param] = shown
-            output.rewindSetParameter(param, value: shown)
+            changed[param] = shown
         }
+        if !changed.isEmpty { output.rewindSetParameters(changed) }
     }
 
     /// Restoring a whole table is a catalog write, so it only happens where the playhead
@@ -706,17 +712,23 @@ public final class RewindEngine: ObservableObject {
 
     /// The parameter or parameters that moved at exactly this step, with the value they landed on.
     private func describeChange(at t: TimeInterval, in playback: TrailPlayback) -> String? {
-        var moved: [(name: String, text: String)] = []
+        // A fractional playhead almost never equals an event timestamp. Describe the
+        // surrounding edit using the exact values sent to the live preview.
+        let values = playback.values(at: t, interpolateGaps: continuousScrub)
+        var nearest: (time: TimeInterval, params: [String])?
         for param in playback.parameters.sorted() {
-            guard let events = playback.series[param],
-                  let e = events.first(where: { abs($0.t - t) < TrailPlayback.stepMerge }) else { continue }
-            moved.append((CommandDatabase.shared.shortLabel(for: param),
-                          ValueFormatter.format(param: param, value: e.value, range: output?.rewindRange(for: param))))
+            guard let events = playback.series[param] else { continue }
+            let event = events.first { $0.t >= t - 1e-9 } ?? events.last
+            guard let event else { continue }
+            let distance = abs(event.t - t)
+            if nearest == nil || distance < nearest!.time - 1e-9 { nearest = (distance, [param]) }
+            else if abs(distance - nearest!.time) < 1e-9 { nearest!.params.append(param) }
         }
-        guard let first = moved.first else { return nil }
-        var text = "\(first.name) \(first.text)"
-        if moved.count > 1 { text += " +\(moved.count - 1) more" }
-        return text
+        guard let param = nearest?.params.first, let value = values[param] else { return nil }
+        let name = CommandDatabase.shared.shortLabel(for: param)
+        let display = ValueFormatter.format(param: param, value: value, range: output?.rewindRange(for: param))
+        let extra = (nearest?.params.count ?? 0) > 1 ? " +\((nearest?.params.count ?? 1) - 1) more" : ""
+        return "\(name) \(display)\(extra) · \(RewindEngine.ago(playback.tip - t))"
     }
 
     /// "1:32" for a point on the tape.

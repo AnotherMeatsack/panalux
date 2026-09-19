@@ -188,6 +188,9 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         LightroomBridge.shared.onValueChanged = { name, value in
             rewind.record(param: name, value: value)
         }
+        LightroomBridge.shared.onLocalValueChanged = { name, value in
+            rewind.record(param: name, value: value, userInitiated: true)
+        }
         LightroomBridge.shared.onKeyframe = { token, blob in
             rewind.acceptSnapshot(token: token, blob: blob)
         }

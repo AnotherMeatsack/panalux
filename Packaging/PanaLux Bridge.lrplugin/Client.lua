@@ -822,6 +822,7 @@ LrTasks.startAsyncTask(
         end
       end,
       -- PanaLux Bridge: whole develop settings tables, for Rewind's keyframes.
+      PanaLuxPreview      = function(value) PanaLuxRewind.Preview(value) end,
       PanaLuxSnapshot     = function(value) PanaLuxRewind.SendSnapshot(value) end,
       PanaLuxRestoreBegin = function() PanaLuxRewind.RestoreBegin() end,
       PanaLuxRestoreChunk = function(value) PanaLuxRewind.RestoreChunk(value) end,

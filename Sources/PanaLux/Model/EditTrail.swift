@@ -193,16 +193,16 @@ public struct EditTrail: Codable, Equatable {
     @discardableResult
     public mutating func record(param: String, value: Double, at t: TimeInterval) -> Bool {
         let index = activeIndex
-        // A knob that is not moving still reports. Scanning only the tail keeps recording O(1);
-        // a repeat of a value always sits within a few events of its twin.
-        let events = branches[index].events
-        let window = events.index(events.endIndex, offsetBy: -64, limitedBy: events.startIndex) ?? events.startIndex
-        // Lightroom resends every value after any action, so most reports say nothing changed.
-        // The tape only needs the moments a number actually moved.
-        if let last = events[window...].last(where: { $0.param == param }),
-           abs(last.value - value) < 0.000000001 {
-            return false
-        }
+        // A full refresh contains more than 64 controls. Compare the latest value for this
+        // parameter, including the branch baseline, instead of recording refreshes as edits.
+        let branch = branches[index]
+        let lastEvent = branch.events.last { $0.param == param }
+        let lastFrame = branch.keyframes.last { $0.values[param] != nil }
+        let previous: Double?
+        if let frame = lastFrame, frame.t >= (lastEvent?.t ?? -.infinity) {
+            previous = frame.values[param]
+        } else { previous = lastEvent?.value }
+        if let previous, abs(previous - value) < 0.000000001 { return false }
         let clamped = max(0.0, min(1.0, value))
         branches[index].events.append(TrailEvent(t: max(t, branches[index].forkTime), param: param, value: clamped))
         // Preserve every recorded increment, including in long sessions.
@@ -372,10 +372,22 @@ public struct TrailPlayback: Equatable {
             }
             latest = max(latest, min(b.localTip, end))
         }
-        for key in grouped.keys {
-            grouped[key]?.sort { $0.t < $1.t }
-        }
         marks.sort { $0.t < $1.t }
+        for key in grouped.keys {
+            let events = (grouped[key] ?? []).sorted { $0.t < $1.t }
+            var retained: [TrailEvent] = []
+            var previous: Double?
+            var markIndex = 0
+            for event in events {
+                while markIndex < marks.count && marks[markIndex].t <= event.t {
+                    if let value = marks[markIndex].values[key] { previous = value }
+                    markIndex += 1
+                }
+                if previous.map({ abs($0 - event.value) < 1e-9 }) != true { retained.append(event) }
+                previous = event.value
+            }
+            grouped[key] = retained.isEmpty ? nil : retained
+        }
 
         let startTime = chain.first?.forkTime ?? 0
         self.series = grouped

@@ -94,6 +94,52 @@ local function PushSelection(force)
   end
 end
 
+-- A preview is one coherent frame, not hundreds of individual slider callbacks. Keep
+-- only the latest pending frame and yield so Lightroom can render between frames.
+local pendingPreview = nil
+local previewRunning = false
+local function Preview(payload)
+  local token, photoID, encoded = payload:match('^(%S+) (%S+) (.+)$')
+  if not token then return end
+  local values = {}
+  for name, value in encoded:gmatch('([%w_]+)=([%d%.eE%+%-]+)') do
+    local number = tonumber(value)
+    if number and number >= 0 and number <= 1 then values[name] = number end
+  end
+  pendingPreview = {token=token, photoID=photoID, values=values}
+  if previewRunning then return end
+  previewRunning = true
+  LrTasks.startAsyncTask(function()
+    while pendingPreview do
+      local frame = pendingPreview
+      pendingPreview = nil
+      local applied = 0
+      local ok = LrTasks.pcall(function()
+        local photo = LrApplication.activeCatalog():getTargetPhoto()
+        if photoIdentifier(photo) ~= frame.photoID or LrApplicationView.getCurrentModuleName() ~= 'develop' then return end
+        local develop = import 'LrDevelopController'
+        local limits = require 'Limits'
+        local database = require 'Database'
+        for name, value in pairs(frame.values) do
+          if database.Parameters[name] then
+            local current = develop.getValue(name)
+            local target = limits.MIDIValueToLRValue(name, value)
+            if type(current) == 'number' and type(target) == 'number' then
+              MIDI2LR.PARAM_OBSERVER[name] = target
+              if current ~= target then develop.setValue(name, target, false) end
+              applied = applied + 1
+            end
+          end
+        end
+      end)
+      -- In an async SDK task, this hands the Develop renderer a turn even during a hard spin.
+      LrTasks.sleep(0.03)
+      send(string.format('PanaLuxPreviewApplied %s %d %s\n', frame.token, applied, ok and 'ok' or 'error'))
+    end
+    previewRunning = false
+  end)
+end
+
 --[[ The whole table, serialised and sent in pieces. A settings table with masks in it is far
      longer than one socket line should carry. ]]
 local function SendSnapshot(token)
@@ -199,6 +245,7 @@ local function Probe()
 end
 
 return {
+  Preview = Preview,
   PushSelection = PushSelection,
   SendSnapshot  = SendSnapshot,
   RestoreBegin  = RestoreBegin,

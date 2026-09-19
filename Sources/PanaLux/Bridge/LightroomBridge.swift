@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import os
 
 public protocol LightroomBridgeDelegate: AnyObject {
     func lightroomConnectionStateChanged(isConnected: Bool)
@@ -37,6 +38,7 @@ public class LightroomBridge: ObservableObject {
     /// Every value change PanaLux knows about, whoever caused it: a knob here, or a mouse in
     /// Lightroom. This is what the trail records. Always called on the main thread.
     public var onValueChanged: ((String, Double) -> Void)?
+    public var onLocalValueChanged: ((String, Double) -> Void)?
     /// A settings table came back for a snapshot request, matched by the token that asked.
     public var onKeyframe: ((String, String) -> Void)?
 
@@ -66,6 +68,15 @@ public class LightroomBridge: ObservableObject {
     private var pendingValues: [String: Double] = [:]
     private var pendingOrder: [String] = []
     private var flushTimer: DispatchSourceTimer?
+    private var afterPreview: [() -> Void] = []
+    private let previewLog = Logger(subsystem: "com.panalux.app", category: "RewindPreview")
+    private var previewValues: [String: Double] = [:]
+    private var previewPhotoID: String?
+    private var previewUnavailable = false
+    private var previewInFlight: String?
+    private var previewTimeout: DispatchWorkItem?
+    /// Latest acknowledgement from Lightroom, useful for non-destructive runtime diagnostics.
+    @Published public private(set) var previewStatus = "No preview sent"
     private var batchInFlight = false
     private let flushInterval: DispatchTimeInterval = .milliseconds(40)
 
@@ -96,6 +107,11 @@ public class LightroomBridge: ObservableObject {
             self.pendingValues.removeAll()
             self.pendingOrder.removeAll()
             self.batchInFlight = false
+            self.previewValues.removeAll()
+            self.previewInFlight = nil
+            self.previewUnavailable = false
+            self.afterPreview.removeAll()
+            self.previewTimeout?.cancel()
         }
         publishConnection()
     }
@@ -231,6 +247,17 @@ public class LightroomBridge: ObservableObject {
                 absorbSelection(String(line.dropFirst("PanaLuxSelection ".count)))
                 continue
             }
+            if line.hasPrefix("PanaLuxPreviewApplied ") {
+                let fields = line.split(separator: " ").map(String.init)
+                if fields.count >= 4, fields[1] == previewInFlight {
+                    previewLog.notice("Lightroom preview acknowledged: \(fields[2], privacy: .public) sliders, \(fields[3], privacy: .public)")
+                    previewInFlight = nil
+                    previewTimeout?.cancel()
+                    DispatchQueue.main.async { self.previewStatus = "Applied \(fields[2]) sliders · \(fields[3])" }
+                    flushPreview()
+                }
+                continue
+            }
             if line.hasPrefix("PanaLuxRange ") {
                 let payload = String(line.dropFirst("PanaLuxRange ".count))
                 DispatchQueue.main.async { self.photoRanges.accept(payload) }
@@ -312,6 +339,8 @@ public class LightroomBridge: ObservableObject {
 
     /// Runs on `queue`. Remember the newest value and make sure a flush is coming.
     private func enqueueValue(_ name: String, _ value: Double) {
+        // A new manual edit after releasing Undo wins over an unsent preview value.
+        previewValues[name] = nil
         if pendingValues.updateValue(value, forKey: name) == nil {
             pendingOrder.append(name)
         }
@@ -349,6 +378,38 @@ public class LightroomBridge: ObservableObject {
         conn.send(content: Data(message.utf8), completion: .contentProcessed({ [weak self] _ in
             self?.queue.async { self?.batchInFlight = false }
         }))
+    }
+
+    /// Wait for Lightroom's apply/render acknowledgement, not just TCP acceptance. New
+    /// ring packets replace pending values while a frame is being displayed.
+    private func flushPreview() {
+        guard previewInFlight == nil else { return }
+        if previewValues.isEmpty {
+            let ready = afterPreview
+            afterPreview.removeAll()
+            ready.forEach { $0() }
+            return
+        }
+        guard let photoID = previewPhotoID, sendReady else { return }
+        let token = UUID().uuidString
+        let sentValues = previewValues
+        let encoded = previewValues.sorted { $0.key < $1.key }
+            .map { String(format: "%@=%.9f", $0.key, $0.value) }.joined(separator: ",")
+        previewValues.removeAll(keepingCapacity: true)
+        previewInFlight = token
+        sendRaw("PanaLuxPreview \(token) \(photoID) \(encoded)\n")
+        let timeout = DispatchWorkItem { [weak self] in
+            guard let self, self.previewInFlight == token else { return }
+            self.previewInFlight = nil
+            self.previewUnavailable = true
+            let fallback = sentValues.merging(self.previewValues) { _, latest in latest }
+            self.previewValues.removeAll()
+            for (name, value) in fallback { self.enqueueValue(name, value) }
+            DispatchQueue.main.async { self.previewStatus = "Legacy preview · reload PanaLux Bridge for smooth playback" }
+            self.flushPreview()
+        }
+        previewTimeout = timeout
+        queue.asyncAfter(deadline: .now() + 2, execute: timeout)
     }
 
     // MARK: - Values
@@ -437,7 +498,7 @@ public class LightroomBridge: ObservableObject {
         queue.async { self.enqueueValue(name, clamped) }
         // The plugin will not echo this back to us (it is our own move, inside the holdoff),
         // so the trail has to hear about it here.
-        if let hook = onValueChanged {
+        if let hook = onLocalValueChanged ?? onValueChanged {
             if Thread.isMainThread {
                 hook(name, clamped)
             } else {
@@ -490,7 +551,10 @@ public class LightroomBridge: ObservableObject {
     /// value socket as `PanaLuxKeyframe <token> …` and is matched by this token.
     public func requestDevelopSnapshot(token: String) {
         guard !isMuted else { return }
-        queue.async { self.sendRaw("PanaLuxSnapshot \(token)\n") }
+        queue.async {
+            self.afterPreview.append { self.sendRaw("PanaLuxSnapshot \(token)\n") }
+            self.flushPreview()
+        }
     }
 
     /// Hand a table back. This is what puts masks and crop back exactly as they were.
@@ -529,6 +593,29 @@ public class LightroomBridge: ObservableObject {
 extension LightroomBridge: RewindOutput {
     public func rewindRange(for param: String) -> ParameterRange? { parameterRange(for: param) }
     public func rewindKnownValues() -> [String: Double] { allKnownValues() }
+
+    public func rewindSetParameters(_ values: [String: Double]) {
+        guard !isMuted, let photoID = activePhotoID else { return }
+        lock.lock()
+        for (name, value) in values {
+            localValues[name] = value
+            lastSentTime[name] = Date()
+            updatedAt[name] = Date()
+        }
+        lock.unlock()
+        queue.async {
+            if self.previewUnavailable {
+                for (name, value) in values { self.enqueueValue(name, value) }
+                return
+            }
+            if self.previewPhotoID != photoID {
+                self.previewValues.removeAll()
+                self.previewPhotoID = photoID
+            }
+            self.previewValues.merge(values) { _, latest in latest }
+            self.flushPreview()
+        }
+    }
 
     public func rewindSetParameter(_ name: String, value: Double) {
         setParameter(name, value: value)
