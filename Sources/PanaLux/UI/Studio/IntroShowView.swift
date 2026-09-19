@@ -9,7 +9,7 @@ struct IntroShowView: View {
     @State private var sceneStart = Date()
     @FocusState private var focused: Bool
 
-    private let sceneLengths: [TimeInterval] = [7.0, 8.0, 8.0, 9.5, 18.0, 14.0, 18.0, 9.0, 60]
+    private let sceneLengths: [TimeInterval] = [7.0, 8.0, 8.0, 9.5, 18.0, 14.0, 18.0, IntroRewindDemo.length, 9.0, 60]
     private var sceneCount: Int { sceneLengths.count }
 
     var body: some View {
@@ -102,7 +102,7 @@ struct IntroShowView: View {
     }
 
     private func accent(_ scene: Int) -> Color {
-        [Color.orange, .cyan, .orange, .purple, .pink, .yellow, Color(red: 1.00, green: 0.72, blue: 0.30), .green, .orange][scene % 9]
+        [Color.orange, .cyan, .orange, .purple, .pink, .yellow, Color(red: 1.00, green: 0.72, blue: 0.30), RewindState.tangentColor(0), .green, .orange][scene % 10]
     }
 
     private var controls: some View {
@@ -149,7 +149,8 @@ struct IntroShowView: View {
         case 4: modesScene(t)
         case 5: holdToggleScene(t)
         case 6: maskWheelScene(t)
-        case 7: safetyScene(t)
+        case 7: rewindScene(t)
+        case 8: safetyScene(t)
         default: finaleScene(t)
         }
     }
@@ -386,6 +387,37 @@ struct IntroShowView: View {
         }
     }
 
+    /// Hold Undo. The readout here is the real one, driven by a scripted session, so the tape, the
+    /// lanes and the springs are exactly what the panel does.
+    private func rewindScene(_ t: TimeInterval) -> some View {
+        let frame = IntroRewindDemo.frame(at: t)
+        let accent = RewindState.tangentColor(frame.state.tangentColorIndex)
+        // Sized for two lanes from the start, so nothing shifts when the tangent appears.
+        let readoutHeight = RewindView.height(tangentCount: 2, hasKnobs: true)
+        return VStack(spacing: 22) {
+            headline("Hold Undo. Rewind+.",
+                     "Your whole edit becomes a tape. Step through every change, play it back, and start a tangent from any moment. Nothing is ever lost.",
+                     t: t)
+            HStack(spacing: 34) {
+                PanelStage(t: t, knobLabels: IntroModes.base, labelColor: accent, changed: frame.changedKnobs,
+                           heldKeys: frame.keys, keyColor: accent, pressedFlash: frame.flashing, ringGlow: frame.rings)
+                    .frame(width: 400, height: 205)
+                RewindView(state: frame.state)
+                    .frame(width: 560, height: readoutHeight, alignment: .top)
+                    .modifier(GlassCard())
+                    .opacity(frame.readoutOpacity)
+                    .scaleEffect(0.96 + 0.04 * frame.readoutOpacity)
+            }
+            .opacity(fade(t, from: 0.3))
+            Text(frame.step)
+                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .foregroundStyle(accent)
+                .frame(width: 620)
+                .contentTransition(.opacity)
+                .animation(.smooth(duration: 0.3), value: frame.step)
+        }
+    }
+
     private func safetyScene(_ t: TimeInterval) -> some View {
         let items: [(String, String, String)] = [
             ("arrow.uturn.backward", "Undo", "⌘Z takes back any change to your map."),
@@ -484,6 +516,8 @@ struct PanelStage: View {
     var pressedFlash = false
     var chase = false
     var sweep = false
+    /// Rings being turned right now: 0 left, 1 centre, 2 right.
+    var ringGlow: Set<Int> = []
 
     // Positions in the drawing's 1080 × 552 space.
     static let knobX: [CGFloat] = [70, 152, 232, 313, 418, 499, 580, 660, 767, 848, 929, 1008]
@@ -496,7 +530,13 @@ struct PanelStage: View {
         "button_cursor": CGRect(x: 545, y: 179, width: 49, height: 33),
         "button_viewer": CGRect(x: 487, y: 179, width: 49, height: 33),
         "button_select": CGRect(x: 603, y: 179, width: 49, height: 33),
-        "button_add_node": CGRect(x: 706, y: 179, width: 49, height: 33)
+        "button_add_node": CGRect(x: 706, y: 179, width: 49, height: 33),
+        "button_undo": CGRect(x: 48, y: 266, width: 49, height: 33),
+        "button_previous_node": CGRect(x: 925, y: 266, width: 49, height: 33),
+        "button_next_node": CGRect(x: 984, y: 266, width: 49, height: 33),
+        "button_transport_reverse": CGRect(x: 925, y: 414, width: 49, height: 33),
+        "button_transport_forward": CGRect(x: 984, y: 414, width: 49, height: 33),
+        "button_transport_stop": CGRect(x: 925, y: 457, width: 108, height: 33)
     ]
 
     var body: some View {
@@ -521,6 +561,13 @@ struct PanelStage: View {
                             .opacity(on ? 0.9 : 0.12)
                             .animation(.smooth(duration: 0.5), value: on)
                     }
+                }
+                ForEach(Array(ringGlow), id: \.self) { i in
+                    Circle()
+                        .stroke(keyColor, lineWidth: 5)
+                        .frame(width: 212 * sx, height: 212 * sy)
+                        .position(x: Self.balls[i].x * sx, y: Self.balls[i].y * sy)
+                        .shadow(color: keyColor, radius: 14)
                 }
                 if chase {
                     let lit = Int(t * 6) % 12

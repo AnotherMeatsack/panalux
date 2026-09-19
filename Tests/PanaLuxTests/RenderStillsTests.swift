@@ -27,8 +27,8 @@ final class RenderStillsTests: XCTestCase {
 
     func testRenderIntro() throws {
         try XCTSkipIf(outDir == nil, "set PANALUX_RENDER_DIR to render")
-        let moments: [Int: [Double]] = [0: [3], 1: [3], 2: [4], 3: [4], 4: [0.8, 2.0, 3.6, 5.2, 8.0], 5: [0.5, 1.5, 4.0, 6.5], 6: [0.4, 1.0, 2.5, 3.7, 4.9, 6.2], 7: [5], 8: [2]]
-        for scene in 0..<9 {
+        let moments: [Int: [Double]] = [0: [3], 1: [3], 2: [4], 3: [4], 4: [0.8, 2.0, 3.6, 5.2, 8.0], 5: [0.5, 1.5, 4.0, 6.5], 6: [0.4, 1.0, 2.5, 3.7, 4.9, 6.2], 7: [0.8, 3.5, 6.9, 9.0, 11.8, 14.5, 17.5, 20.0, 22.5], 8: [5], 9: [2]]
+        for scene in 0..<10 {
             for t in moments[scene] ?? [3] {
                 try save(IntroShowView.still(scene: scene, at: t), size: CGSize(width: 1180, height: 760),
                          name: String(format: "intro-%d-%04.1f", scene, t))

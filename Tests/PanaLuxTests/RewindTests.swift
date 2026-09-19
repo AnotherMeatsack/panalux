@@ -1107,3 +1107,86 @@ final class RewindMotionTests: XCTestCase {
         XCTAssertLessThan(motion.glow["a"] ?? 1, 0.03)
     }
 }
+
+
+/// The intro's Rewind+ slide plays the real readout from a scripted session. It has to make sense
+/// at every moment, or the slide shows something the feature never does.
+final class IntroRewindDemoTests: XCTestCase {
+    private let times = stride(from: 0.0, through: IntroRewindDemo.length, by: 0.05).map { $0 }
+
+    func testNothingShowsUntilUndoIsHeld() {
+        let before = IntroRewindDemo.frame(at: 0.6)
+        XCTAssertEqual(before.readoutOpacity, 0)
+        XCTAssertTrue(before.keys.isEmpty)
+        let held = IntroRewindDemo.frame(at: 2.0)
+        XCTAssertEqual(held.readoutOpacity, 1)
+        XCTAssertTrue(held.keys.contains("button_undo"), "the key you hold is lit")
+    }
+
+    func testEveryMomentIsCoherent() {
+        for t in times {
+            let f = IntroRewindDemo.frame(at: t)
+            let s = f.state
+            XCTAssertGreaterThanOrEqual(s.playhead, 0, "t=\(t)")
+            XCTAssertLessThanOrEqual(s.playhead, s.tip + 0.0001, "the playhead is never past the end of its line (t=\(t))")
+            XCTAssertLessThanOrEqual(s.tip, IntroRewindDemo.spanEnd, "t=\(t)")
+            XCTAssertLessThanOrEqual(s.stepNumber, s.stepCount, "t=\(t)")
+            XCTAssertGreaterThanOrEqual(s.stepNumber, 1, "t=\(t)")
+            XCTAssertEqual(s.tangents.count, s.tangentCount, "t=\(t)")
+            XCTAssertEqual(s.tangents.filter(\.isActive).count, 1, "exactly one lane is lit (t=\(t))")
+            XCTAssertEqual(s.tangents.first { $0.isActive }?.colorIndex, s.tangentColorIndex, "t=\(t)")
+            XCTAssertEqual(s.knobs.count, 12, "t=\(t)")
+            XCTAssertFalse(f.step.isEmpty)
+            for lane in s.tangents { XCTAssertEqual(lane.activity.count, RewindEngine.laneBuckets) }
+        }
+    }
+
+    func testTheSlideTellsTheStoryInOrder() {
+        // One click of the ring is one step; then travelling; then play; a tangent; then hops.
+        XCTAssertTrue(IntroRewindDemo.frame(at: 3.0).step.hasPrefix("1"))
+        XCTAssertTrue(IntroRewindDemo.frame(at: 3.0).rings.contains(1), "the centre ring glows while it is turned")
+        XCTAssertTrue(IntroRewindDemo.frame(at: 9.0).step.hasPrefix("2"))
+        XCTAssertTrue(IntroRewindDemo.frame(at: 9.0).state.isPlaying)
+        XCTAssertFalse(IntroRewindDemo.frame(at: 13.0).state.isPlaying, "Stop pauses it")
+        XCTAssertTrue(IntroRewindDemo.frame(at: 15.0).step.hasPrefix("3"))
+        XCTAssertTrue(IntroRewindDemo.frame(at: 20.5).step.hasPrefix("4"))
+        XCTAssertEqual(IntroRewindDemo.frame(at: 5.0).state.tangentCount, 1)
+        XCTAssertEqual(IntroRewindDemo.frame(at: 15.0).state.tangentCount, 2)
+    }
+
+    func testPlaybackSlowsDownWhenTheDialIsTurned() {
+        let early = IntroRewindDemo.frame(at: 8.5).state.rate
+        let late = IntroRewindDemo.frame(at: 11.5).state.rate
+        XCTAssertEqual(early, 1, accuracy: 0.0001, "starts at normal speed")
+        XCTAssertEqual(late, 0.25, accuracy: 0.0001, "and ends in slow motion")
+        // Playback only moves forward, and never past where it was stopped.
+        var previous = IntroRewindDemo.frame(at: 7.6).state.playhead
+        for t in stride(from: 7.7, through: 12.5, by: 0.1) {
+            let now = IntroRewindDemo.frame(at: t).state.playhead
+            XCTAssertGreaterThanOrEqual(now, previous - 1e-9, "t=\(t)")
+            previous = now
+        }
+    }
+
+    func testTheTangentLeavesTheOriginalWhereItWasStopped() {
+        let stopped = IntroRewindDemo.frame(at: 13.0).state.playhead
+        let fork = IntroRewindDemo.frame(at: 16.0).state.tangents[1].start
+        XCTAssertEqual(fork, stopped, accuracy: 0.0001, "a tangent starts at the moment you stopped on")
+        XCTAssertLessThan(fork, IntroRewindDemo.tip, "so the original keeps a future the tangent does not have")
+    }
+
+    func testHoppingAlternatesBetweenTheTwoLines() {
+        var active: [String] = []
+        for t in stride(from: 19.0, through: 25.0, by: 0.1) {
+            let name = IntroRewindDemo.frame(at: t).state.tangents.first { $0.isActive }?.name ?? "?"
+            if active.last != name { active.append(name) }
+        }
+        XCTAssertEqual(active, ["Tangent 2", "Original", "Tangent 2", "Original"])
+    }
+
+    func testTheSlideFitsTheShow() {
+        // The show is a fixed list of scenes; the new one must not push the finale off the end.
+        XCTAssertEqual(IntroRewindDemo.length, 26)
+        XCTAssertGreaterThan(IntroRewindDemo.frame(at: IntroRewindDemo.length).state.stepCount, 100)
+    }
+}
