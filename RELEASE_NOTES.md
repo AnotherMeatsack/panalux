@@ -1,3 +1,14 @@
+# PanaLux v1.2.3
+
+Corrects the right-side navigation buttons on the Micro Color Panel.
+
+- **Correct navigation labels and actions.** Previous/Next Keyframe, Frame and Clip now match the physical buttons instead of being read as one another. Their LED lookup uses the same corrected map.
+- **Existing maps are handled.** Saved and imported hardware maps containing the complete old factory navigation layout are corrected automatically. Partial or customized navigation layouts and unrelated assignments are preserved.
+
+Developer ID signed; not notarized.
+
+---
+
 # PanaLux v1.2.2
 
 Knob presses and button combinations make the panel easier to customize. Rewind+ gains a larger mouse workspace, and Map Library lets you save, share and mix setups.

@@ -6,13 +6,16 @@ public class HardwareMap: ObservableObject {
     @Published public var buttonBitToControl: [Int: String] = [:]
     @Published public var controlToButtonBit: [String: Int] = [:]
     
-    private let customMapURL: URL = {
+    private static var defaultMapURL: URL {
         let dir = AppPaths.supportDir
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent("hardware_map.json")
-    }()
-    
-    public init() {
+    }
+
+    private let customMapURL: URL
+
+    public init(customMapURL: URL? = nil) {
+        self.customMapURL = customMapURL ?? Self.defaultMapURL
         loadDefaultMap()
         loadCustomMap()
     }
@@ -31,10 +34,10 @@ public class HardwareMap: ObservableObject {
             33: "RESET_LIFT", 34: "RESET_GAMMA", 35: "RESET_GAIN",
             36: "ADD_NODE", 37: "ADD_WINDOW", 38: "ADD_KEYFRM",
             39: "PREV_STILL", 40: "NEXT_STILL",
-            41: "PREV_FRAME", 42: "NEXT_FRAME",
+            41: "PREV_KEYFRM", 42: "NEXT_KEYFRM",
             43: "PREV_NODE", 44: "NEXT_NODE",
-            45: "PREV_CLIP", 46: "NEXT_CLIP",
-            47: "PREV_KEYFRM", 48: "NEXT_KEYFRM",
+            45: "PREV_FRAME", 46: "NEXT_FRAME",
+            47: "PREV_CLIP", 48: "NEXT_CLIP",
             49: "PLAY_REV", 50: "PLAY", 51: "STOP"
         ]
         
@@ -72,10 +75,24 @@ public class HardwareMap: ObservableObject {
         return controlToButtonBit[name]
     }
     
+    /// Older releases saved the entire factory map as calibration. Correct only
+    /// the complete old six-button signature; retain partial/custom calibration.
+    static func correctLegacyNavigation(_ bits: [String: String]) -> [String: String] {
+        let legacy = ["41": "PREV_FRAME", "42": "NEXT_FRAME",
+                      "45": "PREV_CLIP", "46": "NEXT_CLIP",
+                      "47": "PREV_KEYFRM", "48": "NEXT_KEYFRM"]
+        guard legacy.allSatisfy({ bits[$0.key] == $0.value }) else { return bits }
+        var corrected = bits
+        corrected["41"] = "PREV_KEYFRM"; corrected["42"] = "NEXT_KEYFRM"
+        corrected["45"] = "PREV_FRAME"; corrected["46"] = "NEXT_FRAME"
+        corrected["47"] = "PREV_CLIP"; corrected["48"] = "NEXT_CLIP"
+        return corrected
+    }
+
     private func loadCustomMap() {
         guard let data = try? Data(contentsOf: customMapURL),
               let dict = try? JSONDecoder().decode([String: String].self, from: data) else { return }
-        for (bitStr, name) in dict {
+        for (bitStr, name) in Self.correctLegacyNavigation(dict) {
             if let bit = Int(bitStr) {
                 buttonBitToControl[bit] = name
             }
@@ -92,7 +109,7 @@ public class HardwareMap: ObservableObject {
     }
 
     public func applyShared(_ bits: [String: String]) {
-        for (key, name) in bits {
+        for (key, name) in Self.correctLegacyNavigation(bits) {
             guard let bit = Int(key) else { continue }
             buttonBitToControl[bit] = name
         }
