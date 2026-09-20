@@ -76,6 +76,7 @@ public struct PanelControlMapping {
         for (svg, prof) in svgToProfile {
             dict[prof] = svg
         }
+        for knob in PanelLayout.knobs { dict["PRESS_" + knob] = dict[knob] }
         // Aliases and hardware variations
         dict["TB_LIFT_X"] = "trackball_left"
         dict["TB_LIFT_Y"] = "trackball_left"

@@ -364,6 +364,19 @@ public class CommandCatalog: ObservableObject {
             items: modeItems
         ))
 
+        let pressResets = PanelLayout.knobs.map {
+            CatalogCommand(id: "reset_knob:" + $0, title: "Reset " + PanelLayout.shortLabel(forControl: $0),
+                           subtitle: "Reset this knob’s currently assigned parameter", isParameter: false, icon: "arrow.counterclockwise")
+        }
+        let wheelParts = ["LIFT", "GAMMA", "GAIN"].flatMap { wheel in
+            ["ball", "ring"].map { part in
+                CatalogCommand(id: WheelReset.prefix + wheel + ":" + part,
+                               title: WheelReset.title(wheel) + " · " + part,
+                               subtitle: part == "ball" ? "Reset color only; keep luminance" : "Reset luminance only; keep color",
+                               isParameter: false, icon: "arrow.counterclockwise")
+            }
+        }
+        cats.append(CommandCategory(id: "press_resets", title: "Knob & Wheel Resets", icon: "arrow.counterclockwise", items: pressResets + wheelParts))
         self.categories = cats
 
         // Index for fast lookup
@@ -387,7 +400,7 @@ public class CommandCatalog: ObservableObject {
         ("PRESETS", "Step presets, set the amount, fire slots 1–10"),
         ("OFFSET", "Temp and tint on the rings, global color on the right ball"),
         ("MULTISELECT", "Prev/Next Keyframe add photos to the selection"),
-        ("REWIND", "Hold Undo: the centre ring scrubs the editing session, the right ring sets how far back")
+        ("REWIND", "Hold Undo: right ring scrubs, left visits landmarks, center switches tangents")
     ]
 
     public func command(for id: String) -> CatalogCommand? {

@@ -106,6 +106,7 @@ public enum PanelLayout {
     ]
     
     public static func label(forControl id: String) -> String {
+        if id.hasPrefix("PRESS_") { return "Press " + label(forControl: String(id.dropFirst(6))) }
         if let label = knobLabels[id] { return label }
         if let label = ballLabels[id] { return label }
         if let label = ringLabels[id] { return label }

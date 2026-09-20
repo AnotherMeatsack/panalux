@@ -27,6 +27,7 @@ public class PanelDecoder {
     public static let encoderLSB: Int = 360
     
     private var heldButtonBits: Set<Int> = []
+    public var hasHeldButtons: Bool { !heldButtonBits.isEmpty }
     
     public init() {}
     

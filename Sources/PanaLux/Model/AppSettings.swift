@@ -11,9 +11,9 @@ public class AppSettings: ObservableObject {
     @AppStorage("hudDuration") public var hudDuration: Double = 4.0
     @AppStorage("showVectorscope") public var showVectorscope: Bool = true
     @AppStorage("fineMultiplier") public var fineMultiplier: Double = 0.25
-    /// Rewind's centre ring: ring units for one click. Smaller is more sensitive.
+    /// Rewind's scrub ring: ring units for one click. Smaller is more sensitive.
     @AppStorage("rewindClickUnits") public var rewindClickUnits: Double = 40
-    /// Rewind's centre ring: how fast a hard spin crosses a long session, 0…1.
+    /// Rewind's scrub ring: how fast a hard spin crosses a long session, 0…1.
     @AppStorage("rewindAcceleration") public var rewindAcceleration: Double = 0.5
     @AppStorage("autoCloseResolve") public var autoCloseResolve: Bool = false
     /// Let go of the panel while DaVinci Resolve runs, take it back when Resolve quits.

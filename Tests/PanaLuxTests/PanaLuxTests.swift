@@ -172,9 +172,9 @@ final class CommandCatalogTests: XCTestCase {
         XCTAssertEqual(factory.buttons["UNDO"]?.hold_layer, "REWIND")
         let layer = factory.layers["REWIND"]
         XCTAssertNotNil(layer)
-        XCTAssertEqual(layer?.rings?["RING_GAMMA"]?.param, RewindCommands.scrub)
-        XCTAssertEqual(layer?.rings?["RING_LIFT"]?.param, RewindCommands.speedFine)
-        XCTAssertEqual(layer?.rings?["RING_GAIN"]?.param, RewindCommands.speed)
+        XCTAssertEqual(layer?.rings?["RING_GAMMA"]?.param, RewindCommands.tangents)
+        XCTAssertEqual(layer?.rings?["RING_LIFT"]?.param, RewindCommands.landmarks)
+        XCTAssertEqual(layer?.rings?["RING_GAIN"]?.param, RewindCommands.scrub)
         // The transport row is the transport: play, play backward, stop.
         XCTAssertEqual(layer?.buttons?["PLAY"]?.action, RewindCommands.play)
         XCTAssertEqual(layer?.buttons?["PLAY_REV"]?.action, RewindCommands.playReverse)
@@ -229,7 +229,7 @@ final class CommandCatalogTests: XCTestCase {
         old.layers["REWIND"]?.rings?["RING_GAIN"] = RingBinding(param: "rewind:strength")
         old.layers["REWIND"]?.buttons?["PLAY"] = nil
         let moved = Profile.migrate(old, factory: factory, defaults: defaults) {}
-        XCTAssertEqual(moved.layers["REWIND"]?.rings?["RING_GAIN"]?.param, RewindCommands.speed)
+        XCTAssertEqual(moved.layers["REWIND"]?.rings?["RING_GAIN"]?.param, RewindCommands.scrub)
         XCTAssertEqual(moved.layers["REWIND"]?.buttons?["PLAY"]?.action, RewindCommands.play)
 
         // One the user rearranged is theirs.
@@ -930,7 +930,9 @@ final class CompleteButtonMappingTests: XCTestCase {
         defer { engine.profile = saved; engine.activeLayers = layers; engine.mapEditLayer = editing }
         engine.activeLayers = []; engine.mapEditLayer = nil
         for control in HardwareMap.shared.buttonBitToControl.values {
-            let tap = engine.profile.buttons[control]?.action
+            // Knob presses have an implicit reset even before a saved button binding exists.
+            let tap = engine.profile.buttons[control]?.action ??
+                (control.hasPrefix("PRESS_") && engine.profile.buttons[control] == nil ? "reset_knob:" + String(control.dropFirst(6)) : nil)
             engine.applyDroppedCommand(commandId: KeyCommands.beforeAfter, ontoControl: control, preferHold: true)
             XCTAssertEqual(engine.profile.buttons[control]?.hold_action, KeyCommands.beforeAfter, control)
             XCTAssertEqual(engine.profile.buttons[control]?.action, tap, control)

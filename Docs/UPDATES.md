@@ -21,3 +21,9 @@ The public Ed25519 key is in `Packaging/SparklePublicKey.txt` and the built app'
 6. Download the public feed and archive, verify the Ed25519 signature, and exercise Check for Updates. Test installation from the preceding Sparkle-enabled version when available.
 
 A feed check, signature validation, and a real installation are distinct checks. Record which ones passed. Notarization/account work must not be silently bypassed or described as complete.
+
+## Required changelog for every release
+
+Before building, prepend a section headed `# PanaLux v<version>` to `RELEASE_NOTES.md` and update `VERSION`. Keep older sections. Describe shipped behavior and any relevant compatibility changes in plain language. The build copies this canonical history into the app for **What’s New**. The update packager requires that the first heading matches the packaged version, converts the newest section into HTML and embeds it in the signed Sparkle feed. No separate changelog copy is maintained manually.
+
+Use `Docs/1.2.2-PANEL-TEST.md` as the manual regression checklist. The maintainer tested the reset behavior and authorized publication on September 20, 2026. This authorization does not assert that every optional hardware, display and map scenario was exercised. Final artifacts are rebuilt and signed after release-note acceptance.

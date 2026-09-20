@@ -1,6 +1,7 @@
 import SwiftUI
 
 public struct VirtualOLEDReadout: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     public let name: String
     public let param: String
     public let value: Double
@@ -48,6 +49,9 @@ public struct VirtualOLEDReadout: View {
                 }
             }
             .frame(width: 52, height: 52)
+            .animation(reduceMotion ? nil : (angleDegrees == 0
+                ? .spring(response: 0.24, dampingFraction: 0.8)
+                : .linear(duration: 0.08)), value: angleDegrees)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -93,6 +97,7 @@ public struct VirtualOLEDReadout: View {
                     }
                 }
                 .frame(height: 6)
+                .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.85), value: value)
             }
 
             Spacer(minLength: 8)

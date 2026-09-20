@@ -71,6 +71,10 @@ public enum MappingConnections {
 
     public static func heldSvgIds(engine: StudioEngine) -> [String] {
         var names = Set(engine.physicallyHeldControlNames)
+        if engine.combinationEditorActive {
+            names.formUnion(engine.combinationHeld)
+            names.insert(engine.combinationTrigger)
+        }
         if let overlay = engine.overlayLayerName {
             for (name, spec) in engine.profile.buttons {
                 if spec.hold_layer == overlay || spec.layer == overlay {

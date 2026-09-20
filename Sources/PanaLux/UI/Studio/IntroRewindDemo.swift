@@ -21,7 +21,7 @@ enum IntroRewindDemo {
         var readoutOpacity: Double
     }
 
-    static let length: TimeInterval = 26
+    static let length: TimeInterval = 46
     /// Ends just after a burst of edits, so "now" has ticks around it and the tape is never empty.
     static let tip: TimeInterval = 226
     static let spanEnd: TimeInterval = 240
@@ -75,23 +75,23 @@ enum IntroRewindDemo {
         var tangentTip = 0.0
         var rolledBack = 0.0
 
-        // 1. The centre ring: one click, one change. Then faster, to travel.
+        // 1. The right ring: one click, one change. Then faster, to travel.
         let phase1 = 1.4..<7.5
         if phase1.contains(t) {
-            step = "1  Turn the centre ring: one click, one change"
+            step = "1  Turn the right ring: one click, one change"
             let n = backCount(t)
             playhead = steps[max(0, last - n)]
             caption = changes[(last - n) % changes.count]
-            rings = t >= 2.0 ? [1] : []
+            rings = t >= 2.0 ? [2] : []
             jogSpeed = t >= 5.0 ? 0.7 : 0.05
             rolledBack = min(0.85, Double(n) / 44)
         }
 
-        // 2. Play it back, and slow time down with the outer ring.
+        // 2. Play it back at normal speed.
         let playStart = 7.5, stopAt = 12.5
         let restingAfterJog = steps[max(0, last - backCount(playStart))]
         if t >= playStart && t < 13.2 {
-            step = t < stopAt ? "2  Press Play. Turn the outer ring to slow time" : "2  Stop pauses it, right where you are"
+            step = t < stopAt ? "2  Press Play to replay your edit" : "2  Stop pauses it, right where you are"
             let until = min(t, stopAt)
             playhead = restingAfterJog + advance(from: playStart, to: until)
             let dial = dialRate(at: until - playStart)
@@ -100,7 +100,6 @@ enum IntroRewindDemo {
             caption = isPlaying ? "Playing" : "Paused · " + changes[stepIndex(at: playhead) % changes.count]
             rolledBack = max(0.2, 0.85 - (playhead - restingAfterJog) / 14)
             if t < playStart + 0.45 { keys.append("button_transport_forward"); flashing = true }
-            if t >= 9.6 && t < 10.9 { rings = [0] }
             if t >= stopAt && t < stopAt + 0.45 { keys.append("button_transport_stop"); flashing = true }
         }
         let paused = restingAfterJog + advance(from: playStart, to: stopAt)
@@ -126,10 +125,10 @@ enum IntroRewindDemo {
             rolledBack = 0.1
         }
 
-        // 4. Prev / Next Node hop between tangents, at the same moment: an A/B in one press.
+        // 4. The center ring compares tangents.
         let hopStart = 18.8
         if t >= hopStart {
-            step = "4  Hop between tangents to compare where each one ended"
+            step = "4  Turn the center ring to compare tangents. Both versions stay saved."
             lines = 2
             forkTime = paused
             tangentTip = min(spanEnd - 3, paused + 44)
@@ -138,10 +137,18 @@ enum IntroRewindDemo {
             activeLine = hops % 2 == 0 ? 1 : 0
             playhead = activeLine == 0 ? tip : tangentTip
             let since = t - (19.4 + Double(max(0, hops - 1)) * 1.9)
-            if hops > 0, since >= 0, since < 0.45 { keys.append("button_next_node"); flashing = true }
+            if hops > 0, since >= 0, since < 0.8 { rings = [1] }
             caption = (activeLine == 0 ? "Original" : "Tangent 2") + " · " + (activeLine == 0 ? "Exposure +0.90 EV" : "Contrast +11")
             rolledBack = activeLine == 0 ? 0 : 0.5
             changed = []
+        }
+
+        if t >= 24 {
+            step = "5  Turn the left ring to jump between recorded landmarks"
+            activeLine = 0
+            playhead = t < 26 ? 140 : 92
+            caption = t < 26 ? "Crop landmark" : "Marked moment"
+            rings = [0]
         }
 
         // Assemble what the readout would show.
@@ -185,17 +192,8 @@ enum IntroRewindDemo {
         return 7 + Int((min(t, 7.5) - 5.0) / 0.25) * 12               // then travelling: most of the session
     }
 
-    /// The speed dial over the play section: normal speed, then a turn of the left ring eases it
-    /// down to slow motion.
-    static func dialRate(at u: TimeInterval) -> Double {
-        if u < 2.1 { return 1 }
-        if u < 3.2 {
-            let x = (u - 2.1) / 1.1
-            let eased = x * x * (3 - 2 * x)
-            return exp(log(1.0) * (1 - eased) + log(0.25) * eased)
-        }
-        return 0.25
-    }
+    /// Playback has no duplicate speed dials in the factory layout.
+    static func dialRate(at u: TimeInterval) -> Double { 1 }
 
     /// Trail time covered by playback between two moments of the slide.
     static func advance(from a: TimeInterval, to b: TimeInterval) -> Double {

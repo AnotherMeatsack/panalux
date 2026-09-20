@@ -1,0 +1,9 @@
+[
+  {
+    "id": "panalux-factory",
+    "name": "PanaLux Factory",
+    "author": "PanaLux",
+    "summary": "The official starting layout, ready to borrow one control or a whole section.",
+    "file": "factory.panalux.json"
+  }
+]

@@ -59,6 +59,7 @@ public struct TrailBranch: Codable, Equatable, Identifiable {
     public var id: String
     public var name: String
     public var parent: String?
+    public var mergeSourceID: String? = nil
     /// Trail time where this branch leaves its parent. The root starts at 0.
     public var forkTime: TimeInterval
     /// Wall clock at which `forkTime` was "now". Trail time is measured from here.

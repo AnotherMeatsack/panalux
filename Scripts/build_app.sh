@@ -14,6 +14,8 @@ if [[ "${PANALUX_NATIVE_ONLY:-0}" == "1" ]]; then
     ARCH_FLAGS=()
 fi
 
+cp RELEASE_NOTES.md Sources/PanaLux/Resources/ReleaseNotes.md
+
 echo "==> Building ${APP_NAME} ${VERSION} (release)"
 swift build -c release ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"}
 BIN_DIR="$(swift build -c release ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"} --show-bin-path)"

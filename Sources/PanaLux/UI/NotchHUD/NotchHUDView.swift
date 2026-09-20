@@ -1,6 +1,8 @@
 import SwiftUI
 
 public struct NotchHUDView: View {
+    @ObservedObject var windowController = NotchHUDWindowController.shared
+    @State private var expandWork: DispatchWorkItem?
     @ObservedObject var feed = HUDFeed.shared
     @ObservedObject var settings = AppSettings.shared
     /// Which tangent is being edited, so a tangent is never invisible.
@@ -12,6 +14,7 @@ public struct NotchHUDView: View {
 
     /// Keep the last live readout on screen while the window slides into the notch.
     private var displayedMode: ActiveDisplayMode {
+        if windowController.isRewindExpanded { return .rewind(rewind.state) }
         if feed.mode == .idle {
             return pinnedMode
         }
@@ -31,7 +34,11 @@ public struct NotchHUDView: View {
         ZStack(alignment: .top) {
             if isExpanded {
                 VStack(spacing: 0) {
-                    if settings.hudStyle == "minimal" {
+                    if windowController.isRewindExpanded {
+                        ExpandedRewindView()
+                            .frame(width: windowController.expandedSize.width - 8, height: windowController.expandedSize.height - 4)
+                            .transition(.scale(scale: 0.94, anchor: .top).combined(with: .opacity))
+                    } else if settings.hudStyle == "minimal" {
                         MinimalReadout(mode: displayedMode)
                     } else {
                         ZStack {
@@ -44,7 +51,7 @@ public struct NotchHUDView: View {
                         .animation(.smooth(duration: 0.18), value: nameKey)
                     }
                 }
-                .frame(minWidth: 260, maxWidth: NotchHUDWindowController.width(for: displayedMode))
+                .frame(minWidth: 260, maxWidth: windowController.isRewindExpanded ? windowController.expandedSize.width : NotchHUDWindowController.width(for: displayedMode))
                 .padding(.horizontal, 4)
                 .padding(.vertical, 2)
                 .modifier(HUDChrome())
@@ -53,6 +60,15 @@ public struct NotchHUDView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .top)
+        .onHover { inside in
+            expandWork?.cancel()
+            guard inside, isRewind, !windowController.isRewindExpanded else { return }
+            let work = DispatchWorkItem { windowController.expandRewind() }
+            expandWork = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55, execute: work)
+        }
+        .onDisappear { expandWork?.cancel() }
+        .animation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.8), value: windowController.isRewindExpanded)
         .environment(\.colorScheme, .dark)
         .animation(.easeOut(duration: 0.2), value: isExpanded)
         .transaction { if reduceMotion { $0.animation = nil; $0.disablesAnimations = true } }
@@ -144,6 +160,10 @@ public struct NotchHUDView: View {
 
         case .rewind(let state):
             RewindView(state: state)
+                .contentShape(Rectangle())
+                .onTapGesture { windowController.expandRewind() }
+                .help("Hover or click to expand Rewind+. It stays open until you collapse it.")
+                .accessibilityAction(named: "Expand Rewind+") { windowController.expandRewind() }
         }
     }
 }

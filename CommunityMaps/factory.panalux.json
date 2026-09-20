@@ -1,0 +1,1091 @@
+{
+  "format": "panalux-map",
+  "version": 2,
+  "name": "PanaLux Factory",
+  "notes": "The official starting map. Borrow a control or restore a familiar hold mode. Preset slots refer to your own Lightroom plug-in configuration.",
+  "profile": {
+    "_comment": [
+      "PanaLux factory map. Panel control -> MIDI2LR command id.",
+      "Lightroom keeps the legacy 'SplitToning*' names for shadow and highlight hue/saturation;",
+      "midtones use 'ColorGrade*'. That asymmetry is Adobe's.",
+      "Encoder deltas arrive in ticks of 360. A brisk knob turn is roughly 470 ticks, so a",
+      "scale of 0.0003 moves a parameter about 14% of its range per turn. 'radius' is how",
+      "much ball travel reaches full saturation."
+    ],
+    "knobs": {
+      "Y_LIFT": {
+        "param": "Blacks",
+        "scale": 0.0003
+      },
+      "Y_GAMMA": {
+        "param": "Exposure",
+        "scale": 0.0003
+      },
+      "Y_GAIN": {
+        "param": "Whites",
+        "scale": 0.0003
+      },
+      "CONTRAST": {
+        "param": "Contrast",
+        "scale": 0.0003
+      },
+      "PIVOT": {
+        "param": "Clarity",
+        "scale": 0.0003
+      },
+      "MID_DETAIL": {
+        "param": "Texture",
+        "scale": 0.0003
+      },
+      "COL_BOOST": {
+        "param": "Vibrance",
+        "scale": 0.0003
+      },
+      "SHAD": {
+        "param": "Shadows",
+        "scale": 0.0003
+      },
+      "HI_LIGHT": {
+        "param": "Highlights",
+        "scale": 0.0003
+      },
+      "SAT": {
+        "param": "Saturation",
+        "scale": 0.0003
+      },
+      "HUE": {
+        "param": "Temperature",
+        "scale": 0.0003
+      },
+      "LUM_MIX": {
+        "param": "ColorGradeBlending",
+        "scale": 0.0003
+      }
+    },
+    "rings": {
+      "RING_LIFT": {
+        "param": "ColorGradeShadowLum",
+        "scale": 0.0003
+      },
+      "RING_GAMMA": {
+        "param": "ColorGradeMidtoneLum",
+        "scale": 0.0003
+      },
+      "RING_GAIN": {
+        "param": "ColorGradeHighlightLum",
+        "scale": 0.0003
+      }
+    },
+    "balls": {
+      "TB_LIFT": {
+        "hue": "SplitToningShadowHue",
+        "sat": "SplitToningShadowSaturation",
+        "radius": 3000.0,
+        "invert_x": true,
+        "invert_y": true
+      },
+      "TB_GAMMA": {
+        "hue": "ColorGradeMidtoneHue",
+        "sat": "ColorGradeMidtoneSat",
+        "radius": 3000.0,
+        "invert_x": true,
+        "invert_y": true
+      },
+      "TB_GAIN": {
+        "hue": "SplitToningHighlightHue",
+        "sat": "SplitToningHighlightSaturation",
+        "radius": 3000.0,
+        "invert_x": true,
+        "invert_y": true
+      }
+    },
+    "buttons": {
+      "AUTO_COLOR": {
+        "action": "AutoTone",
+        "hold_layer": "TONE"
+      },
+      "OFFSET": {
+        "layer": "OFFSET"
+      },
+      "COPY": {
+        "action": "LRCopy"
+      },
+      "PASTE": {
+        "action": "LRPaste"
+      },
+      "UNDO": {
+        "action": "Undo",
+        "hold_layer": "REWIND"
+      },
+      "REDO": {
+        "action": "Redo"
+      },
+      "DELETE": {
+        "action": "Reject"
+      },
+      "RESET_ALL": {
+        "action": "ResetAll"
+      },
+      "LOOP": {
+        "modifier": "FINE"
+      },
+      "PLAY_STILL": {
+        "action": "VirtualCopy",
+        "hold_layer": "EFFECTS"
+      },
+      "WIPE_STILL": {
+        "action": "ShoVwdevelop_before_after_horiz",
+        "hold_action": "ShoVwdevelop_before",
+        "release_action": "ShoVwdevelop_loupe"
+      },
+      "GRAB_STILL": {
+        "ps": "smart_roundtrip",
+        "hold_layer": "LENS"
+      },
+      "H/LITE": {
+        "action": "ShowClipping",
+        "hold_layer": "DETAIL"
+      },
+      "VIEWER": {
+        "action": "NextScreenMode",
+        "hold_layer": "CROP"
+      },
+      "CURSOR": {
+        "layer": "MASK",
+        "hold_layer": "MASK"
+      },
+      "SELECT": {
+        "action": "Pick",
+        "hold_layer": "CULL"
+      },
+      "RESET_LIFT": {
+        "action": "reset_wheel:LIFT"
+      },
+      "RESET_GAMMA": {
+        "action": "reset_wheel:GAMMA"
+      },
+      "RESET_GAIN": {
+        "action": "reset_wheel:GAIN"
+      },
+      "ADD_WINDOW": {
+        "action": "MaskNewRad",
+        "enter_layer": "MASK"
+      },
+      "ADD_NODE": {
+        "action": "MaskNewGrad",
+        "enter_layer": "MASK",
+        "hold_picker": "mask_tools"
+      },
+      "PREV_NODE": {
+        "action": "MaskPrevious"
+      },
+      "NEXT_NODE": {
+        "action": "MaskNext"
+      },
+      "PREV_FRAME": {
+        "action": "Prev"
+      },
+      "NEXT_FRAME": {
+        "action": "Next"
+      },
+      "PREV_CLIP": {
+        "action": "Prev"
+      },
+      "NEXT_STILL": {
+        "action": "Next"
+      },
+      "PLAY": {
+        "action": "openExportWithPreviousDialog",
+        "hold_layer": "PRESETS"
+      },
+      "STOP": {
+        "action": "ResetLast"
+      },
+      "USER": {
+        "hold_layer": "TRANSFORM"
+      },
+      "SHIFT": {
+        "hold_layer": "MIXER"
+      },
+      "CORNER_LOWER_RIGHT": {
+        "hold_layer": "MULTISELECT"
+      },
+      "PREV_KEYFRM": {
+        "action": "Prev"
+      },
+      "NEXT_KEYFRM": {
+        "action": "Next"
+      },
+      "ADD_KEYFRM": {
+        "action": "MaskNewBrush",
+        "enter_layer": "MASK"
+      },
+      "BYPASS": {
+        "action": "key:\\"
+      },
+      "DISABLE": {
+        "action": "lr_menu:sync"
+      },
+      "PLAY_REV": {
+        "action": "Prev"
+      },
+      "NEXT_CLIP": {
+        "action": "Next"
+      },
+      "PREV_STILL": {
+        "action": "AddOrRemoveFromTargetColl"
+      }
+    },
+    "modifiers": [
+      "FINE"
+    ],
+    "layers": {
+      "REWIND": {
+        "title": "Rewind",
+        "_comment": "Hold Undo. Right ring scrubs the timeline, left ring steps between landmarks, center ring switches tangents. Play and Play Reverse replay; Stop pauses. All controls remain customizable.",
+        "rings": {
+          "RING_GAMMA": {
+            "param": "rewind:tangents",
+            "scale": 0.0003
+          },
+          "RING_LIFT": {
+            "param": "rewind:landmarks",
+            "scale": 0.0003
+          },
+          "RING_GAIN": {
+            "param": "rewind:scrub",
+            "scale": 0.0003
+          }
+        },
+        "buttons": {
+          "PLAY": {
+            "action": "rewind:play"
+          },
+          "PLAY_REV": {
+            "action": "rewind:play_rev"
+          },
+          "STOP": {
+            "action": "rewind:pause"
+          },
+          "NEXT_STILL": {
+            "action": "rewind:tip"
+          },
+          "ADD_KEYFRM": {
+            "action": "rewind:mark"
+          },
+          "ADD_NODE": {
+            "action": "rewind:branch"
+          },
+          "PREV_NODE": {
+            "action": "rewind:take_prev"
+          },
+          "NEXT_NODE": {
+            "action": "rewind:take_next"
+          },
+          "PREV_KEYFRM": {
+            "action": "rewind:prev"
+          },
+          "NEXT_KEYFRM": {
+            "action": "rewind:next"
+          },
+          "WIPE_STILL": {
+            "hold_action": "rewind:peek",
+            "release_action": "rewind:unpeek"
+          }
+        }
+      },
+      "OFFSET": {
+        "_comment": "Resolve OFFSET mode: Temp/Tint on the left rings, global Offset wheel on the right ball.",
+        "rings": {
+          "RING_LIFT": {
+            "param": "Temperature",
+            "scale": 0.0003
+          },
+          "RING_GAMMA": {
+            "param": "Tint",
+            "scale": 0.0003
+          },
+          "RING_GAIN": {
+            "param": "ColorGradeGlobalLum",
+            "scale": 0.0003
+          }
+        },
+        "balls": {
+          "TB_GAIN": {
+            "hue": "ColorGradeGlobalHue",
+            "sat": "ColorGradeGlobalSat",
+            "radius": 3000.0,
+            "invert_x": true,
+            "invert_y": true
+          }
+        },
+        "title": "Offset \u00b7 Temp & Tint"
+      },
+      "MASK": {
+        "_comment": "Tap or hold CURSOR. Hold Add Node for the tool wheel (left ring = New/Add/Subtract/Intersect). Release to create the mask, then place it with the mouse. Knobs match Base and grade the selected mask. Trackball placement is coming later.",
+        "knobs": {
+          "Y_LIFT": {
+            "param": "local_Blacks",
+            "scale": 0.0003
+          },
+          "Y_GAMMA": {
+            "param": "local_Exposure",
+            "scale": 0.0003
+          },
+          "Y_GAIN": {
+            "param": "local_Whites",
+            "scale": 0.0003
+          },
+          "CONTRAST": {
+            "param": "local_Contrast",
+            "scale": 0.0003
+          },
+          "PIVOT": {
+            "param": "local_Clarity",
+            "scale": 0.0003
+          },
+          "MID_DETAIL": {
+            "param": "local_Texture",
+            "scale": 0.0003
+          },
+          "COL_BOOST": {
+            "param": "local_Dehaze",
+            "scale": 0.0003
+          },
+          "SHAD": {
+            "param": "local_Shadows",
+            "scale": 0.0003
+          },
+          "HI_LIGHT": {
+            "param": "local_Highlights",
+            "scale": 0.0003
+          },
+          "SAT": {
+            "param": "local_Saturation",
+            "scale": 0.0003
+          },
+          "HUE": {
+            "param": "local_Temperature",
+            "scale": 0.0003
+          },
+          "LUM_MIX": {
+            "param": "local_Amount",
+            "scale": 0.0003
+          }
+        },
+        "rings": {
+          "RING_LIFT": {
+            "param": "ChangeBrushSize",
+            "scale": 0.0003
+          },
+          "RING_GAMMA": {
+            "param": "ChangeFeatherSize",
+            "scale": 0.0003
+          },
+          "RING_GAIN": {
+            "param": "local_ToningLuminance",
+            "scale": 0.0003
+          }
+        },
+        "balls": {
+          "TB_LIFT": {
+            "hue": "local_ToningHue",
+            "sat": "local_ToningSaturation",
+            "radius": 3000.0,
+            "invert_x": true,
+            "invert_y": true
+          },
+          "TB_GAMMA": {
+            "hue": "local_ToningHue",
+            "sat": "local_ToningSaturation",
+            "radius": 3000.0,
+            "invert_x": true,
+            "invert_y": true
+          },
+          "TB_GAIN": {
+            "hue": "local_ToningHue",
+            "sat": "local_ToningSaturation",
+            "radius": 3000.0,
+            "invert_x": true,
+            "invert_y": true
+          }
+        },
+        "title": "Masks",
+        "buttons": {
+          "ADD_WINDOW": {
+            "action": "MaskNewRad"
+          },
+          "ADD_NODE": {
+            "action": "MaskNewGrad",
+            "hold_picker": "mask_tools"
+          },
+          "ADD_KEYFRM": {
+            "action": "MaskNewBrush"
+          },
+          "AUTO_COLOR": {
+            "action": "MaskNewSubject"
+          },
+          "OFFSET": {
+            "action": "MaskNewSky"
+          },
+          "COPY": {
+            "action": "MaskNewPeople"
+          },
+          "PASTE": {
+            "action": "MaskNewBack"
+          },
+          "PREV_NODE": {
+            "action": "MaskPrevious"
+          },
+          "NEXT_NODE": {
+            "action": "MaskNext"
+          },
+          "H/LITE": {
+            "action": "MaskHide"
+          },
+          "WIPE_STILL": {
+            "action": "CycleMaskOverlayColor"
+          },
+          "DELETE": {
+            "action": "MaskDelete"
+          },
+          "RESET_ALL": {
+            "action": "MaskReset"
+          },
+          "RESET_LIFT": {
+            "action": "MaskAddBrush"
+          },
+          "RESET_GAMMA": {
+            "action": "MaskSubBrush"
+          },
+          "RESET_GAIN": {
+            "action": "MaskIntBrush"
+          },
+          "BYPASS": {
+            "action": "MaskEnable"
+          },
+          "DISABLE": {
+            "action": "MaskInvert"
+          }
+        }
+      },
+      "MIXER": {
+        "_comment": "Colour mixer \u2014 HOLD SHIFT. The 8 leftmost knobs are the colour bands, left to right: Red Orange Yellow Green Aqua Blue Purple Magenta. Pick the bank with RESET LIFT / GAMMA / GAIN (hue / sat / lum).",
+        "knobs": {
+          "Y_LIFT": {
+            "param": "SaturationAdjustmentRed",
+            "scale": 0.0003
+          },
+          "Y_GAMMA": {
+            "param": "SaturationAdjustmentOrange",
+            "scale": 0.0003
+          },
+          "Y_GAIN": {
+            "param": "SaturationAdjustmentYellow",
+            "scale": 0.0003
+          },
+          "CONTRAST": {
+            "param": "SaturationAdjustmentGreen",
+            "scale": 0.0003
+          },
+          "PIVOT": {
+            "param": "SaturationAdjustmentAqua",
+            "scale": 0.0003
+          },
+          "MID_DETAIL": {
+            "param": "SaturationAdjustmentBlue",
+            "scale": 0.0003
+          },
+          "COL_BOOST": {
+            "param": "SaturationAdjustmentPurple",
+            "scale": 0.0003
+          },
+          "SHAD": {
+            "param": "SaturationAdjustmentMagenta",
+            "scale": 0.0003
+          }
+        },
+        "default_variant": "SAT",
+        "variants": {
+          "HUE": {
+            "knobs": {
+              "Y_LIFT": {
+                "param": "HueAdjustmentRed",
+                "scale": 0.0003
+              },
+              "Y_GAMMA": {
+                "param": "HueAdjustmentOrange",
+                "scale": 0.0003
+              },
+              "Y_GAIN": {
+                "param": "HueAdjustmentYellow",
+                "scale": 0.0003
+              },
+              "CONTRAST": {
+                "param": "HueAdjustmentGreen",
+                "scale": 0.0003
+              },
+              "PIVOT": {
+                "param": "HueAdjustmentAqua",
+                "scale": 0.0003
+              },
+              "MID_DETAIL": {
+                "param": "HueAdjustmentBlue",
+                "scale": 0.0003
+              },
+              "COL_BOOST": {
+                "param": "HueAdjustmentPurple",
+                "scale": 0.0003
+              },
+              "SHAD": {
+                "param": "HueAdjustmentMagenta",
+                "scale": 0.0003
+              }
+            }
+          },
+          "SAT": {
+            "knobs": {
+              "Y_LIFT": {
+                "param": "SaturationAdjustmentRed",
+                "scale": 0.0003
+              },
+              "Y_GAMMA": {
+                "param": "SaturationAdjustmentOrange",
+                "scale": 0.0003
+              },
+              "Y_GAIN": {
+                "param": "SaturationAdjustmentYellow",
+                "scale": 0.0003
+              },
+              "CONTRAST": {
+                "param": "SaturationAdjustmentGreen",
+                "scale": 0.0003
+              },
+              "PIVOT": {
+                "param": "SaturationAdjustmentAqua",
+                "scale": 0.0003
+              },
+              "MID_DETAIL": {
+                "param": "SaturationAdjustmentBlue",
+                "scale": 0.0003
+              },
+              "COL_BOOST": {
+                "param": "SaturationAdjustmentPurple",
+                "scale": 0.0003
+              },
+              "SHAD": {
+                "param": "SaturationAdjustmentMagenta",
+                "scale": 0.0003
+              }
+            }
+          },
+          "LUM": {
+            "knobs": {
+              "Y_LIFT": {
+                "param": "LuminanceAdjustmentRed",
+                "scale": 0.0003
+              },
+              "Y_GAMMA": {
+                "param": "LuminanceAdjustmentOrange",
+                "scale": 0.0003
+              },
+              "Y_GAIN": {
+                "param": "LuminanceAdjustmentYellow",
+                "scale": 0.0003
+              },
+              "CONTRAST": {
+                "param": "LuminanceAdjustmentGreen",
+                "scale": 0.0003
+              },
+              "PIVOT": {
+                "param": "LuminanceAdjustmentAqua",
+                "scale": 0.0003
+              },
+              "MID_DETAIL": {
+                "param": "LuminanceAdjustmentBlue",
+                "scale": 0.0003
+              },
+              "COL_BOOST": {
+                "param": "LuminanceAdjustmentPurple",
+                "scale": 0.0003
+              },
+              "SHAD": {
+                "param": "LuminanceAdjustmentMagenta",
+                "scale": 0.0003
+              }
+            }
+          }
+        },
+        "buttons": {
+          "RESET_LIFT": {
+            "set_variant": "HUE"
+          },
+          "RESET_GAMMA": {
+            "set_variant": "SAT"
+          },
+          "RESET_GAIN": {
+            "set_variant": "LUM"
+          }
+        },
+        "title": "Color Mixer"
+      },
+      "TRANSFORM": {
+        "_comment": "Perspective / Upright \u2014 HOLD USER. Buttons fire the Upright modes; the knobs are the manual Transform sliders.",
+        "knobs": {
+          "Y_LIFT": {
+            "param": "PerspectiveVertical",
+            "scale": 0.0003
+          },
+          "Y_GAMMA": {
+            "param": "PerspectiveHorizontal",
+            "scale": 0.0003
+          },
+          "Y_GAIN": {
+            "param": "PerspectiveRotate",
+            "scale": 0.0003
+          },
+          "CONTRAST": {
+            "param": "PerspectiveAspect",
+            "scale": 0.0003
+          },
+          "PIVOT": {
+            "param": "PerspectiveScale",
+            "scale": 0.0003
+          },
+          "MID_DETAIL": {
+            "param": "PerspectiveX",
+            "scale": 0.0003
+          },
+          "COL_BOOST": {
+            "param": "PerspectiveY",
+            "scale": 0.0003
+          }
+        },
+        "buttons": {
+          "AUTO_COLOR": {
+            "action": "UprightAuto"
+          },
+          "ADD_WINDOW": {
+            "action": "UprightVertical"
+          },
+          "ADD_NODE": {
+            "action": "UprightLevel"
+          },
+          "LOOP": {
+            "action": "UprightFull"
+          },
+          "DELETE": {
+            "action": "UprightOff"
+          },
+          "RESET_ALL": {
+            "action": "ResetPerspectiveUpright"
+          }
+        },
+        "title": "Upright & Transform"
+      },
+      "MULTISELECT": {
+        "_comment": "Hold Down Shift. Prev/Next Keyframe extend the Lightroom selection like Command-click. Release and use Next/Prev Frame to skip a photo without adding it.",
+        "buttons": {
+          "PREV_KEYFRM": {
+            "action": "Select1Left"
+          },
+          "NEXT_KEYFRM": {
+            "action": "Select1Right"
+          }
+        },
+        "title": "Add to Selection"
+      },
+      "CROP": {
+        "title": "Crop & Straighten",
+        "_comment": "Hold VIEWER. Knobs trim each edge; the center ring straightens. Select opens the crop overlay, Reset All resets the crop.",
+        "knobs": {
+          "Y_LIFT": {
+            "param": "CropLeft",
+            "scale": 0.0003
+          },
+          "Y_GAMMA": {
+            "param": "CropRight",
+            "scale": 0.0003
+          },
+          "Y_GAIN": {
+            "param": "CropTop",
+            "scale": 0.0003
+          },
+          "CONTRAST": {
+            "param": "CropBottom",
+            "scale": 0.0003
+          },
+          "PIVOT": {
+            "param": "straightenAngle",
+            "scale": 0.00015
+          }
+        },
+        "rings": {
+          "RING_GAMMA": {
+            "param": "straightenAngle",
+            "scale": 0.00015
+          }
+        },
+        "buttons": {
+          "SELECT": {
+            "action": "CropOverlay"
+          },
+          "RESET_ALL": {
+            "action": "ResetCrop"
+          },
+          "DELETE": {
+            "action": "ResetstraightenAngle"
+          },
+          "AUTO_COLOR": {
+            "action": "QuickDevCropAspectAsShot"
+          },
+          "OFFSET": {
+            "action": "QuickDevCropAspect1x1"
+          },
+          "COPY": {
+            "action": "QuickDevCropAspect4x5"
+          },
+          "PASTE": {
+            "action": "QuickDevCropAspect2x3"
+          },
+          "UNDO": {
+            "action": "QuickDevCropAspect9x16"
+          },
+          "LOOP": {
+            "action": "CropConstrainToWarp"
+          }
+        }
+      },
+      "CULL": {
+        "title": "Cull",
+        "_comment": "Hold SELECT. Grade-row keys rate and flag; the center ring scrolls photos, the right ring zooms.",
+        "rings": {
+          "RING_GAMMA": {
+            "param": "NextPrev",
+            "scale": 0.0003
+          },
+          "RING_GAIN": {
+            "param": "ZoomInOut",
+            "scale": 0.0003
+          },
+          "RING_LIFT": {
+            "param": "IncreaseDecreaseRating",
+            "scale": 0.0003
+          }
+        },
+        "buttons": {
+          "AUTO_COLOR": {
+            "action": "SetRating1"
+          },
+          "OFFSET": {
+            "action": "SetRating2"
+          },
+          "COPY": {
+            "action": "SetRating3"
+          },
+          "PASTE": {
+            "action": "SetRating4"
+          },
+          "UNDO": {
+            "action": "SetRating5"
+          },
+          "REDO": {
+            "action": "SetRating0"
+          },
+          "DELETE": {
+            "action": "Reject"
+          },
+          "RESET_ALL": {
+            "action": "RemoveFlag"
+          },
+          "LOOP": {
+            "action": "Pick"
+          },
+          "RESET_LIFT": {
+            "action": "ToggleRed"
+          },
+          "RESET_GAMMA": {
+            "action": "ToggleYellow"
+          },
+          "RESET_GAIN": {
+            "action": "ToggleGreen"
+          },
+          "PLAY_STILL": {
+            "action": "VirtualCopy"
+          },
+          "WIPE_STILL": {
+            "action": "ShoVwcompare"
+          },
+          "H/LITE": {
+            "action": "ShoVwsurvey"
+          },
+          "VIEWER": {
+            "action": "ShoVwgrid"
+          }
+        }
+      },
+      "TONE": {
+        "title": "Tone Curve",
+        "_comment": "Parametric curve regions on knobs 1\u20134, splits on 5\u20137.",
+        "knobs": {
+          "Y_LIFT": {
+            "param": "ParametricShadows",
+            "scale": 0.0003
+          },
+          "Y_GAMMA": {
+            "param": "ParametricDarks",
+            "scale": 0.0003
+          },
+          "Y_GAIN": {
+            "param": "ParametricLights",
+            "scale": 0.0003
+          },
+          "CONTRAST": {
+            "param": "ParametricHighlights",
+            "scale": 0.0003
+          },
+          "PIVOT": {
+            "param": "ParametricShadowSplit",
+            "scale": 0.0003
+          },
+          "MID_DETAIL": {
+            "param": "ParametricMidtoneSplit",
+            "scale": 0.0003
+          },
+          "COL_BOOST": {
+            "param": "ParametricHighlightSplit",
+            "scale": 0.0003
+          },
+          "SHAD": {
+            "param": "CurveRefineSaturation",
+            "scale": 0.0003
+          }
+        },
+        "buttons": {
+          "AUTO_COLOR": {
+            "action": "PointCurveLinear"
+          },
+          "OFFSET": {
+            "action": "PointCurveMediumContrast"
+          },
+          "COPY": {
+            "action": "PointCurveStrongContrast"
+          }
+        }
+      },
+      "DETAIL": {
+        "title": "Detail",
+        "_comment": "Sharpening on knobs 1\u20134, noise reduction on 5\u20139.",
+        "knobs": {
+          "Y_LIFT": {
+            "param": "Sharpness",
+            "scale": 0.0003
+          },
+          "Y_GAMMA": {
+            "param": "SharpenRadius",
+            "scale": 0.0003
+          },
+          "Y_GAIN": {
+            "param": "SharpenDetail",
+            "scale": 0.0003
+          },
+          "CONTRAST": {
+            "param": "SharpenEdgeMasking",
+            "scale": 0.0003
+          },
+          "PIVOT": {
+            "param": "LuminanceSmoothing",
+            "scale": 0.0003
+          },
+          "MID_DETAIL": {
+            "param": "LuminanceNoiseReductionDetail",
+            "scale": 0.0003
+          },
+          "COL_BOOST": {
+            "param": "LuminanceNoiseReductionContrast",
+            "scale": 0.0003
+          },
+          "SHAD": {
+            "param": "ColorNoiseReduction",
+            "scale": 0.0003
+          },
+          "HI_LIGHT": {
+            "param": "ColorNoiseReductionDetail",
+            "scale": 0.0003
+          },
+          "SAT": {
+            "param": "ColorNoiseReductionSmoothness",
+            "scale": 0.0003
+          }
+        }
+      },
+      "EFFECTS": {
+        "title": "Effects",
+        "_comment": "Vignette on knobs 1\u20135, grain on 6\u20138, dehaze and texture after.",
+        "knobs": {
+          "Y_LIFT": {
+            "param": "PostCropVignetteAmount",
+            "scale": 0.0003
+          },
+          "Y_GAMMA": {
+            "param": "PostCropVignetteMidpoint",
+            "scale": 0.0003
+          },
+          "Y_GAIN": {
+            "param": "PostCropVignetteRoundness",
+            "scale": 0.0003
+          },
+          "CONTRAST": {
+            "param": "PostCropVignetteFeather",
+            "scale": 0.0003
+          },
+          "PIVOT": {
+            "param": "PostCropVignetteHighlightContrast",
+            "scale": 0.0003
+          },
+          "MID_DETAIL": {
+            "param": "GrainAmount",
+            "scale": 0.0003
+          },
+          "COL_BOOST": {
+            "param": "GrainSize",
+            "scale": 0.0003
+          },
+          "SHAD": {
+            "param": "GrainFrequency",
+            "scale": 0.0003
+          },
+          "HI_LIGHT": {
+            "param": "Dehaze",
+            "scale": 0.0003
+          },
+          "SAT": {
+            "param": "Texture",
+            "scale": 0.0003
+          }
+        },
+        "buttons": {
+          "AUTO_COLOR": {
+            "action": "PostCropVignetteStyleHighlightPriority"
+          },
+          "OFFSET": {
+            "action": "PostCropVignetteStyleColorPriority"
+          },
+          "COPY": {
+            "action": "PostCropVignetteStylePaintOverlay"
+          }
+        }
+      },
+      "LENS": {
+        "title": "Lens & Optics",
+        "_comment": "Lens corrections and Lens Blur.",
+        "knobs": {
+          "Y_LIFT": {
+            "param": "LensProfileDistortionScale",
+            "scale": 0.0003
+          },
+          "Y_GAMMA": {
+            "param": "LensProfileVignettingScale",
+            "scale": 0.0003
+          },
+          "Y_GAIN": {
+            "param": "LensManualDistortionAmount",
+            "scale": 0.0003
+          },
+          "CONTRAST": {
+            "param": "VignetteAmount",
+            "scale": 0.0003
+          },
+          "PIVOT": {
+            "param": "DefringePurpleAmount",
+            "scale": 0.0003
+          },
+          "MID_DETAIL": {
+            "param": "DefringeGreenAmount",
+            "scale": 0.0003
+          },
+          "COL_BOOST": {
+            "param": "LensBlurAmount",
+            "scale": 0.0003
+          },
+          "SHAD": {
+            "param": "LensBlurHighlightsBoost",
+            "scale": 0.0003
+          }
+        },
+        "buttons": {
+          "AUTO_COLOR": {
+            "action": "EnableLensCorrections"
+          },
+          "OFFSET": {
+            "action": "LensProfileEnable"
+          },
+          "COPY": {
+            "action": "AutoLateralCA"
+          },
+          "PASTE": {
+            "action": "LensBlurActive"
+          },
+          "UNDO": {
+            "action": "BokehCircle"
+          },
+          "REDO": {
+            "action": "BokehBlade"
+          }
+        }
+      },
+      "PRESETS": {
+        "title": "Presets",
+        "_comment": "Knob 1 steps through presets, the center ring sets the amount, grade-row keys fire MIDI2LR preset slots 1\u201310 (choose them in the MIDI2LR plugin options).",
+        "knobs": {
+          "Y_LIFT": {
+            "param": "PresetPreviousNext",
+            "scale": 0.0003
+          }
+        },
+        "rings": {
+          "RING_GAMMA": {
+            "param": "PresetAmount",
+            "scale": 0.0003
+          }
+        },
+        "buttons": {
+          "AUTO_COLOR": {
+            "action": "Preset_1"
+          },
+          "OFFSET": {
+            "action": "Preset_2"
+          },
+          "COPY": {
+            "action": "Preset_3"
+          },
+          "PASTE": {
+            "action": "Preset_4"
+          },
+          "UNDO": {
+            "action": "Preset_5"
+          },
+          "REDO": {
+            "action": "Preset_6"
+          },
+          "DELETE": {
+            "action": "Preset_7"
+          },
+          "RESET_ALL": {
+            "action": "Preset_8"
+          },
+          "BYPASS": {
+            "action": "Preset_9"
+          },
+          "DISABLE": {
+            "action": "Preset_10"
+          }
+        }
+      }
+    },
+    "photoshop": {
+      "handoff_dir": "~/Pictures/Panel Handoff",
+      "_comment": "Flattened layered documents land here; point Lightroom's Auto Import at it (File > Auto Import > Auto Import Settings)."
+    }
+  }
+}

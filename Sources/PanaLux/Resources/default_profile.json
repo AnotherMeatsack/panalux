@@ -237,18 +237,18 @@
   "layers": {
     "REWIND": {
       "title": "Rewind",
-      "_comment": "Hold Undo (its tap is still Undo). The centre ring steps through everything you changed, one click at a time. Play and Play Reverse replay the session; Stop pauses. The left ring is fine playback speed and the right is coarse. The other keys mark, branch, and step between landmarks.",
+      "_comment": "Hold Undo. Right ring scrubs the timeline, left ring steps between landmarks, center ring switches tangents. Play and Play Reverse replay; Stop pauses. All controls remain customizable.",
       "rings": {
         "RING_GAMMA": {
-          "param": "rewind:scrub",
+          "param": "rewind:tangents",
           "scale": 0.0003
         },
         "RING_LIFT": {
-          "param": "rewind:speed_fine",
+          "param": "rewind:landmarks",
           "scale": 0.0003
         },
         "RING_GAIN": {
-          "param": "rewind:speed",
+          "param": "rewind:scrub",
           "scale": 0.0003
         }
       },
@@ -314,7 +314,7 @@
           "invert_y": true
         }
       },
-      "title": "Offset · Temp & Tint"
+      "title": "Offset \u00b7 Temp & Tint"
     },
     "MASK": {
       "_comment": "Tap or hold CURSOR. Hold Add Node for the tool wheel (left ring = New/Add/Subtract/Intersect). Release to create the mask, then place it with the mouse. Knobs match Base and grade the selected mask. Trackball placement is coming later.",
@@ -465,7 +465,7 @@
       }
     },
     "MIXER": {
-      "_comment": "Colour mixer — HOLD SHIFT. The 8 leftmost knobs are the colour bands, left to right: Red Orange Yellow Green Aqua Blue Purple Magenta. Pick the bank with RESET LIFT / GAMMA / GAIN (hue / sat / lum).",
+      "_comment": "Colour mixer \u2014 HOLD SHIFT. The 8 leftmost knobs are the colour bands, left to right: Red Orange Yellow Green Aqua Blue Purple Magenta. Pick the bank with RESET LIFT / GAMMA / GAIN (hue / sat / lum).",
       "knobs": {
         "Y_LIFT": {
           "param": "SaturationAdjustmentRed",
@@ -625,7 +625,7 @@
       "title": "Color Mixer"
     },
     "TRANSFORM": {
-      "_comment": "Perspective / Upright — HOLD USER. Buttons fire the Upright modes; the knobs are the manual Transform sliders.",
+      "_comment": "Perspective / Upright \u2014 HOLD USER. Buttons fire the Upright modes; the knobs are the manual Transform sliders.",
       "knobs": {
         "Y_LIFT": {
           "param": "PerspectiveVertical",
@@ -821,7 +821,7 @@
     },
     "TONE": {
       "title": "Tone Curve",
-      "_comment": "Parametric curve regions on knobs 1–4, splits on 5–7.",
+      "_comment": "Parametric curve regions on knobs 1\u20134, splits on 5\u20137.",
       "knobs": {
         "Y_LIFT": {
           "param": "ParametricShadows",
@@ -870,7 +870,7 @@
     },
     "DETAIL": {
       "title": "Detail",
-      "_comment": "Sharpening on knobs 1–4, noise reduction on 5–9.",
+      "_comment": "Sharpening on knobs 1\u20134, noise reduction on 5\u20139.",
       "knobs": {
         "Y_LIFT": {
           "param": "Sharpness",
@@ -916,7 +916,7 @@
     },
     "EFFECTS": {
       "title": "Effects",
-      "_comment": "Vignette on knobs 1–5, grain on 6–8, dehaze and texture after.",
+      "_comment": "Vignette on knobs 1\u20135, grain on 6\u20138, dehaze and texture after.",
       "knobs": {
         "Y_LIFT": {
           "param": "PostCropVignetteAmount",
@@ -1031,7 +1031,7 @@
     },
     "PRESETS": {
       "title": "Presets",
-      "_comment": "Knob 1 steps through presets, the center ring sets the amount, grade-row keys fire MIDI2LR preset slots 1–10 (choose them in the MIDI2LR plugin options).",
+      "_comment": "Knob 1 steps through presets, the center ring sets the amount, grade-row keys fire MIDI2LR preset slots 1\u201310 (choose them in the MIDI2LR plugin options).",
       "knobs": {
         "Y_LIFT": {
           "param": "PresetPreviousNext",

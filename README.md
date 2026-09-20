@@ -4,7 +4,7 @@
 
 **One panel. Every job.** Rewind+, tangents, and customizable controls.
 
-[What changed in 1.2.1](RELEASE_NOTES.md) · [Downloads](https://github.com/AnotherMeatsack/panalux/releases/latest)
+[What changed in 1.2.2](RELEASE_NOTES.md) · [Downloads](https://github.com/AnotherMeatsack/panalux/releases/latest)
 
 I bought a Micro Color Panel for Resolve. I also edit stills. I wanted the panel I already paid for to do more than one job.
 
@@ -55,7 +55,7 @@ Every key has separate **On tap** and **While held** assignments. The table belo
 
 | Key and gesture | What it does |
 | --- | --- |
-| **Hold Up Shift** | Color Mixer. Knobs 1-8 control Red, Orange, Yellow, Green, Aqua, Blue, Purple, and Magenta. Reset Lift, Reset Gamma, and Reset Gain select hue, saturation, and luminance. |
+| **Hold Up Shift** | Color Mixer. Knobs 1-8 control Red, Orange, Yellow, Green, Aqua, Blue, Purple, and Magenta. The new Shift + wheel reset combinations take priority over the original hue/saturation/luminance bank keys; remove those combinations to restore the bank keys. |
 | **Hold User** | Upright and Transform. Knobs become perspective controls. Auto Color becomes Upright Auto while User is held. |
 | **Tap or hold Cursor** | Masks. Knobs adjust the selected mask, keeping matching controls in their Base positions. You can turn that behavior off in Settings and build a custom mask layout. |
 | **Hold Add Node** | Opens the circular mask tool wheel. Choose a tool and operation, then release to create it. Place it with the mouse. |
@@ -102,9 +102,9 @@ Undo still undoes on a tap. Hold it and the whole editing session becomes a tape
 
 You get lost in an edit. You want to see exactly where it went wrong, stop at the last place you liked, and start again from there without losing the other way you were going. That is what this does.
 
-**The centre ring is a jog wheel.** One click is one thing you changed, so you can stop on the exact number you had, whether the session was thirty seconds or two hours. Turn faster and it accelerates to cross a long session; stop turning and it holds. The notch shows what changed at every step (`Exposure +0.35 EV`), where you are (`212 / 640`), and what all twelve knobs read right there.
+**The right ring is a jog wheel.** One click is one thing you changed, so you can stop on the exact number you had, whether the session was thirty seconds or two hours. Turn faster and it accelerates to cross a long session; stop turning and it holds. The notch shows what changed at every step (`Exposure +0.35 EV`), where you are (`212 / 640`), and what all twelve knobs read right there.
 
-**Play it back.** Play and Play Reverse replay your edits as they happened; press the same key again to pause, or use Stop. Long stretches where you were not touching anything play through in half a second. The left ring is a fine speed dial for slow motion and the right ring is a coarse one, from 0.05× to 32×, and both catch at 1×.
+**Play it back.** Play and Play Reverse replay your edits as they happened; press the same key again to pause, or use Stop. Long stretches where you were not touching anything play through in half a second. The left ring steps between landmarks; the center ring switches tangents. Playback-speed commands remain available to assign if you want them.
 
 **Tangents.** Roll back, let go, and edit: that starts a tangent. The notch says so, and every readout wears that tangent's badge from then on, so you always know you are on a tangent. The other line is kept whole. Prev / Next Node hop between tangents at the same moment, so you can flip between where each one ended up. This is the part Lightroom's history panel cannot do.
 
@@ -114,9 +114,9 @@ While Undo is held:
 
 | Control | Job |
 | --- | --- |
-| **Centre ring** | Jog through your changes, one click per step. Faster travels; stop to hold. |
-| **Left ring** | Playback speed, fine. Slow motion. |
-| **Right ring** | Playback speed, coarse. |
+| **Right ring** | Jog through your changes, one click per step. Faster travels; stop to hold. |
+| **Left ring** | Previous / next landmark. |
+| **Center ring** | Previous / next tangent. |
 | **Play / Play Reverse** | Replay forward or backward. Same key again pauses. |
 | **Stop** | Pause where you are. |
 | **Prev / Next Node** | Hop to the previous or next tangent. |
@@ -131,6 +131,26 @@ Letting go of Undo leaves the photo wherever the playhead is, and that tangent i
 The feel is yours to tune: **Settings > Rewind** has click size and spin speed, and they apply on the next turn.
 
 The trail is kept per photo, under `~/Library/Application Support/PanaLux/Trails`, and survives quitting. Like every other control on the panel, all of the above is remappable — Rewind's commands are ordinary tiles in the catalog.
+
+## Knob presses and combinations
+
+Press any knob to reset the Lightroom parameter it currently controls. A Contrast knob mapped to Clarity resets Clarity; mode and mask assignments are respected. Commands without a supported reset display an explanation.
+
+Open **Presses & Combinations** in the inspector. Enable editing, hold one or more buttons, then press a target button or knob. Let go: the gesture stays selected, with the controls highlighted. Drag a command onto the drop target or click a catalog tile, then choose **Done Programming**. You can also build the gesture using the mouse. Programming pauses output.
+
+For example, capture **Previous Still → press Lum Mix**, then assign **Preset 1**. Choose that preset in Lightroom’s plug-in options first. The preset fires instead of the Lum Mix reset, and releasing Previous Still does not also mark a bracket. Any physical button or knob press can be a held control or a target. A button used as a modifier retains its existing hold behavior; clear that hold separately if you want it used only for combinations. Single taps on combination modifiers without a hold assignment fire on release.
+
+**Up Shift + Reset Lift/Gamma/Gain** resets only the corresponding ball’s color. **Down Shift + Reset Lift/Gamma/Gain** resets only its luminance ring. The ordinary reset still resets both. These are editable global combinations and take priority over the original Color Mixer bank keys. Remove them in Saved combinations to restore those bank shortcuts. With overlapping combinations, the one requiring more held controls wins; equal-sized matches use a stable control-name order.
+
+Saved maps include knob presses and combinations. **Your Controls** shows them, and **What’s New** in the menu bar or Settings keeps the release history available offline.
+
+## A larger Rewind+ workspace
+
+Hover briefly over the Rewind+ preview, click it, or choose **Expand Rewind+** from the menu bar. The glass workspace stays open when you move the mouse away or release Undo. Scrub with its slider, play/pause and step through edits. Click inside to use the displayed keyboard shortcuts. Escape or Collapse returns to the compact readout.
+
+Select a branch node to inspect it without changing Lightroom. **View This Tangent** applies that saved version. To merge, select another node, check the sliders you want and choose **Merge Settings**. A new result connects to both sources; their histories remain. Merging excludes masks and crop.
+
+Use the trash button for an inactive leaf tangent, then confirm deletion. **Undo Delete** can restore it during this photo session. The original, current and branches needed by another tangent are protected.
 
 ## Make the map yours
 
@@ -260,3 +280,13 @@ Packaging/
 MIT for the PanaLux app. See [LICENSE](LICENSE).
 
 The bundled Lightroom plugin, PanaLux Bridge, is GPL-3.0 because it is based on [MIDI2LR](https://github.com/rsjaffe/MIDI2LR). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Collect, share and remix maps
+
+Open **Map Library & Community** from the menu bar or Settings. **Save Current** gives a setup a name; **Use** switches to it with a backup and map Undo. Preview a saved map, a file or a reviewed community entry. **Save Source to My Setups** keeps a downloaded map locally.
+
+Compare the source and your result side by side. Choose **Whole control**, **Tap only** or **Hold only**, then click controls or drag a section header onto your result. Highlighted controls are pending; inspect the before/after readout and included-mode list before **Merge Selected**. Referenced modes are included under separate IDs when needed, so unrelated destination assignments survive. Combinations are independently selectable. Save the result under a new name. Hardware calibration and personal app settings remain local.
+
+**Export & Share** saves a map and opens a public GitHub draft. Attach the file, review sharing permission and submit for manual review. The gallery starts with the official factory map. Lightroom preset slots refer to each recipient’s own plug-in setup; preset files and photos are not included.
+
+**Suggest a Feature**, available in the menu bar, Settings and library, opens a public GitHub draft containing the entered idea and workflow. Users review and submit it themselves with a GitHub account; PanaLux does not automatically send logs, credentials or photos. Maintainers reply through GitHub issues. See [community publishing and notifications](CommunityMaps/README.md).

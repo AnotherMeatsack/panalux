@@ -30,7 +30,7 @@ public struct PanelCanvasView: View {
     public var body: some View {
         VStack(spacing: 0) {
             if engine.isProgrammingButtons {
-                Label("Press any button to edit its tap. Hold it to edit While held, then drop an action.", systemImage: "hand.point.down")
+                Label("Press a button or knob to edit it. Open Presses & Combinations to capture a gesture, release your hands, then drop an action.", systemImage: "hand.point.down")
                     .font(.callout).fixedSize(horizontal: false, vertical: true)
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.accentColor.opacity(0.1))

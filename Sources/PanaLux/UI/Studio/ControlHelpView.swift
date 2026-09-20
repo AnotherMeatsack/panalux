@@ -37,6 +37,16 @@ struct ControlHelpRow: Identifiable {
                 rows.append(.init(id: id, control: title, action: actions.isEmpty ? "Not assigned" : actions.joined(separator: " · "), hold: holds.joined(separator: " · ")))
             }
         }
+        for id in PanelLayout.knobs {
+            let spec = profile.buttons["PRESS_" + id]
+            rows.append(.init(id: "PRESS_" + id, control: PanelLayout.label(forControl: "PRESS_" + id),
+                              action: spec.map { MapReadme.tapLine($0) } ?? "Reset current parameter",
+                              hold: spec.map { MapReadme.holdLine($0) } ?? ""))
+        }
+        for entry in profile.combinations ?? ButtonCombination.defaults {
+            rows.append(.init(id: "combination:" + entry.id, control: entry.title,
+                              action: MapReadme.tapLine(entry.binding), hold: "Takes priority over mode keys"))
+        }
         return rows
     }
 }

@@ -31,6 +31,10 @@ extension StudioEngine {
     }
 
     public func applyDroppedCommand(commandId: String, ontoControl control: String, preferHold: Bool? = nil) {
+        if isProgrammingButtons && combinationEditorActive {
+            saveCombination(command: commandId)
+            return
+        }
         let item = CommandDatabase.shared.catalogCommand(for: commandId)
 
         if PanelLayout.isButton(control) {
@@ -181,7 +185,7 @@ extension StudioEngine {
             assignInLayer(layer, control: control, item: item, preferHold: preferHold)
             return
         }
-        var spec = profile.buttons[control] ?? ButtonBinding()
+        var spec = profile.buttons[control] ?? ButtonBinding(action: control.hasPrefix("PRESS_") ? "reset_knob:" + String(control.dropFirst(6)) : nil)
         let holdOnly = item.id.starts(with: "hold_layer:") || item.id.starts(with: "modifier:")
             || item.id.starts(with: "hold_picker:") || item.id == Self.holdCompareID
         if preferHold || holdOnly {

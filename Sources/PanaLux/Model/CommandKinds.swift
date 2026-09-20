@@ -191,7 +191,7 @@ public enum WheelReset {
 
     /// MIDI2LR resets any slider with "Reset" + its name.
     public static func commands(ball: BallBinding?, ringParam: String?, known: Set<String>) -> [String] {
-        [ball?.hue, ball?.sat, ringParam]
+        [ball?.param ?? ball?.hue, ball?.param == nil ? ball?.sat : nil, ringParam]
             .compactMap { $0 }
             .map { "Reset" + $0 }
             .filter { known.contains($0) }

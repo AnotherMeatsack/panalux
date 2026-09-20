@@ -723,6 +723,33 @@ final class RewindTransportTests: XCTestCase {
         for i in 1...10 { edit(0.5 + Double(i) * 0.03, at: Double(i) * 10.0) }
     }
 
+    func testDeleteOnlyUnusedInactiveLeafAndRestore() {
+        edit(0.3, at: 10)
+        let original = engine.trail!.activeBranchID
+        engine.startBranch(reason: "Alternative")
+        let alternative = engine.trail!.activeBranchID
+        XCTAssertFalse(engine.canDeleteTangent(original))
+        XCTAssertFalse(engine.canDeleteTangent(alternative))
+        engine.selectTangent(original)
+        let snapshot = engine.trail!
+        XCTAssertTrue(engine.deleteTangent(alternative))
+        XCTAssertNil(engine.trail!.branch(alternative))
+        XCTAssertEqual(engine.trail!.activeBranchID, original)
+        engine.restoreDeletedTangent()
+        XCTAssertEqual(engine.trail!.branches, snapshot.branches)
+    }
+
+    func testMouseScrubbingUsesBoundedHistoryPosition() {
+        tenEdits()
+        engine.seekToFraction(-1)
+        XCTAssertEqual(engine.state.playhead, engine.state.origin, accuracy: 0.0001)
+        engine.seekToFraction(2)
+        XCTAssertEqual(engine.state.playhead, engine.state.tip, accuracy: 0.0001)
+        let before = engine.state.playhead
+        engine.seekToFraction(.nan)
+        XCTAssertEqual(engine.state.playhead, before)
+    }
+
     func testSelectiveMergePreservesBothSourcesAndUncheckedSettings() {
         edit(0.3, at: 10)
         edit(0.4, at: 11, param: "Contrast")
@@ -738,6 +765,8 @@ final class RewindTransportTests: XCTestCase {
         XCTAssertEqual(lightroom.values["Exposure"] ?? -1, 0.8, accuracy: 0.00001)
         XCTAssertEqual(lightroom.values["Contrast"] ?? -1, 0.4, accuracy: 0.00001)
         XCTAssertEqual(engine.trail!.branches.count, 3)
+        XCTAssertEqual(engine.trail!.activeBranch.mergeSourceID, alternative)
+        XCTAssertFalse(engine.canDeleteTangent(alternative))
         XCTAssertEqual(engine.trail!.branch(original), before.branch(original))
         XCTAssertEqual(engine.trail!.branch(alternative), before.branch(alternative))
         XCTAssertFalse(engine.mergeParameters(from: alternative, names: []))
@@ -1251,7 +1280,7 @@ final class IntroRewindDemoTests: XCTestCase {
     func testTheSlideTellsTheStoryInOrder() {
         // One click of the ring is one step; then travelling; then play; a tangent; then hops.
         XCTAssertTrue(IntroRewindDemo.frame(at: 3.0).step.hasPrefix("1"))
-        XCTAssertTrue(IntroRewindDemo.frame(at: 3.0).rings.contains(1), "the centre ring glows while it is turned")
+        XCTAssertTrue(IntroRewindDemo.frame(at: 3.0).rings.contains(2), "the right ring glows while it is turned")
         XCTAssertTrue(IntroRewindDemo.frame(at: 9.0).step.hasPrefix("2"))
         XCTAssertTrue(IntroRewindDemo.frame(at: 9.0).state.isPlaying)
         XCTAssertFalse(IntroRewindDemo.frame(at: 13.0).state.isPlaying, "Stop pauses it")
@@ -1261,11 +1290,11 @@ final class IntroRewindDemoTests: XCTestCase {
         XCTAssertEqual(IntroRewindDemo.frame(at: 15.0).state.tangentCount, 2)
     }
 
-    func testPlaybackSlowsDownWhenTheDialIsTurned() {
+    func testPlaybackKeepsNormalSpeedWithoutSpeedDials() {
         let early = IntroRewindDemo.frame(at: 8.5).state.rate
         let late = IntroRewindDemo.frame(at: 11.5).state.rate
         XCTAssertEqual(early, 1, accuracy: 0.0001, "starts at normal speed")
-        XCTAssertEqual(late, 0.25, accuracy: 0.0001, "and ends in slow motion")
+        XCTAssertEqual(late, 1, accuracy: 0.0001, "stays at normal speed")
         // Playback only moves forward, and never past where it was stopped.
         var previous = IntroRewindDemo.frame(at: 7.6).state.playhead
         for t in stride(from: 7.7, through: 12.5, by: 0.1) {
@@ -1293,7 +1322,7 @@ final class IntroRewindDemoTests: XCTestCase {
 
     func testTheSlideFitsTheShow() {
         // The show is a fixed list of scenes; the new one must not push the finale off the end.
-        XCTAssertEqual(IntroRewindDemo.length, 26)
+        XCTAssertEqual(IntroRewindDemo.length, 46)
         XCTAssertGreaterThan(IntroRewindDemo.frame(at: IntroRewindDemo.length).state.stepCount, 100)
     }
 }

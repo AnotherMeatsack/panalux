@@ -416,6 +416,9 @@ struct IntroShowView: View {
             headline("Hold Undo. Rewind+.",
                      "Turn slowly for precise stops, faster to travel. Edit from the past to start a tangent; your earlier version stays saved.",
                      t: t)
+            if t >= 29 {
+                IntroRewindWorkspaceDemo(elapsed: t - 29)
+            } else {
             HStack(spacing: 34) {
                 PanelStage(t: t, knobLabels: IntroModes.base, labelColor: accent, changed: frame.changedKnobs,
                            heldKeys: frame.keys, keyColor: accent, pressedFlash: frame.flashing, ringGlow: frame.rings)
@@ -427,10 +430,16 @@ struct IntroShowView: View {
                     .scaleEffect(0.96 + 0.04 * frame.readoutOpacity)
             }
             .opacity(fade(t, from: 0.3))
-            Text("Tangents → choose a source → check sliders → Merge into New Tangent")
+            Text("Hover or click the Rewind+ preview → select a node → check sliders → merge into a new result")
                 .font(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(frame.step)
+            }
+            HStack(spacing: 28) {
+                Label("Left · landmarks", systemImage: "bookmark")
+                Label("Center · tangents", systemImage: "arrow.triangle.branch")
+                Label("Right · timeline", systemImage: "timeline.selection")
+            }.font(.callout.bold()).foregroundStyle(.secondary)
+            Text(t >= 29 ? "6  Use the mouse to inspect and merge" : frame.step)
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                 .foregroundStyle(accent)
                 .frame(width: 620)
@@ -442,7 +451,7 @@ struct IntroShowView: View {
     private func safetyScene(_ t: TimeInterval) -> some View {
         let items: [(String, String, String)] = [
             ("arrow.uturn.backward", "Undo", "⌘Z takes back any change to your map."),
-            ("hand.point.down", "Program Buttons", "Press any key for its tap. Hold for While held. Drop an action."),
+            ("hand.point.down", "Program Buttons", "Press knobs to reset. Capture a button combination, release it, then drop a command."),
             ("pause.fill", "Pause", "Practice on the panel. Nothing reaches the photo."),
             ("house.fill", "Back to Base", "One click turns every mode off."),
             ("magnifyingglass", "Find Anything", "⌘K searches every Lightroom command."),

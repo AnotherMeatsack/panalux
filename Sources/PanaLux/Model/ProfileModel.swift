@@ -269,9 +269,10 @@ public struct Profile: Codable, Equatable {
     public var modifiers: [String]
     public var layers: [String: LayerSpec]
     public var photoshop: [String: String]?
+    public var combinations: [ButtonCombination]? = nil
 
     enum CodingKeys: String, CodingKey {
-        case knobs, rings, balls, buttons, modifiers, layers, photoshop
+        case knobs, rings, balls, buttons, modifiers, layers, photoshop, combinations
     }
 
     public static func loadDefault() -> Profile {
@@ -283,7 +284,7 @@ public struct Profile: Codable, Equatable {
     }
 
     /// Bump when the factory map gains something existing users should receive.
-    public static let schemaVersion = 13
+    public static let schemaVersion = 14
 
     public static func loadUserOrDefault() -> Profile {
         let factory = loadDefault()
@@ -556,6 +557,21 @@ public struct Profile: Codable, Equatable {
                     p.layers["REWIND"] = rewind
                 }
             }
+        }
+        if seen < 14, var rewind = p.layers["REWIND"],
+           let rings = rewind.rings,
+           rings["RING_LIFT"]?.param == RewindCommands.speedFine,
+           rings["RING_GAMMA"]?.param == RewindCommands.scrub,
+           rings["RING_GAIN"]?.param == RewindCommands.speed {
+            // Only the complete old factory layout migrates. Customized layouts stay intact.
+            backup()
+            var next = rings
+            next["RING_LIFT"]?.param = RewindCommands.landmarks
+            next["RING_GAMMA"]?.param = RewindCommands.tangents
+            next["RING_GAIN"]?.param = RewindCommands.scrub
+            rewind.rings = next
+            rewind.comment = factory.layers["REWIND"]?.comment
+            p.layers["REWIND"] = rewind
         }
         if seen < schemaVersion {
             defaults.set(schemaVersion, forKey: "profileSchemaVersion")

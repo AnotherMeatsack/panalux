@@ -30,8 +30,36 @@ public struct QuickReferenceView: View {
                         "Keys have two jobs: On tap and While held.",
                         "⌘Z undoes map changes. Copy, Paste, and Swap sit above the command list."
                     ])
+                    section("Presses & Combinations", items: [
+                        "Press any knob to reset the parameter it currently controls, including modes and masks. Commands without a reset are left alone.",
+                        "Open Presses & Combinations in the inspector. Enable editing, hold buttons and press a target. Release everything, then drag or click a command. Done returns to normal output.",
+                        "Or build the gesture with Add a held button and the Press picker. No hardware or two-handed mouse work required.",
+                        "For a preset: hold Previous Still and press Lum Mix, then choose a Preset slot. Configure that slot in Lightroom’s plug-in options first.",
+                        "Combinations take priority over mode keys. The most specific matching combination wins. Held buttons keep their existing hold behavior; their tap is suppressed after a combination.",
+                        "What’s New in the menu bar or Settings shows the release history offline."
+                    ])
+                    section("Wheel resets", items: [
+                        "Reset Lift = shadows; Reset Gamma = midtones; Reset Gain = highlights.",
+                        "Press Reset alone to clear both ball color and ring luminance. Hold Up Shift + Reset for color only, or Down Shift + Reset for luminance only.",
+                        "If you adjusted only the ring, Up Shift leaves that brightness unchanged. The Shift combinations can be customized in Presses & Combinations."
+                    ])
+                    section("Rewind+ with the mouse", items: [
+                        "While holding Undo: right ring scrubs the timeline, left ring visits landmarks, center ring switches tangents. The old factory speed layout migrates; customized layouts are preserved.",
+                        "Hold Undo to show the preview, then hover briefly or click it. Or choose Expand Rewind+ from the menu bar. The workspace stays open until Escape or Collapse.",
+                        "Drag the timeline slider, play/pause, or step through edits. Select a node to inspect it; View This Tangent applies that version.",
+                        "Select a source, check the desired sliders, then merge into a new result. Both sources stay saved. Mask and crop settings are excluded.",
+                        "Delete an inactive leaf with confirmation. Undo Delete restores it during this photo session. Original, current and depended-on branches are protected.",
+                        "Click inside first: Space plays/pauses, arrows step, Command-M merges checked sliders, Shift-Command-N creates a tangent, Command-Delete deletes an eligible selection."
+                    ])
+                    section("Map Library & Community", items: [
+                        "Open from the menu bar or Settings. Save Current names your setup; Use switches to a saved setup with backup and Undo.",
+                        "Preview a saved map, import a file, or browse Community. Click source controls or drag section headers to your result. Choose Whole control, Tap only or Hold only.",
+                        "Highlights show staged changes. Inspect the before/after readout, review included modes, then Merge Selected. Save Current gives the result its own name. Calibration and personal settings stay yours.",
+                        "Save Source to My Setups keeps a community map locally. Export & Share opens a public GitHub draft; attach the file and submit for review. Preset slots use your own Lightroom configuration.",
+                        "Suggest a Feature opens a public GitHub draft with your idea and workflow. A GitHub account is required to submit; no automatic photo or diagnostic upload."
+                    ])
                     section("Factory modes", items: [
-                        "Hold Up Shift. Color Mixer. Knobs 1–8 are the color bands; Reset Lift / Gamma / Gain pick hue, saturation, or luminance.",
+                        "Hold Up Shift. Color Mixer. Knobs 1–8 are the color bands. Up Shift + Reset Lift / Gamma / Gain resets only that ball; Down Shift resets only its luminance. Remove those combinations to restore the original Mixer bank keys.",
                         "Hold User. Upright & Transform. Auto Color is Upright Auto.",
                         "Hold Viewer. Crop & Straighten. Knobs trim edges, the center ring straightens, Select opens the crop tool.",
                         "Hold Select. Cull. Grade-row keys rate, the center ring scrolls photos, the right ring zooms.",

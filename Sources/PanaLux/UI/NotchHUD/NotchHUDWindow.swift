@@ -10,6 +10,23 @@ public class NotchHUDWindowController: ObservableObject {
     private var glassView: NSView?
     private var cancellables = Set<AnyCancellable>()
     private var isHiding = false
+    @Published public private(set) var isRewindExpanded = false
+    @Published public private(set) var expandedSize = CGSize(width: 900, height: 700)
+
+    public func expandRewind() {
+        guard !isRewindExpanded, RewindEngine.shared.trail != nil else { return }
+        let available = (screen ?? NSScreen.main)?.visibleFrame.size ?? CGSize(width: 1000, height: 800)
+        expandedSize = CGSize(width: min(940, available.width - 32), height: min(760, available.height - 40))
+        isRewindExpanded = true
+        handleDisplayModeChange(.rewind(RewindEngine.shared.state))
+    }
+
+    public func collapseRewind() {
+        isRewindExpanded = false
+        RewindEngine.shared.pausePlayback(announce: false)
+        if !StudioEngine.shared.activeLayers.contains("REWIND") { RewindEngine.shared.endRewind(announce: false) }
+        handleDisplayModeChange(HUDFeed.shared.latest)
+    }
 
     /// Readouts are 400 wide; Rewind is a timeline and gets room to be one. It is set from the
     /// mode before any frame is worked out, so the window, its content and its position agree.
@@ -32,7 +49,7 @@ public class NotchHUDWindowController: ObservableObject {
     public func setup() {
         guard window == nil else { return }
 
-        let panel = NSPanel(
+        let panel = InteractiveHUDPanel(
             contentRect: NSRect(x: 0, y: 0, width: hudWidth, height: 68),
             styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
             backing: .buffered,
@@ -92,7 +109,10 @@ public class NotchHUDWindowController: ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func handleDisplayModeChange(_ mode: ActiveDisplayMode) {
+    private func handleDisplayModeChange(_ incoming: ActiveDisplayMode) {
+        let mode: ActiveDisplayMode = isRewindExpanded ? .rewind(RewindEngine.shared.state) : incoming
+        if case .rewind = mode { window?.ignoresMouseEvents = false }
+        else { window?.ignoresMouseEvents = true }
         guard AppSettings.shared.notchHudEnabled else {
             isHiding = false
             window?.alphaValue = 1
@@ -103,8 +123,8 @@ public class NotchHUDWindowController: ObservableObject {
         if mode == .idle {
             slideUpIntoNotch()
         } else {
-            let height = Self.height(for: mode)
-            let width = Self.width(for: mode)
+            let height = isRewindExpanded ? expandedSize.height : Self.height(for: mode)
+            let width = isRewindExpanded ? expandedSize.width : Self.width(for: mode)
             let widthChanged = abs(hudWidth - width) > 0.5
             hudWidth = width
             if let window, window.isVisible {
@@ -168,7 +188,7 @@ public class NotchHUDWindowController: ObservableObject {
         }, completionHandler: { [weak self] in
             guard let self, self.isHiding else { return }
             self.isHiding = false
-            if HUDFeed.shared.mode == .idle {
+            if HUDFeed.shared.mode == .idle && !self.isRewindExpanded {
                 self.activeScreen = nil
                 self.window?.orderOut(nil)
                 self.window?.alphaValue = 1
@@ -279,4 +299,9 @@ enum HUDPlacement {
         if !reduceMotion { hidden.origin.y = safeTop > 24 ? screen.maxY - 2 : rest.minY + 12 }
         return (rest, hidden)
     }
+}
+
+private final class InteractiveHUDPanel: NSPanel {
+    override var canBecomeKey: Bool { NotchHUDWindowController.shared.isRewindExpanded }
+    override var canBecomeMain: Bool { false }
 }

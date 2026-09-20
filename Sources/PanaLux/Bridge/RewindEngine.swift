@@ -77,6 +77,8 @@ public final class RewindEngine: ObservableObject {
     private var laneActivity: [String: [Float]] = [:]
     private var laneSpan: (start: TimeInterval, end: TimeInterval) = (0, 1)
     static let laneBuckets = 120
+    private var deletedTangent: (photo: String, branch: TrailBranch, index: Int)?
+    @Published public private(set) var canRestoreDeletedTangent = false
     private var pendingSnapshots: [String: String] = [:]   // token → keyframe id
     private var saveWork: DispatchWorkItem?
     /// Reports arriving before this are Lightroom catching up with Rewind, not editing.
@@ -134,6 +136,8 @@ public final class RewindEngine: ObservableObject {
         detachedValues = nil
         photoID = id
         historyUnavailableMessage = nil
+        deletedTangent = nil
+        canRestoreDeletedTangent = false
         pendingSnapshots.removeAll()
         guard let id, !id.isEmpty else {
             trail = nil
@@ -309,6 +313,43 @@ public final class RewindEngine: ObservableObject {
         continuousScrub = true
         apply(playback)
         publish(caption: stepCaption(for: playhead, in: playback))
+    }
+
+    public func seekToFraction(_ fraction: Double) {
+        guard fraction.isFinite, !StudioEngine.shared.outputBlocked else { return }
+        beginRewind()
+        guard isRewinding, let tape = currentPlayback() else { return }
+        pausePlayback(announce: false)
+        playhead = (tape.stepTimes.first ?? 0) + min(1, max(0, fraction)) * (tape.tip - (tape.stepTimes.first ?? 0))
+        continuousScrub = true
+        apply(tape)
+        publish(caption: stepCaption(for: playhead, in: tape))
+    }
+
+    public func canDeleteTangent(_ id: String) -> Bool {
+        guard let trail, let branch = trail.branch(id), branch.parent != nil, id != trail.activeBranchID else { return false }
+        return !trail.branches.contains { $0.parent == id || $0.mergeSourceID == id }
+    }
+
+    @discardableResult
+    public func deleteTangent(_ id: String) -> Bool {
+        guard !StudioEngine.shared.outputBlocked, canDeleteTangent(id),
+              let trail, let index = trail.branches.firstIndex(where: { $0.id == id }) else { return false }
+        deletedTangent = (photoID ?? "", trail.branches[index], index)
+        canRestoreDeletedTangent = true
+        self.trail?.branches.remove(at: index)
+        rebuildLaneActivity(); refreshTakeInfo(); scheduleSave()
+        publish(caption: "Tangent deleted · Undo Delete is available")
+        return true
+    }
+
+    public func restoreDeletedTangent() {
+        guard let deleted = deletedTangent, deleted.photo == (photoID ?? ""),
+              let trail, trail.branch(deleted.branch.id) == nil else { return }
+        self.trail?.branches.insert(deleted.branch, at: min(deleted.index, trail.branches.count))
+        deletedTangent = nil; canRestoreDeletedTangent = false
+        rebuildLaneActivity(); refreshTakeInfo(); scheduleSave()
+        publish(caption: "Tangent restored")
     }
 
     private func finishScrub() { continuousScrub = false }
@@ -569,6 +610,9 @@ public final class RewindEngine: ObservableObject {
         let destinationName = existing.activeBranch.name
         startBranch(reason: "Merge from \(source.name)", baseline: output?.rewindKnownValues())
         guard let mergedID = trail?.activeBranchID else { return false }
+        if let index = trail?.branches.firstIndex(where: { $0.id == mergedID }) {
+            trail?.branches[index].mergeSourceID = id
+        }
         renameTangent(mergedID, to: "\(destinationName) + \(source.name)")
         let moment = playhead + 0.001
         for (name, value) in candidates { _ = trail?.record(param: name, value: value, at: moment) }

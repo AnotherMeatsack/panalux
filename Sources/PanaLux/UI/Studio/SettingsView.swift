@@ -181,7 +181,7 @@ public struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .help("How far the centre ring turns for one step. Smaller is more sensitive: each click lands on one thing that changed.")
+            .help("How far the scrub ring turns for one step. Smaller is more sensitive: each click lands on one thing that changed.")
             LabeledContent("Spin speed") {
                 HStack {
                     Slider(value: $settings.rewindAcceleration, in: 0...1, step: 0.05)
@@ -192,16 +192,16 @@ public struct SettingsView: View {
                 }
             }
             .help("How quickly a hard spin crosses a long session. Turning the ring slowly is always one step per click, whatever this says.")
-            Button("Use navigation rings while rewinding") {
+            Button("Use right-ring timeline layout") {
                 var layer = engine.profile.layers["REWIND"] ?? LayerSpec()
                 var rings = layer.rings ?? [:]
-                rings["RING_GAMMA"] = RingBinding(param: RewindCommands.scrub)
+                rings["RING_GAMMA"] = RingBinding(param: RewindCommands.tangents)
                 rings["RING_LIFT"] = RingBinding(param: RewindCommands.landmarks)
-                rings["RING_GAIN"] = RingBinding(param: RewindCommands.tangents)
+                rings["RING_GAIN"] = RingBinding(param: RewindCommands.scrub)
                 layer.rings = rings
                 engine.profile.layers["REWIND"] = layer
             }
-            Text("Optional: centre ring travels, left ring visits landmarks, right ring compares tangents. Trackballs rest while rewinding; release Undo to grade. Map Undo restores your previous assignments.")
+            Text("Right ring travels, left ring visits landmarks, center ring compares tangents. Trackballs rest while rewinding; release Undo to grade. Map Undo restores your previous assignments.")
                 .font(.caption).foregroundStyle(.secondary)
             Text(bridge.previewStatus).font(.caption).foregroundStyle(.secondary)
             Button("Reset Rewind feel") {
@@ -211,12 +211,13 @@ public struct SettingsView: View {
         } header: {
             Text("Rewind")
         } footer: {
-            Text("Hold Undo and use the centre ring for all scrub travel. Its speed controls distance automatically. Other ring assignments stay as you set them.")
+            Text("Hold Undo: right ring scrubs, left visits landmarks, center switches tangents. Spin the scrub ring faster to travel farther. Custom layouts stay as you set them.")
         }
     }
 
     private var mapsSection: some View {
         Section {
+            Button("Map Library & Community…") { MapLibraryWindowController.shared.show() }
             HStack {
                 Button("Import Map…") { MapImporter.chooseAndImport(); reload() }
                 Button("Export Map…") { MapImporter.chooseAndExport() }
@@ -278,6 +279,7 @@ public struct SettingsView: View {
                 dismiss()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { guide.presentQuickReference() }
             }
+            Button("Suggest a Feature…") { FeatureSuggestionWindow.shared.show() }
             Button("Report a Bug…") { BugReport.present() }
             Link("GitHub", destination: URL(string: BugReport.github)!)
             Link("MIDI2LR command list", destination: URL(string: "https://github.com/rsjaffe/MIDI2LR/wiki/Commands")!)
@@ -286,6 +288,7 @@ public struct SettingsView: View {
 
     private var aboutSection: some View {
         Section("About") {
+            Button("What’s New…") { ReleaseNotesWindowController.shared.show() }
             Button("Check for Updates…") { AppUpdater.shared.checkForUpdates() }
             LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")
             Text("PanaLux is a free, unofficial, open-source macOS app. It is not affiliated with, endorsed by, or related to Blackmagic Design, Adobe, or Apple. It talks to a Micro Color Panel you already purchased and to Lightroom Classic through PanaLux Bridge, a lightly modified copy of the free community plugin MIDI2LR (GPL-3.0). You are not buying anything.")

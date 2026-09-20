@@ -33,16 +33,8 @@ public class MenuBarController: NSObject, NSMenuDelegate {
     private func refreshIcon() {
         guard let button = statusItem?.button else { return }
         let engine = StudioEngine.shared
-        let symbol: String
-        if engine.isOutputPaused {
-            symbol = "pause.circle.fill"
-        } else if !PanelManager.shared.isConnected || !LightroomBridge.shared.isConnected {
-            symbol = "circle.grid.cross"
-        } else {
-            symbol = "circle.grid.cross.fill"
-        }
-        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "PanaLux")
-        button.image?.isTemplate = true
+        button.image = PanelStatusIcon.image(paused: engine.isOutputPaused,
+                                             connected: PanelManager.shared.isConnected && LightroomBridge.shared.isConnected)
         button.toolTip = "PanaLux: \(engine.statusMessage)"
     }
 
@@ -120,8 +112,11 @@ public class MenuBarController: NSObject, NSMenuDelegate {
         hud.submenu = hudMenu
         menu.addItem(hud)
 
+        menu.addItem(action("Expand Rewind+", #selector(expandRewind), key: "", symbol: "arrow.up.left.and.arrow.down.right"))
         menu.addItem(action("Your Controls…", #selector(openControlHelp), key: "?", symbol: "questionmark.circle"))
         menu.addItem(action("Reference Card", #selector(openReferenceCard), key: "", symbol: "printer"))
+        menu.addItem(action("Map Library & Community…", #selector(openMapLibrary), key: "", symbol: "square.grid.2x2"))
+        menu.addItem(action("Suggest a Feature…", #selector(suggestFeature), key: "", symbol: "lightbulb"))
         menu.addItem(action("Import Map…", #selector(importMap), key: "", symbol: "square.and.arrow.down"))
         menu.addItem(action("Export Map…", #selector(exportMap), key: "", symbol: "square.and.arrow.up"))
         menu.addItem(action("Copy Map", #selector(copyMap), key: "", symbol: "doc.on.doc"))
@@ -129,6 +124,7 @@ public class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(action("Take the Hands-On Tour", #selector(openTutorial), key: "", symbol: "sparkles"))
         menu.addItem(action("Setup Assistant…", #selector(openSetup), key: "", symbol: "checklist"))
         menu.addItem(action("Report a Bug…", #selector(reportBug), key: "", symbol: "exclamationmark.bubble"))
+        menu.addItem(action("What’s New…", #selector(showReleaseNotes), key: "", symbol: "sparkles"))
         menu.addItem(action("Check for Updates…", #selector(checkForUpdates), key: "", symbol: "arrow.down.circle"))
         menu.addItem(action("Tangents…", #selector(openTangents), key: "", symbol: "arrow.triangle.branch"))
         menu.addItem(action("Settings…", #selector(openSettings), key: ",", symbol: "gearshape"))
@@ -137,6 +133,10 @@ public class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(action("Quit PanaLux", #selector(quitApp), key: "q", symbol: nil))
     }
 
+    @MainActor @objc private func openMapLibrary() { MapLibraryWindowController.shared.show() }
+    @MainActor @objc private func suggestFeature() { FeatureSuggestionWindow.shared.show() }
+    @objc private func expandRewind() { NotchHUDWindowController.shared.expandRewind() }
+    @objc private func showReleaseNotes() { ReleaseNotesWindowController.shared.show() }
     @MainActor @objc private func checkForUpdates() { AppUpdater.shared.checkForUpdates() }
     @objc private func openTangents() { TangentWindowController.shared.show() }
 

@@ -227,6 +227,15 @@ public enum MapReadme {
         for id in PanelLayout.balls {
             lines.append("  \(PanelLayout.shortLabel(forControl: id))  \(ballLine(profile.balls[id], db: db))")
         }
+        lines.append("Knob presses")
+        for id in PanelLayout.knobs {
+            let spec = profile.buttons["PRESS_" + id]
+            lines.append("  " + PanelLayout.label(forControl: id) + "  " + (spec.map { tapLine($0) } ?? "Reset current parameter"))
+        }
+        lines.append("Combinations (take priority over modes)")
+        for entry in profile.combinations ?? ButtonCombination.defaults {
+            lines.append("  " + entry.title + "  " + tapLine(entry.binding))
+        }
         lines.append("Keys")
         for id in PanelLayout.allButtons {
             guard let spec = profile.buttons[id], spec.hasAnyAssignment else { continue }
@@ -289,7 +298,7 @@ public enum MapReadme {
         return "\(db.label(for: b.hue)) / \(db.label(for: b.sat))"
     }
 
-    private static func tapLine(_ b: ButtonBinding) -> String {
+    static func tapLine(_ b: ButtonBinding) -> String {
         let db = CommandDatabase.shared
         if let a = b.action { return db.label(for: a) }
         if b.ps != nil { return "Photoshop Open as Layers" }
@@ -300,7 +309,7 @@ public enum MapReadme {
         return ""
     }
 
-    private static func holdLine(_ b: ButtonBinding) -> String {
+    static func holdLine(_ b: ButtonBinding) -> String {
         let db = CommandDatabase.shared
         if let l = b.hold_layer { return LayerNames.defaultTitle(l) }
         if b.hold_picker != nil { return "mask tool wheel" }

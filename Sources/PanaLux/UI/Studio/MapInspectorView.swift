@@ -58,6 +58,7 @@ public struct MapInspectorView: View {
     @ObservedObject var db = CommandDatabase.shared
     @ObservedObject var guide = GuideController.shared
 
+    @State private var showCombinations = false
     @State private var searchText = ""
     @State private var shortcutText = ""
     @State private var assignSlot: Slot = .tap
@@ -94,7 +95,15 @@ public struct MapInspectorView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
-            if let c = control {
+            DisclosureGroup("Presses & Combinations", isExpanded: $showCombinations) {
+                ScrollView { CombinationEditorView().padding(.vertical, 8) }
+                    .frame(height: engine.combinationEditorActive ? 340 : 180)
+            }
+            if engine.combinationEditorActive {
+                Button("Done Programming") { engine.setProgrammingButtons(false) }
+                    .buttonStyle(.borderedProminent).frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            if let c = control, !engine.combinationEditorActive {
                 actionRow(c)
                 if isButton {
                     DisclosureGroup("Press a Key…") {
@@ -113,6 +122,19 @@ public struct MapInspectorView: View {
                 } else if PanelLayout.isBall(c) {
                     ballCard(c)
                 } else {
+                    if PanelLayout.isKnob(c) {
+                        Button("Customize knob press…") {
+                            showCombinations = true
+                            engine.setProgrammingButtons(true)
+                            engine.combinationEditorActive = true
+                            engine.combinationHeld = []
+                            engine.combinationTrigger = "PRESS_" + c
+                        }
+                        Button("Disable knob press") { engine.profile.buttons["PRESS_" + c] = ButtonBinding() }
+                        Button("Restore press to reset") { engine.profile.buttons.removeValue(forKey: "PRESS_" + c) }
+                        Text("Press resets the knob’s current parameter unless you assign another action.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     speedRow(c)
                 }
             }
@@ -132,6 +154,10 @@ public struct MapInspectorView: View {
         }
         .padding(14)
         .animation(.smooth(duration: 0.2), value: engine.mapStatusMessage)
+        .onAppear { if engine.combinationEditorActive { showCombinations = true } }
+        .onChange(of: engine.combinationEditorActive) { _, active in
+            if active { showCombinations = true }
+        }
         .onChange(of: control) { _, new in
             // Clicking a knob, ring, or ball keeps the hold you were editing, so
             // "LOOP while held → Y Lift → Vignette" sets only that knob.
@@ -449,7 +475,8 @@ public struct MapInspectorView: View {
     }
 
     private func analogSafe(_ items: [CatalogCommand]) -> [CatalogCommand] {
-        isButton || control == nil ? items : items.filter(\.isParameter)
+        if engine.combinationEditorActive { return items.filter { !$0.isParameter && !$0.id.hasPrefix("hold_") && !$0.id.hasPrefix("modifier:") } }
+        return isButton || control == nil ? items : items.filter(\.isParameter)
     }
 
     private func section(_ title: String, _ items: [CatalogCommand]) -> some View {
@@ -496,6 +523,7 @@ public struct MapInspectorView: View {
     }
 
     private var featuredTitle: String {
+        if engine.combinationEditorActive { return "Presets & commands" }
         guard let c = control else { return "Popular" }
         if isButton { return assignSlot == .hold ? "For holding" : "Popular commands" }
         return PanelLayout.isRing(c) ? "Good on a ring" : "Popular sliders"
@@ -503,7 +531,9 @@ public struct MapInspectorView: View {
 
     private var featuredTiles: [CatalogCommand] {
         let ids: [String]
-        if let c = control, !PanelLayout.isButton(c) {
+        if engine.combinationEditorActive {
+            ids = ["Preset_1", "Preset_2", "Preset_3", "ActionSeries1", "AutoTone", "Undo", KeyCommands.beforeAfter]
+        } else if let c = control, !PanelLayout.isButton(c) {
             ids = ["Exposure", "Contrast", "Highlights", "Shadows", "Whites", "Blacks",
                    "Temperature", "Tint", "Vibrance", "Saturation", "Texture", "Clarity", "Dehaze",
                    "PostCropVignetteAmount", "GrainAmount", "LensBlurAmount", "straightenAngle",
@@ -602,6 +632,7 @@ public struct MapInspectorView: View {
     }
 
     private func assign(_ item: CatalogCommand) {
+        if engine.combinationEditorActive { engine.saveCombination(command: item.id); return }
         guard let c = control else { return }
         if isButton {
             engine.applyDroppedCommand(commandId: item.id, ontoControl: c, preferHold: assignSlot == .hold)

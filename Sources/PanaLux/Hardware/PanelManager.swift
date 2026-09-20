@@ -45,6 +45,7 @@ public class PanelManager: ObservableObject {
     // panel often echoes that write as an input with empty bits, which used
     // to look like every hold had been released.
     private var suppressButtonInputUntil: Date = .distantPast
+    private var pendingLEDBits: Set<Int>?
     private var lastLEDBits: Set<Int>? = nil
     private var wakeObserver: NSObjectProtocol?
     private var wakeWork: DispatchWorkItem?
@@ -232,6 +233,8 @@ public class PanelManager: ObservableObject {
             self.connectedDevice = nil
         }
         decoder.reset()
+        pendingLEDBits = nil
+        suppressButtonInputUntil = .distantPast
         DispatchQueue.main.async {
             self.isConnected = false
         }
@@ -306,6 +309,8 @@ public class PanelManager: ObservableObject {
             IOHIDDeviceRegisterInputReportCallback(device, reportBuffer, reportBufferSize, nil, nil)
             self.connectedDevice = nil
             decoder.reset()
+        pendingLEDBits = nil
+        suppressButtonInputUntil = .distantPast
 
             if let token = activityToken {
                 ProcessInfo.processInfo.endActivity(token)
@@ -358,7 +363,12 @@ public class PanelManager: ObservableObject {
 
     public func setLEDs(activeBits: Set<Int>) {
         guard let dev = connectedDevice else { return }
-        // Every LED write briefly masks key input (see below). Don't write when nothing changed.
+        // Encoder pushes have no LEDs. Never write into their input-bit positions.
+        let activeBits = Set(activeBits.filter { $0 >= 12 && $0 < 64 })
+        // Echo suppression must never overlap a real held button, including long holds.
+        pendingLEDBits = activeBits
+        guard !decoder.hasHeldButtons else { return }
+        pendingLEDBits = nil
         guard activeBits != lastLEDBits else { return }
         lastLEDBits = activeBits
         suppressButtonInputUntil = Date().addingTimeInterval(0.08)
@@ -385,6 +395,15 @@ public class PanelManager: ObservableObject {
     static func isEmptyButtonReport(_ data: Data) -> Bool {
         let payload = PanelDecoder.stripReportID(reportId: 0x02, data: data)
         return payload.prefix(8).allSatisfy { $0 == 0 }
+    }
+
+    static func shouldSuppressButtonReport(_ data: Data, until: inout Date, now: Date) -> Bool {
+        if !isEmptyButtonReport(data) {
+            // A fresh press ends suppression of the older LED write. Its release is real.
+            until = .distantPast
+            return false
+        }
+        return now < until
     }
 
     private func readSerial(device: IOHIDDevice) -> String {
@@ -415,12 +434,13 @@ public class PanelManager: ObservableObject {
         // but never ignore a report with bits set: an echo is always empty, so a
         // non-empty report inside the window is a real key and dropping it was
         // why a press sometimes had to be made twice.
-        if reportID == 0x02, Date() < suppressButtonInputUntil, Self.isEmptyButtonReport(data) {
-            return
-        }
+        if reportID == 0x02, Self.shouldSuppressButtonReport(data, until: &suppressButtonInputUntil, now: Date()) { return }
         let motions = decoder.decode(reportId: reportID, data: data)
         if !motions.isEmpty {
             delegate?.panelDidReceiveMotion(motions)
+        }
+        if reportID == 0x02, !decoder.hasHeldButtons, let pending = pendingLEDBits {
+            setLEDs(activeBits: pending)
         }
     }
 

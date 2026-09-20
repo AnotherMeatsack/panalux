@@ -19,7 +19,7 @@ public class HardwareMap: ObservableObject {
     
     /// Button bits as reported by the Micro Color Panel (USB-C).
     private func loadDefaultMap() {
-        let defaults: [Int: String] = [
+        var defaults: [Int: String] = [
             12: "AUTO_COLOR", 13: "OFFSET", 14: "COPY", 15: "PASTE",
             16: "UNDO", 17: "REDO", 18: "DELETE", 19: "RESET_ALL",
             20: "BYPASS", 21: "DISABLE",
@@ -38,6 +38,7 @@ public class HardwareMap: ObservableObject {
             49: "PLAY_REV", 50: "PLAY", 51: "STOP"
         ]
         
+        for (bit, knob) in PanelLayout.knobs.enumerated() { defaults[bit] = "PRESS_" + knob }
         buttonBitToControl = defaults
         rebuildReverseMap()
     }

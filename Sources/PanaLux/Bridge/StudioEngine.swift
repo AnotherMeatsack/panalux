@@ -71,6 +71,41 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     @Published public private(set) var programmingHoldControl: String?
     private var programmingHoldWork: DispatchWorkItem?
     private var programmingPressed = Set<String>()
+    @Published public var combinationEditorActive = false
+    @Published public var combinationHeld: Set<String> = []
+    @Published public var combinationTrigger = "PRESS_LUM_MIX"
+    private var combinationInput = CombinationInput()
+
+    public var effectiveCombinations: [ButtonCombination] { profile.combinations ?? ButtonCombination.defaults }
+
+    public func saveCombination(command: String) {
+        let item = CommandDatabase.shared.catalogCommand(for: command)
+        guard !item.isParameter, !command.hasPrefix("hold_"), !command.hasPrefix("modifier:"),
+              command != Self.holdCompareID else {
+            mapStatusMessage = "Choose a button action, shortcut, preset or mode toggle."
+            return
+        }
+        var binding = ButtonBinding()
+        applyTapItem(&binding, item)
+        guard binding.hasTapAnything else { return }
+        var entries = effectiveCombinations
+        let entry = ButtonCombination(held: combinationHeld.subtracting([combinationTrigger]).sorted(), trigger: combinationTrigger, binding: binding)
+        guard !entry.held.isEmpty else {
+            var single = profile.buttons[combinationTrigger] ?? ButtonBinding()
+            applyTapItem(&single, item)
+            profile.buttons[combinationTrigger] = single
+            mapStatusMessage = "Saved press: " + PanelLayout.label(forControl: combinationTrigger)
+            return
+        }
+        entries.removeAll { $0.id == entry.id }
+        entries.append(entry)
+        profile.combinations = entries
+        mapStatusMessage = "Saved: " + entry.title
+    }
+
+    public func removeCombination(_ id: String) {
+        profile.combinations = effectiveCombinations.filter { $0.id != id }
+    }
 
     public func setProgrammingButtons(_ enabled: Bool) {
         if enabled { returnToBase(announce: false) }
@@ -79,6 +114,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         programmingPressed.removeAll()
         inspectorHoldEdit = nil
         isProgrammingButtons = enabled
+        if !enabled { combinationEditorActive = false }
     }
 
     /// Settings is on screen: the panel previews only and nothing reaches Lightroom.
@@ -360,6 +396,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         pendingHoldReleases.removeAll()
         holdWasUsed.removeAll()
         buttonDownAt.removeAll()
+        combinationInput.reset()
+        resetKnobReadout = nil
         for name in engagedHolds {
             if let release = holdBinding(for: name)?.release_action, !outputBlocked {
                 if RewindCommands.isRewind(release) {
@@ -483,9 +521,14 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     }
 
     public func panelDidReceiveMotion(_ motions: [PanelMotion]) {
-        for m in motions {
-            processMotion(m)
+        // The bitmap is unordered. Process potential held controls before their triggers.
+        let modifiers = Set(effectiveCombinations.flatMap(\.held))
+        let ordered = motions.enumerated().sorted { lhs, rhs in
+            let l = lhs.element.kind == .keyDown && modifiers.contains(HardwareMap.shared.controlName(forButtonBit: lhs.element.slot) ?? "")
+            let r = rhs.element.kind == .keyDown && modifiers.contains(HardwareMap.shared.controlName(forButtonBit: rhs.element.slot) ?? "")
+            return l == r ? lhs.offset < rhs.offset : l
         }
+        for (_, motion) in ordered { processMotion(motion) }
     }
 
     private func processMotion(_ m: PanelMotion) {
@@ -496,6 +539,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
 
         if m.kind == .keyDown || m.kind == .keyUp {
             let buttonName = HardwareMap.shared.controlName(forButtonBit: m.slot) ?? "UNKNOWN_BIT_\(m.slot)"
+            PanelDiagnostics.record("\(m.kind.rawValue) bit=\(m.slot) control=\(buttonName)")
             handleButton(buttonName, isDown: m.kind == .keyDown)
             return
         }
@@ -503,6 +547,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         let key = "\(m.reportId):\(m.slot)"
         guard let controlName = slotToControl[key] else { return }
 
+        resetKnobReadout = nil
         markHoldsUsed()
         setHighlight(controlName)
         if lastAnalogName != controlName { lastAnalogName = controlName }
@@ -583,6 +628,32 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     private var ledWorkItem: DispatchWorkItem?
     private var analogSpinDegrees: [String: Double] = [:]
     private var recentReadings = RecentReadings()
+    private var activeDialReadout: (param: String, name: String)?
+    private var resetKnobReadout: (control: String, param: String)?
+
+    /// Keep the dial visible after a press and use Lightroom's actual reset value,
+    /// including defaults such as temperature that are not normalized zero/midpoint.
+    func beginKnobResetReadout(control: String, param: String) {
+        resetKnobReadout = (control, param)
+        activeDialReadout = (param, PanelLayout.label(forControl: control))
+        analogSpinDegrees[control] = 0
+        recentReadings.reset()
+        currentDisplayMode = .knob(name: PanelLayout.label(forControl: control),
+                                  param: CommandDatabase.shared.label(for: param),
+                                  value: LightroomBridge.shared.value(for: param),
+                                  displayValue: "Resetting…", isFine: false, angleDegrees: 0)
+        scheduleCollapse()
+    }
+
+    private func refreshKnobResetReadout(param: String, value: Double) {
+        guard let reset = resetKnobReadout, reset.param == param,
+              case .knob(let name, let label, _, _, _, _) = currentDisplayMode,
+              name == PanelLayout.label(forControl: reset.control),
+              label == CommandDatabase.shared.label(for: param) else { return }
+        currentDisplayMode = .knob(name: name, param: label, value: value,
+                                  displayValue: formatValue(param: param, value: value),
+                                  isFine: false, angleDegrees: 0)
+    }
     private var repeatAccumulators: [String: (units: Double, lastFire: Date)] = [:]
     private var readbackAttempts: [String: Date] = [:]
     private var lastNoticeAt: Date = .distantPast
@@ -639,8 +710,16 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     }
 
     private func applyButton(_ name: String, isDown: Bool) {
+        if isDown { resetKnobReadout = nil }
         if isProgrammingButtons {
             if isDown {
+                if combinationEditorActive {
+                    combinationHeld = programmingPressed
+                    combinationTrigger = name
+                    programmingPressed.insert(name)
+                    mapStatusMessage = "Captured. Release the panel and drop an action below."
+                    return
+                }
                 programmingPressed.insert(name)
                 lastButtonName = name
                 programmingHoldControl = nil
@@ -658,6 +737,35 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
                 programmingPressed.remove(name)
                 programmingHoldWork?.cancel()
             }
+            return
+        }
+
+        let decision = combinationInput.receive(name, down: isDown, combinations: effectiveCombinations)
+        if case .fire(let combination) = decision {
+            PanelDiagnostics.record("combination \(combination.id)")
+            for member in combination.held + [name] {
+                holdWorkItems.removeValue(forKey: member)?.cancel()
+                holdWasUsed.insert(member)
+            }
+            setHighlight(name)
+            performTap(name, override: combination.binding)
+            return
+        }
+        if case .suppress = decision {
+            holdWorkItems.removeValue(forKey: name)?.cancel()
+            if !isDown {
+                if engagedHolds.contains(name) { disengageHold(name) }
+                if let bit = HardwareMap.shared.buttonBit(forControl: name) { pressedButtonBits.remove(bit) }
+                updateLeds()
+            }
+            return
+        }
+        if case .deferTap = decision {
+            // A possible modifier must not fire its single press before the chord is known.
+            if !(holdBinding(for: name)?.hasHoldFunctionSet ?? false) { return }
+        }
+        if case .tap = decision, !(holdBinding(for: name)?.hasHoldFunctionSet ?? false) {
+            performTap(name)
             return
         }
 
@@ -811,11 +919,12 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     }
 
     private func resolvedButtonBinding(for name: String) -> ButtonBinding? {
-        layerButtonOverride(for: name) ?? profile.buttons[name]
+        layerButtonOverride(for: name) ?? profile.buttons[name] ??
+            (name.hasPrefix("PRESS_") ? ButtonBinding(action: "reset_knob:" + String(name.dropFirst(6))) : nil)
     }
 
-    private func performTap(_ name: String) {
-        let spec = resolvedButtonBinding(for: name)
+    private func performTap(_ name: String, override: ButtonBinding? = nil) {
+        let spec = override ?? resolvedButtonBinding(for: name)
 
         guard let spec, spec.hasTapAnything else {
             triggerActionDisplay(name: name, label: "Not assigned. set it in Map", phase: .blocked)
@@ -896,6 +1005,27 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         // Button actions always fire. Safe Setup only mutes knobs, rings, and balls
         // so mapping a control cannot accidentally grade the photo. but Export, Next,
         // Upright, and Grab Still still work.
+        if let action = spec.action, action.hasPrefix("reset_knob:") {
+            let knob = String(action.dropFirst("reset_knob:".count))
+            guard let param = currentHelpProfile().knobs[knob]?.param,
+                  CommandDatabase.shared.commands["Reset" + param] != nil else {
+                triggerActionDisplay(name: name, label: "This knob has no parameter reset", phase: .blocked)
+                return
+            }
+            guard LightroomBridge.shared.isConnected else {
+                triggerActionDisplay(name: name, label: "Lightroom isn’t connected", phase: .blocked)
+                return
+            }
+            pendingNudges[param] = nil
+            for tb in trackballs.values { tb.stopInertia() }
+            for tb in overlayTrackballs.values { tb.stopInertia() }
+            PanelDiagnostics.record("knob reset \(knob) parameter=\(param)")
+            LightroomBridge.shared.fireAction("Reset" + param)
+            RewindEngine.shared.noteStructuralEdit("Reset" + param, label: CommandDatabase.shared.label(for: "Reset" + param))
+            // Stay in the knob view so SwiftUI can animate from the previous position.
+            beginKnobResetReadout(control: knob, param: param)
+            return
+        }
         if let action = spec.action, action.hasPrefix(WheelReset.prefix) {
             resetWheel(String(action.dropFirst(WheelReset.prefix.count)), key: name)
             return
@@ -1323,6 +1453,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         if PointerCommands.isPointer(param) { return }
         let label = CommandDatabase.shared.label(for: param)
         let who = context.map { "\($0) · \(PanelLayout.label(forControl: name))" } ?? PanelLayout.label(forControl: name)
+        activeDialReadout = (param, who)
         let angle = isRing
             ? bumpSpin(for: name, delta: deltaUnits, gain: 2.5, cap: 8.0)
             : bumpSpin(for: name, delta: deltaUnits, gain: 0.08, cap: 0.4)
@@ -1401,7 +1532,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     // MARK: - Rewind
 
     /// A knob or ring mapped to the trail. Like every other binding, this is whatever the
-    /// map says it is — the factory map puts scrub on the centre ring and the speed dials on the others.
+    /// map says it is — the factory map puts scrub on the right, landmarks on the left and tangents in the center.
     private func driveRewind(_ command: String, control: String, deltaUnits: Double) {
         GuideController.shared.hardwareEvent(.analogMoved(control))
         let rewind = RewindEngine.shared
@@ -2302,6 +2433,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     // MARK: - LightroomBridgeDelegate
 
     public func lightroomConnectionStateChanged(isConnected: Bool) {
+        resetKnobReadout = nil
         // New session, new photo, new values. Re-read before anything sends an absolute value.
         readbackAttempts.removeAll()
         readbackRetried.removeAll()
@@ -2319,6 +2451,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     /// so the next roll continues from what's on screen, not from where the ball used to be.
     /// A different photo is on screen, so a different trail is being recorded.
     public func lightroomActivePhotoDidChange(id: String?) {
+        resetKnobReadout = nil
         RewindEngine.shared.knobParams = currentKnobParams()
         RewindEngine.shared.setActivePhoto(id)
         // Preserve a held request when selection arrives after Undo went down.
@@ -2376,6 +2509,22 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
 
     public func lightroomParameterDidUpdate(name: String, value: Double) {
         let bridge = LightroomBridge.shared
+        if resetKnobReadout?.param == name { PanelDiagnostics.record("reset readback \(name)=\(value)") }
+        refreshKnobResetReadout(param: name, value: value)
+        // A tiny turn while pressing may show "Updating" during Reset's freshness
+        // window. Replace that waiting state when Lightroom returns the value.
+        if !outputBlocked, let dial = activeDialReadout, dial.param == name {
+            let label = CommandDatabase.shared.label(for: name)
+            switch currentDisplayMode {
+            case .knob(let who, _, _, _, let fine, let angle) where who == dial.name:
+                currentDisplayMode = .knob(name: who, param: label, value: value,
+                                          displayValue: formatValue(param: name, value: value), isFine: fine, angleDegrees: angle)
+            case .ring(let who, _, _, _, let fine, let angle) where who == dial.name:
+                currentDisplayMode = .ring(name: who, param: label, value: value,
+                                          displayValue: formatValue(param: name, value: value), isFine: fine, angleDegrees: angle)
+            default: break
+            }
+        }
         scheduleHoldBannerRefresh()
         applyPendingNudge(for: name)
         for engine in Array(trackballs.values) + Array(overlayTrackballs.values)
@@ -2394,12 +2543,17 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
 
     /// Reset one color wheel. its ball and its ring. for whatever they're mapped to right now.
     private func resetWheel(_ which: String, key: String) {
-        let ballName = "TB_\(which)"
-        let ringName = "RING_\(which)"
-        let ball = layerPriority.lazy.compactMap { self.profile.layers[$0]?.balls?[ballName] }.first ?? profile.balls[ballName]
-        let ring = layerPriority.lazy.compactMap { self.profile.layers[$0]?.rings?[ringName] }.first ?? profile.rings[ringName]
+        let parts = which.split(separator: ":").map(String.init)
+        let wheel = parts.first ?? which
+        let component = parts.count > 1 ? parts[1] : "all"
+        let ballName = "TB_\(wheel)"
+        let ringName = "RING_\(wheel)"
+        let shown = currentHelpProfile()
+        let ball = component == "ring" ? nil : shown.balls[ballName]
+        let ring = component == "ball" ? nil : shown.rings[ringName]
         let commands = WheelReset.commands(ball: ball, ringParam: ring?.param, known: Set(CommandDatabase.shared.commands.keys))
-        let title = WheelReset.title(which)
+        PanelDiagnostics.record("wheel reset \(which) commands=\(commands.joined(separator: ",")) connected=\(LightroomBridge.shared.isConnected)")
+        let title = WheelReset.title(wheel) + (component == "all" ? "" : " · " + component)
         guard !commands.isEmpty else {
             triggerActionDisplay(name: key, label: "\(title): nothing to reset", phase: .blocked)
             return
@@ -2408,9 +2562,16 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             triggerActionDisplay(name: key, label: "\(title) · Lightroom isn’t connected", phase: .blocked)
             return
         }
-        commands.forEach { LightroomBridge.shared.fireAction($0) }
-        trackballs[ballName]?.recenter()
-        overlayTrackballs.filter { $0.key.hasSuffix(":\(ballName)") }.values.forEach { $0.recenter() }
+        for tb in trackballs.values { tb.stopInertia() }
+        for tb in overlayTrackballs.values { tb.stopInertia() }
+        commands.forEach {
+            pendingNudges[String($0.dropFirst("Reset".count))] = nil
+            LightroomBridge.shared.fireAction($0)
+        }
+        if component != "ring" {
+            trackballs[ballName]?.recenter()
+            overlayTrackballs.filter { $0.key.hasSuffix(":\(ballName)") }.values.forEach { $0.recenter() }
+        }
         triggerActionDisplay(name: key, label: title, phase: .done)
     }
 }

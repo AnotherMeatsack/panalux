@@ -103,6 +103,7 @@ public class CommandDatabase: ObservableObject {
     }
     
     public func label(for id: String) -> String {
+        if id.hasPrefix("reset_knob:") { return "Reset current knob parameter" }
         if KeyCommands.isKey(id) { return KeyCommands.title(id) }
         if let override = Self.titleOverrides[id] { return override }
         if let mask = Self.maskTitle(id) { return mask }
@@ -162,6 +163,9 @@ public class CommandDatabase: ObservableObject {
     }
     
     public func catalogCommand(for id: String) -> CatalogCommand {
+        if KeyCommands.parse(id) != nil {
+            return CatalogCommand(id: id, title: KeyCommands.title(id), isParameter: false, icon: "keyboard")
+        }
         if let special = CommandCatalog.shared.command(for: id) {
             return special
         }
