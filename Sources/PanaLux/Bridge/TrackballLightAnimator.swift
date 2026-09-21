@@ -106,6 +106,9 @@ public final class TrackballLightAnimator {
     /// Knobs at the outer edges reach a short way; those toward the middle have neighbours on both sides.
     static func knobReach(x: Double) -> Double { 0.18 + 0.14 * max(0, 1 - abs(x - 0.5) / 0.44) }
 
+    /// Every key's centre on the panel drawing (0…1, y up), for choreography that must follow the real layout.
+    var keyPoints: [(bit: Int, x: Double, y: Double)] { controlPoints.map { (bit: $0.bit, x: $0.x, y: $0.y) } }
+
     /// Every control a knob's wave can ever reach, for tests and the guide.
     func controlsReached(byKnob name: String) -> Set<Int> {
         guard let index = PanelLayout.knobs.firstIndex(of: name), index < PanelStage.knobX.count else { return [] }

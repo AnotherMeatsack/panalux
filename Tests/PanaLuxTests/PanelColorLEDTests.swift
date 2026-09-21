@@ -224,3 +224,22 @@ final class PanelColorLEDTests: XCTestCase {
     }
 }
 
+
+final class IntroLEDChoreographyTests: XCTestCase {
+    func testEverySceneLightsSomethingAtTheRightMoments() {
+        for scene in 0...9 where scene != 8 {
+            let any = (0..<60).contains { i in
+                let f = IntroLEDChoreography.frame(scene: scene, t: Double(i) * 0.3)
+                return !f.white.isEmpty || !f.color.isEmpty
+            }
+            XCTAssertTrue(any, "scene \(scene) should light the panel")
+        }
+        XCTAssertTrue(IntroLEDChoreography.frame(scene: 5, t: 2.0).white.contains(22), "User lights while held")
+        XCTAssertFalse(IntroLEDChoreography.frame(scene: 5, t: 6.0).white.contains(22))
+        XCTAssertTrue(IntroLEDChoreography.frame(scene: 5, t: 9.0).color.contains(PanelColorLED.cursorGreen.rawValue))
+        XCTAssertTrue(IntroLEDChoreography.frame(scene: 6, t: 3.0).white.contains(36), "Add Node lights while held")
+        XCTAssertTrue(IntroLEDChoreography.frame(scene: 4, t: 9.0).white.contains(22), "User lights in its mode")
+        let a = IntroLEDChoreography.frame(scene: 9, t: 0.0), b = IntroLEDChoreography.frame(scene: 9, t: 0.5)
+        XCTAssertNotEqual(a.white.union(a.color.map { $0 + 100 }), b.white.union(b.color.map { $0 + 100 }), "the finale chases")
+    }
+}
