@@ -69,6 +69,11 @@ public enum LightroomMenuActions {
                 result = .done("Synchronized")
             } else if LightroomAccessibility.pressMenuItem(pid: pid, titles: item.titles, menus: item.menus, excluding: item.excluding) {
                 result = .done(item.id == "sync" ? "Sync Settings · press again to Synchronize" : item.title)
+            } else if LightroomAccessibility.menuItemIsDisabled(pid: pid, titles: item.titles, menus: item.menus, excluding: item.excluding) {
+                // Lightroom greyed it out; its shortcut would only make the Mac beep.
+                result = .failed(item.id == "sync" || item.id == "match_exposure"
+                                 ? "\(item.title) needs two or more photos selected"
+                                 : "\(item.title) isn’t available right now")
             } else if let (key, bits) = item.key {
                 var flags: CGEventFlags = []
                 if bits & 1 != 0 { flags.insert(.maskAlternate) }

@@ -69,6 +69,9 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     @Published public var isOutputPaused: Bool = false
     @Published public private(set) var isProgrammingButtons = false
     @Published public var isLightShowActive: Bool = false
+    /// True only while a light show or the intro is genuinely driving the panel. The stored flag can be
+    /// left set by an interrupted show; this cannot, so settings and reactive lights never freeze.
+    public var ledsOwnedByShow: Bool { PanelLightShow.shared.isRunning || IntroLEDDirector.shared.isLive }
     @Published public private(set) var isBeforeViewActive: Bool = false
     @Published public private(set) var programmingHoldControl: String?
     private var programmingHoldWork: DispatchWorkItem?
@@ -1398,6 +1401,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     }
 
     private func handleKnob(_ name: String, deltaUnits: Double, isFine: Bool) {
+        TrackballLightAnimator.shared.noteKnob(name)
         var binding: KnobBinding? = nil
         var context: String? = nil
 
@@ -2361,7 +2365,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     }
 
     public func updateLeds(immediate: Bool = false) {
-        guard !isLightShowActive, !RewindEngine.shared.isRewinding else { return }
+        guard !ledsOwnedByShow, !RewindEngine.shared.isRewinding else { return }
         ledWorkItem?.cancel()
         if immediate {
             pushLeds()
@@ -2470,7 +2474,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     }
 
     private func pushLeds() {
-        guard !isLightShowActive, !RewindEngine.shared.isRewinding else { return }
+        guard !ledsOwnedByShow, !RewindEngine.shared.isRewinding else { return }
         var bits = currentBaseWhiteBits()
         let colorBits = currentSemanticColorBits()
 

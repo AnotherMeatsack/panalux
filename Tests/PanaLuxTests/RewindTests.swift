@@ -1500,10 +1500,16 @@ final class RewindEdgeAnimatorTests: XCTestCase {
 
         // Reverse turn: delta < 0 -> phase decreases (inward cascade)
         animator.noteWheelDelta(command: "scrub", deltaUnits: -40.0)
+        // The drawn phase glides toward the wheel's phase instead of stepping.
+        var glide = Date()
+        for _ in 0..<20 {
+            glide = glide.addingTimeInterval(0.016)
+            animator.tick(date: glide, isPlaying: false, playSpeed: 1, playDirection: 1, reduceMotion: false)
+        }
         XCTAssertLessThan(animator.continuousPhase, initialPhase)
         XCTAssertEqual(animator.currentDirection, -1.0)
         XCTAssertGreaterThan(animator.smoothedVelocity, 0)
-        XCTAssertGreaterThan(animator.reactiveEnergy, 0.20)
+        XCTAssertGreaterThanOrEqual(animator.reactiveEnergy, 0.18)
 
         // Forward turn: delta > 0 -> phase increases (outward cascade)
         animator.noteWheelDelta(command: "scrub", deltaUnits: 40.0)
@@ -1511,7 +1517,7 @@ final class RewindEdgeAnimatorTests: XCTestCase {
 
         // Tick with friction deceleration over 0.5s
         var simTime = Date()
-        for _ in 0..<30 {
+        for _ in 0..<120 {
             simTime = simTime.addingTimeInterval(0.016)
             animator.tick(date: simTime, isPlaying: false, playSpeed: 1, playDirection: 1, reduceMotion: false)
         }

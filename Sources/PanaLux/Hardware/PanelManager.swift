@@ -278,6 +278,7 @@ public class PanelManager: ObservableObject {
 
         // Wake the panel - stream enable feature report 0x0a = [0x0a, 0x01]
         wake(device: device)
+        setBrightness(level: Int(AppSettings.shared.backlightBrightness))
 
         // Read serial number if possible
         let serial = readSerial(device: device)
@@ -343,13 +344,14 @@ public class PanelManager: ObservableObject {
         guard let dev = connectedDevice else { return }
         let clamped = max(0, min(100, level))
         var payload: [UInt8] = [0x08, 0x00, UInt8(clamped)]
-        _ = IOHIDDeviceSetReport(
+        let result = IOHIDDeviceSetReport(
             dev,
             kIOHIDReportTypeFeature,
             CFIndex(0x08),
             &payload,
             payload.count
         )
+        if result != kIOReturnSuccess { print("[PanelManager] Note: backlight report result = \(result)") }
     }
 
     /// Another app (Resolve, a replug, sleep) can clear the lights without telling us, and the

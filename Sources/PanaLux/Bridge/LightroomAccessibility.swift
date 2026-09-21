@@ -250,6 +250,32 @@ enum LightroomAccessibility {
         return false
     }
 
+    /// True when the menu item exists but Lightroom has greyed it out (Sync needs two or more photos).
+    /// Sending its shortcut then would only make the Mac beep.
+    static func menuItemIsDisabled(pid: pid_t, titles: [String], menus: [String], excluding: String? = nil) -> Bool {
+        guard isTrusted(prompt: false) else { return false }
+        let app = AXUIElementCreateApplication(pid)
+        guard let menuBar = copyAttr(app, kAXMenuBarAttribute as String),
+              let tops = copyList(menuBar, kAXChildrenAttribute as String) else { return false }
+        for menuTitle in menus {
+            guard let top = tops.first(where: { title(of: $0) == menuTitle }) else { continue }
+            var menu = firstMenu(from: top)
+            var opened = false
+            if menu.map({ (copyList($0, kAXChildrenAttribute as String) ?? []).isEmpty }) ?? true {
+                press(top); opened = true
+                usleep(220_000)
+                menu = firstMenu(from: top)
+            }
+            defer { if opened { AXUIElementPerformAction(top, kAXCancelAction as CFString) } }
+            if let menu {
+                for wanted in titles where findChild(menu, titleContains: wanted, excluding: excluding) != nil {
+                    return true   // it exists, and pressMenuItem already found it not enabled
+                }
+            }
+        }
+        return false
+    }
+
     /// Press a button in an open Lightroom dialog (e.g. "Synchronize"). False if none is open.
     static func pressDialogButton(pid: pid_t, title wanted: String) -> Bool {
         guard isTrusted(prompt: false) else { return false }

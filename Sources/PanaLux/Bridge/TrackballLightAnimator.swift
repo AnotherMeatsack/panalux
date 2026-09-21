@@ -15,9 +15,9 @@ public final class TrackballLightAnimator {
         
         var position: (x: Double, y: Double) {
             switch self {
-            case .lift:  return (0.20, 0.35)
-            case .gamma: return (0.50, 0.35)
-            case .gain:  return (0.80, 0.35)
+            case .lift:  return (0.271, 0.31)
+            case .gamma: return (0.500, 0.31)
+            case .gain:  return (0.729, 0.31)
             }
         }
     }
@@ -32,174 +32,172 @@ public final class TrackballLightAnimator {
     private var controlPoints: [ControlPoint] = []
     public private(set) var isAnimating = false
     private var lastWriteTime: Date = .distantPast
-    private var decayWorkItem: DispatchWorkItem?
+    private var tickWorkItem: DispatchWorkItem?
     private var activeOrigin: TrackballOrigin = .gamma
-    private var activeDirection: (dx: Double, dy: Double) = (0, 1)
+    private var originPoint: (x: Double, y: Double) = (0.5, 0.35)
+    /// nil spreads the wave in every direction below the origin (knobs); a vector limits it to a forward arc (balls).
+    private var activeDirection: (dx: Double, dy: Double)? = (0, 1)
     private var currentVector: (dx: Double, dy: Double) = (0, 0)
-    private var waveReach: Double = 0.0   // Current radius of wavefront (0.0 to 1.1)
-    private var waveEnergy: Double = 0.0  // Wave intensity (0.0 to 1.0)
+    private var maxReach: Double = 1.1
+    private var waveReach: Double = 0.0   // Radius of the wavefront
+    private var waveEnergy: Double = 0.0  // Brightness of the wave, 0…1
+    private var lastInput: Date = .distantPast
+    private var waveKey: String = ""
+    /// How thick the travelling ring of light is.
+    static let ringBand = 0.17
     
     public init() {
         buildControlPoints()
     }
     
+    /// Key centres come from the real panel drawing so a wave crosses the keys that are actually beside the knob.
+    /// Coordinates are 0…1 with y pointing up, like the origins above.
     private func buildControlPoints() {
         var points: [ControlPoint] = []
-        // 12 Top Knobs (Y ≈ 0.90, X from 0.08 to 0.92)
-        for (i, knob) in PanelLayout.knobs.enumerated() {
-            if let bit = HardwareMap.shared.buttonBit(forControl: "PRESS_" + knob) {
-                let x = 0.08 + (Double(i) / 11.0) * 0.84
-                points.append(ControlPoint(bit: bit, x: x, y: 0.90))
-            }
-        }
-        // Left button cluster (Lift region)
-        let leftButtons: [(String, Double, Double)] = [
-            ("AUTO_COLOR", 0.10, 0.65), ("OFFSET", 0.20, 0.65), ("BYPASS", 0.30, 0.65),
-            ("USER", 0.10, 0.50), ("LOOP", 0.20, 0.50), ("DISABLE", 0.30, 0.50),
-            ("COPY", 0.10, 0.18), ("PASTE", 0.20, 0.18), ("SHIFT", 0.30, 0.18)
-        ]
-        for (name, x, y) in leftButtons {
-            if let bit = HardwareMap.shared.buttonBit(forControl: name) {
-                points.append(ControlPoint(bit: bit, x: x, y: y))
-            }
-        }
-        // Center button cluster (Gamma region)
-        let centerButtons: [(String, Double, Double)] = [
-            ("PLAY_STILL", 0.42, 0.65), ("WIPE_STILL", 0.50, 0.65), ("GRAB_STILL", 0.58, 0.65),
-            ("RESET_LIFT", 0.42, 0.50), ("RESET_GAMMA", 0.50, 0.50), ("RESET_GAIN", 0.58, 0.50),
-            ("UNDO", 0.42, 0.18), ("REDO", 0.50, 0.18), ("RESET_ALL", 0.58, 0.18)
-        ]
-        for (name, x, y) in centerButtons {
-            if let bit = HardwareMap.shared.buttonBit(forControl: name) {
-                points.append(ControlPoint(bit: bit, x: x, y: y))
-            }
-        }
-        // Right button cluster (Gain region & Transport)
-        let rightButtons: [(String, Double, Double)] = [
-            ("H/LITE", 0.72, 0.65), ("VIEWER", 0.80, 0.65), ("CURSOR", 0.88, 0.65),
-            ("SELECT", 0.72, 0.50), ("ADD_NODE", 0.80, 0.50), ("ADD_WINDOW", 0.88, 0.50),
-            ("PLAY_REV", 0.72, 0.18), ("PLAY", 0.80, 0.18), ("STOP", 0.88, 0.18),
-            ("DELETE", 0.95, 0.35), ("CORNER_LOWER_RIGHT", 0.95, 0.18)
-        ]
-        for (name, x, y) in rightButtons {
-            if let bit = HardwareMap.shared.buttonBit(forControl: name) {
-                points.append(ControlPoint(bit: bit, x: x, y: y))
+        if let svg = AppResources.string("micro-color-panel", "svg"),
+           let regex = try? NSRegularExpression(pattern: #"<g id="(button_[a-z_0-9]+)"[^>]*>.*?<rect[^>]*?x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)""#,
+                                                options: [.dotMatchesLineSeparators]) {
+            let ns = svg as NSString
+            for m in regex.matches(in: svg, range: NSRange(location: 0, length: ns.length)) {
+                let id = ns.substring(with: m.range(at: 1))
+                guard let name = PanelControlMapping.svgToProfile[id],
+                      let bit = HardwareMap.shared.buttonBit(forControl: name),
+                      let x = Double(ns.substring(with: m.range(at: 2))), let y = Double(ns.substring(with: m.range(at: 3))),
+                      let w = Double(ns.substring(with: m.range(at: 4))), let h = Double(ns.substring(with: m.range(at: 5))) else { continue }
+                points.append(ControlPoint(bit: bit, x: (x + w / 2) / 1080, y: 1 - (y + h / 2) / 552))
             }
         }
         self.controlPoints = points
     }
-    
+
     public func noteMotion(ballName: String, axis: String, delta: Double) {
         guard !RewindEngine.shared.isRewinding else { return }
         let origin: TrackballOrigin
         if ballName.contains("LIFT") { origin = .lift }
         else if ballName.contains("GAIN") { origin = .gain }
         else { origin = .gamma }
-        
-        if origin != activeOrigin {
-            activeOrigin = origin
-            waveReach = min(waveReach, 0.25)
-        }
-        
+        activeOrigin = origin
+
         if axis == "X" {
             currentVector.dx = currentVector.dx * 0.5 + delta * 1.5
         } else {
             currentVector.dy = currentVector.dy * 0.5 + delta * 1.5
         }
-        
         let speed = sqrt(currentVector.dx * currentVector.dx + currentVector.dy * currentVector.dy)
-        if speed > 0.005 {
-            activeDirection = (currentVector.dx / speed, currentVector.dy / speed)
-        }
-        
-        // Gradual outward growth increment as the ball moves
-        let impulse = abs(delta)
-        waveReach = min(1.1, waveReach + impulse * 0.035 + 0.02)
-        waveEnergy = min(1.0, waveEnergy + impulse * 0.06 + 0.03)
-        
-        let now = Date()
-        guard now.timeIntervalSince(lastWriteTime) >= 0.030 else { return }
-        lastWriteTime = now
-        
-        applyWave()
-        scheduleDecay()
+        var direction = activeDirection ?? (0, 1)
+        if speed > 0.005 { direction = (currentVector.dx / speed, currentVector.dy / speed) }
+        startWave(key: "ball-\(ballName)", origin: origin.position, direction: direction, maxReach: 1.1)
     }
-    
-    private func scheduleDecay() {
-        decayWorkItem?.cancel()
-        let work = DispatchWorkItem { [weak self] in
-            self?.stepDecay()
+
+    /// A knob turned. The wave spreads from the knob's spot on the top row across the keys nearest it,
+    /// so Y Lift reaches the left-hand keys and Y Gamma the centre ones.
+    public func noteKnob(_ name: String) {
+        guard !RewindEngine.shared.isRewinding, AppSettings.shared.knobRadiantLighting,
+              let index = PanelLayout.knobs.firstIndex(of: name), index < PanelStage.knobX.count else { return }
+        let x = Double(PanelStage.knobX[index]) / 1080.0
+        startWave(key: "knob-\(name)", origin: (x, Self.knobRowY), direction: nil, maxReach: Self.knobReach(x: x))
+    }
+
+    static let knobRowY = 1 - 125.0 / 552.0
+    /// Sideways distance counts fully and vertical only a third, so a knob's wave runs down its own column of keys.
+    static func distance(from o: (x: Double, y: Double), to x: Double, _ y: Double) -> Double {
+        hypot(x - o.x, (y - o.y) * 0.35)
+    }
+    /// Knobs at the outer edges reach a short way; those toward the middle have neighbours on both sides.
+    static func knobReach(x: Double) -> Double { 0.18 + 0.14 * max(0, 1 - abs(x - 0.5) / 0.44) }
+
+    /// Every control a knob's wave can ever reach, for tests and the guide.
+    func controlsReached(byKnob name: String) -> Set<Int> {
+        guard let index = PanelLayout.knobs.firstIndex(of: name), index < PanelStage.knobX.count else { return [] }
+        let x = Double(PanelStage.knobX[index]) / 1080.0
+        return Set(controlPoints.filter { Self.distance(from: (x, Self.knobRowY), to: $0.x, $0.y) <= Self.knobReach(x: x) }.map(\.bit))
+    }
+
+    private func startWave(key: String, origin: (x: Double, y: Double), direction: (dx: Double, dy: Double)?, maxReach: Double) {
+        lastInput = Date()
+        if key != waveKey {
+            waveKey = key
+            waveReach = 0
         }
-        decayWorkItem = work
+        originPoint = origin
+        activeDirection = direction
+        self.maxReach = maxReach
+        waveEnergy = 1.0
+        if !isAnimating {
+            isAnimating = true
+            waveReach = 0
+            applyWave()
+            scheduleTick()
+        }
+    }
+
+    private func scheduleTick() {
+        tickWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.tick() }
+        tickWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.035, execute: work)
     }
-    
-    private func stepDecay() {
-        // Multi-stage gradual receding: wave gently shrinks and fades without an abrupt stop
-        waveReach = max(0, waveReach - 0.065)
-        waveEnergy *= 0.85
-        currentVector = (currentVector.dx * 0.75, currentVector.dy * 0.75)
-        
-        if waveReach <= 0.05 || waveEnergy <= 0.05 {
-            isAnimating = false
-            waveReach = 0
-            waveEnergy = 0
-            decayWorkItem = nil
-            StudioEngine.shared.updateLeds()
-        } else {
-            applyWave()
-            scheduleDecay()
-        }
-    }
-    
-    private func applyWave() {
-        let (ox, oy) = activeOrigin.position
-        let (dirX, dirY) = activeDirection
-        
-        var litBits = Set<Int>()
-        for cp in controlPoints {
-            let dx = cp.x - ox
-            let dy = cp.y - oy
-            let dist = sqrt(dx * dx + dy * dy)
-            guard dist > 0.01 else { continue }
-            
-            // Dot product evaluates directional alignment:
-            let dot = (dx * dirX + dy * dirY) / dist
-            
-            // Only light controls in the forward arc of the push and within current wave reach
-            if dot > 0.15 && dist <= waveReach {
-                let distFraction = dist / max(0.1, waveReach)
-                let radialScore = dot * (1.0 - distFraction * 0.65) * waveEnergy
-                if radialScore > 0.10 {
-                    litBits.insert(cp.bit)
-                }
+
+    /// The ring keeps travelling outward while you keep turning, then lets the last one run out and fade.
+    private func tick() {
+        let turning = Date().timeIntervalSince(lastInput) < 0.25
+        waveReach += 0.05
+        if !turning { waveEnergy *= 0.9 }
+        if waveReach > maxReach + Self.ringBand {
+            if turning {
+                waveReach = 0
+            } else {
+                finish()
+                return
             }
         }
-        
-        isAnimating = true
+        if waveEnergy < 0.12 { finish(); return }
+        applyWave()
+        scheduleTick()
+    }
+
+    private func finish() {
+        isAnimating = false
+        waveReach = 0
+        waveEnergy = 0
+        waveKey = ""
+        tickWorkItem = nil
+        StudioEngine.shared.updateLeds()
+    }
+
+    /// Which controls the ring is passing over right now.
+    static func ringBits(points: [(bit: Int, x: Double, y: Double)], origin: (x: Double, y: Double),
+                         direction: (dx: Double, dy: Double)?, reach: Double, maxReach: Double) -> Set<Int> {
+        var lit = Set<Int>()
+        for cp in points {
+            let dx = cp.x - origin.x, dy = cp.y - origin.y
+            let dist = direction == nil ? distance(from: origin, to: cp.x, cp.y) : sqrt(dx * dx + dy * dy)
+            guard dist > 0.005, dist <= maxReach else { continue }
+            if let d = direction {
+                guard (dx * d.dx + dy * d.dy) / dist > 0.15 else { continue }
+            }
+            if dist <= reach && dist >= reach - ringBand { lit.insert(cp.bit) }
+        }
+        return lit
+    }
+
+    private func applyWave() {
+        guard !StudioEngine.shared.ledsOwnedByShow, !RewindEngine.shared.isRewinding else { return }
+        let points = controlPoints.map { (bit: $0.bit, x: $0.x, y: $0.y) }
+        let ring = Self.ringBits(points: points, origin: originPoint, direction: activeDirection,
+                                 reach: waveReach, maxReach: maxReach)
         let baseWhite = StudioEngine.shared.currentBaseWhiteBits()
         let currentColor = StudioEngine.shared.currentSemanticColorBits()
-        
-        var combinedWhite = baseWhite.union(litBits)
-        // Ensure active color channels aren't washed out by white bits
+
+        // With every key already lit the ring would be invisible, so it passes through as a dark band instead.
+        var combinedWhite = AppSettings.shared.ledMode == "all" ? baseWhite.subtracting(ring) : baseWhite.union(ring)
         let colorKeyBits: [PanelColorLED: Int] = [
-            .bypassRed: 20,
-            .disableRed: 21,
-            .offsetGreen: 13,
-            .shiftUpGreen: 24,
-            .shiftDownGreen: 25,
-            .playStillGreen: 26,
-            .wipeStillGreen: 27,
-            .hliteGreen: 29,
-            .viewerGreen: 30,
-            .cursorGreen: 31
+            .bypassRed: 20, .disableRed: 21, .offsetGreen: 13, .shiftUpGreen: 24, .shiftDownGreen: 25,
+            .playStillGreen: 26, .wipeStillGreen: 27, .hliteGreen: 29, .viewerGreen: 30, .cursorGreen: 31
         ]
-        for (colorLed, whiteBit) in colorKeyBits {
-            if currentColor.contains(colorLed.rawValue) {
-                combinedWhite.remove(whiteBit)
-            }
+        for (colorLed, whiteBit) in colorKeyBits where currentColor.contains(colorLed.rawValue) {
+            combinedWhite.remove(whiteBit)
         }
-        
         PanelManager.shared.setDualLEDs(whiteBits: combinedWhite, colorBits: currentColor)
     }
 }

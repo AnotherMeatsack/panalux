@@ -162,6 +162,20 @@ final class PanelColorLEDTests: XCTestCase {
         XCTAssertTrue(AppSettings.shared.trackballRadiantLighting)
     }
 
+    func testKnobWavesReachTheKeysNearestThem() {
+        let animator = TrackballLightAnimator.shared
+        func bit(_ name: String) -> Int { HardwareMap.shared.buttonBit(forControl: name)! }
+        let lift = animator.controlsReached(byKnob: "Y_LIFT")
+        for near in ["AUTO_COLOR", "OFFSET", "COPY", "PASTE", "UNDO", "REDO", "DELETE", "RESET_ALL", "PLAY_STILL"] {
+            XCTAssertTrue(lift.contains(bit(near)), "Y Lift should reach \(near)")
+        }
+        XCTAssertFalse(lift.contains(bit("WIPE_STILL")), "Y Lift should not reach Wipe")
+        let gamma = animator.controlsReached(byKnob: "Y_GAMMA")
+        for near in ["OFFSET", "PLAY_STILL", "WIPE_STILL", "GRAB_STILL"] {
+            XCTAssertTrue(gamma.contains(bit(near)), "Y Gamma should reach \(near)")
+        }
+    }
+
     func testSemanticColorBitsAtRestAreNotForced() {
         let engine = StudioEngine.shared
         // When not in any mode and nothing pressed/held, colors should be clean

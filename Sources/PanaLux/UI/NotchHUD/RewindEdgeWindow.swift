@@ -90,6 +90,8 @@ public final class RewindEdgeAnimator: ObservableObject {
 
     /// Continuous rotation phase without jumping or snapping
     @Published public private(set) var continuousPhase: Double = 0.0
+    /// Where the wheel has actually taken the phase; the drawn phase eases toward it so packets never step.
+    private var targetPhase: Double = 0.0
     /// Smoothed angular velocity (0.0 … 3.0+) for motion blur and line width
     @Published public private(set) var smoothedVelocity: Double = 0.0
     /// Reactive energy (0.15 … 1.0) governing subtle glow bloom and intensity
@@ -113,7 +115,7 @@ public final class RewindEdgeAnimator: ObservableObject {
         guard deltaUnits.isFinite, deltaUnits != 0 else { return }
 
         // Continuous phase accumulation: turning in reverse cascades inward, forward cascades outward
-        continuousPhase += deltaUnits * phaseSensitivity
+        targetPhase += deltaUnits * phaseSensitivity
         currentDirection = deltaUnits < 0 ? -1.0 : 1.0
 
         let now = Date()
@@ -121,10 +123,10 @@ public final class RewindEdgeAnimator: ObservableObject {
         lastWheelTime = now
 
         let instantVelocity = min(3.0, abs(deltaUnits) / (dt * 50.0))
-        smoothedVelocity = smoothedVelocity * 0.5 + instantVelocity * 0.5
+        smoothedVelocity = smoothedVelocity * 0.85 + instantVelocity * 0.15
 
         // Reactive energy flares subtly with rotation intensity
-        reactiveEnergy = min(1.0, reactiveEnergy + min(0.4, abs(deltaUnits) * 0.04 + instantVelocity * 0.10))
+        reactiveEnergy = min(0.7, reactiveEnergy + min(0.05, abs(deltaUnits) * 0.005 + instantVelocity * 0.012))
     }
 
     /// 60fps frame tick to update inertia decay and playback tracking
@@ -138,29 +140,31 @@ public final class RewindEdgeAnimator: ObservableObject {
         let now = date
         let dt = lastTickTime == .distantPast ? 0.016 : max(0.001, min(0.05, now.timeIntervalSince(lastTickTime)))
         lastTickTime = now
+        // Glide the drawn phase toward the wheel's phase so motion is continuous, not packet by packet.
+        continuousPhase += (targetPhase - continuousPhase) * (1 - exp(-dt * 5))
 
         if isPlaying {
             // During auto-playback, continuously advance the ripple cascade
             let playDelta = playDirection * playSpeed * dt * 0.75
-            continuousPhase += playDelta
+            targetPhase += playDelta
             currentDirection = playDirection < 0 ? -1.0 : 1.0
             smoothedVelocity = max(smoothedVelocity, min(2.0, abs(playSpeed) * 0.4))
             reactiveEnergy = max(reactiveEnergy, 0.65)
         } else {
             // Natural momentum: residual drift glides smoothly
             if smoothedVelocity > 0.01 {
-                continuousPhase += currentDirection * smoothedVelocity * dt * 0.35
+                targetPhase += currentDirection * smoothedVelocity * dt * 0.2
             }
 
             // Exponential deceleration (smooth friction over ~280ms)
-            let decay = pow(0.86, dt * 60.0)
+            let decay = pow(0.95, dt * 60.0)
             smoothedVelocity *= decay
             if smoothedVelocity < 0.004 { smoothedVelocity = 0 }
 
             // Smooth decay down to organic living floor
             let idleFloor = 0.18
             if now.timeIntervalSince(lastWheelTime) > 0.08 {
-                let energyDecay = dt * 1.6
+                let energyDecay = dt * 0.5
                 reactiveEnergy = max(idleFloor, reactiveEnergy - energyDecay)
             }
         }
@@ -169,6 +173,7 @@ public final class RewindEdgeAnimator: ObservableObject {
     public func reset() {
         smoothedVelocity = 0
         reactiveEnergy = 0.20
+        targetPhase = continuousPhase
         startedAt = Date()
         lastTickTime = .distantPast
         lastWheelTime = .distantPast
@@ -232,7 +237,7 @@ public struct RewindEdgeEffect: View {
     public var body: some View {
         Canvas { outer, size in
             // Organic, not crisp: everything is drawn into one softly blurred, mostly transparent layer.
-            outer.opacity = 0.55
+            outer.opacity = 0.42
             outer.drawLayer { context in
             context.addFilter(.blur(radius: reduceMotion ? 1.5 : 3.2))
             let bounds = CGRect(origin: .zero, size: size)
@@ -240,13 +245,13 @@ public struct RewindEdgeEffect: View {
 
             // Subtle living breathing shimmer: delicate organic pulse
             let t = Date().timeIntervalSinceReferenceDate
-            let organicPulse = reduceMotion ? 0.0 : (0.04 * sin(t * 2.2) + 0.02 * cos(t * 3.4))
+            let organicPulse = reduceMotion ? 0.0 : (0.012 * sin(t * 0.9))
             let totalEnergy = min(1.0, max(0.12, energy + organicPulse))
 
             // Slim perimeter depth: hugs the outer screen bezel tightly (32px to 48px max)
             // Leaves 96%+ of the display area completely clear and unobstructed
             let baseRimDepth: CGFloat = 32.0
-            let bloomExpansion = CGFloat(min(16.0, totalEnergy * 8.0 + velocity * 8.0))
+            let bloomExpansion = CGFloat(min(8.0, totalEnergy * 6.0))
             let rimDepth = baseRimDepth + bloomExpansion
 
             let cyan = Color(red: 0.15, green: 0.88, blue: 1.0)
@@ -292,14 +297,14 @@ public struct RewindEdgeEffect: View {
 
             // MARK: - Layer 3: Prismatic Glass Rim (Refractive Dispersion)
             // Crisp, razor-thin refractive glass contours along the bezel border
-            let dispersion = CGFloat(1.2 + totalEnergy * 0.8 + velocity * 1.8)
+            let dispersion = CGFloat(1.4 + totalEnergy * 0.6)
 
             // Cyan refraction fringe
             let cyanBounds = bounds.offsetBy(dx: -dispersion, dy: -dispersion * 0.7)
             context.stroke(
                 Path(roundedRect: cyanBounds, cornerRadius: cornerRadius),
                 with: .color(cyan.opacity(0.18 + totalEnergy * 0.18)),
-                lineWidth: 1.4 + CGFloat(min(0.8, velocity * 0.4))
+                lineWidth: 1.4
             )
 
             // Magenta refraction fringe
@@ -307,7 +312,7 @@ public struct RewindEdgeEffect: View {
             context.stroke(
                 Path(roundedRect: magentaBounds, cornerRadius: cornerRadius),
                 with: .color(magenta.opacity(0.18 + totalEnergy * 0.18)),
-                lineWidth: 1.4 + CGFloat(min(0.8, velocity * 0.4))
+                lineWidth: 1.4
             )
 
             // Specular Frosted Glass Rim with rotating optical phase reflection
@@ -337,7 +342,8 @@ public struct RewindEdgeEffect: View {
                 let intro = age < 1.3 ? age / 1.3 : nil
                 let loop = phase * 0.35
                 let cycle = loop - loop.rounded(.down)
-                let progress = intro.map { 1 - pow(1 - $0, 2) } ?? (velocity > 0.02 || energy > 0.3 ? cycle : nil)
+                let loopFade = min(1.0, max(0.0, (energy - 0.2) / 0.35))
+                let progress = intro.map { 1 - pow(1 - $0, 2) } ?? (loopFade > 0.01 ? cycle : nil)
                 if let progress {
                     let diag = hypot(size.width, size.height)
                     let along = CGVector(dx: size.width / diag, dy: size.height / diag)
@@ -347,7 +353,7 @@ public struct RewindEdgeEffect: View {
                     let base = dirSign > 0 ? 0.0 : diag
                     let head = base + dirSign * travel
                     let tail = head - dirSign * bandLength
-                    let fade = intro != nil ? 1.0 : min(1.0, 0.35 + totalEnergy)
+                    let fade = intro != nil ? 1.0 : loopFade * 0.7
                     let band = Gradient(colors: [
                         .clear,
                         cyan.opacity(0.55 * fade),
@@ -372,7 +378,7 @@ public struct RewindEdgeEffect: View {
             let waveCount = reduceMotion ? 3 : 5
 
             // Native GPU Metal Motion Blur Layer
-            let blurRadius = CGFloat(min(7.0, velocity * 3.5))
+            let blurRadius: CGFloat = 0
             if blurRadius > 0.5 && !reduceMotion {
                 context.drawLayer { blurLayer in
                     blurLayer.addFilter(.blur(radius: blurRadius))
@@ -408,7 +414,9 @@ public struct RewindEdgeEffect: View {
                 }
             }
 
-            let warpAmp: CGFloat = reduceMotion ? 0 : 5 + CGFloat(min(6, velocity * 3))
+            let warpAmp: CGFloat = reduceMotion ? 0 : 4
+            // The warp drifts on the clock, not the wheel, so it undulates slowly and never jitters.
+            let drift = t * 0.10
             // Soft wavefront lines, gently warped
             for i in 0..<waveCount {
                 let waveProgress = (Double(i) / Double(waveCount) - phase).truncatingRemainder(dividingBy: 1.0)
@@ -420,24 +428,24 @@ public struct RewindEdgeEffect: View {
                 let rippleRect = bounds.insetBy(dx: rippleDepth, dy: rippleDepth)
                 let waveRadius = max(14.0, cornerRadius - fraction * 8.0)
 
-                let chromOffset = CGFloat(0.8 + velocity * 1.2)
-                let coreWidth: CGFloat = 1.2 + CGFloat(min(1.0, velocity * 0.4))
+                let chromOffset: CGFloat = 1.0
+                let coreWidth: CGFloat = 1.3
 
                 // Cyan chromatic fringe
                 context.stroke(
-                    Self.warped(rippleRect.offsetBy(dx: -chromOffset, dy: -chromOffset * 0.5), phase: phase, seed: Double(i), amp: warpAmp),
+                    Self.warped(rippleRect.offsetBy(dx: -chromOffset, dy: -chromOffset * 0.5), phase: drift, seed: Double(i), amp: warpAmp),
                     with: .color(cyan.opacity(waveOpacity * 0.50)),
                     lineWidth: coreWidth
                 )
                 // Magenta chromatic fringe
                 context.stroke(
-                    Self.warped(rippleRect.offsetBy(dx: chromOffset, dy: chromOffset * 0.5), phase: phase, seed: Double(i) + 0.4, amp: warpAmp),
+                    Self.warped(rippleRect.offsetBy(dx: chromOffset, dy: chromOffset * 0.5), phase: drift, seed: Double(i) + 0.4, amp: warpAmp),
                     with: .color(magenta.opacity(waveOpacity * 0.50)),
                     lineWidth: coreWidth
                 )
                 // Specular frosted white core
                 context.stroke(
-                    Self.warped(rippleRect, phase: phase, seed: Double(i) + 0.2, amp: warpAmp),
+                    Self.warped(rippleRect, phase: drift, seed: Double(i) + 0.2, amp: warpAmp),
                     with: .color(glassWhite.opacity(waveOpacity * 0.75)),
                     lineWidth: coreWidth * 0.8
                 )

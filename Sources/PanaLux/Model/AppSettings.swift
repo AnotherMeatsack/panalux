@@ -19,6 +19,8 @@ public class AppSettings: ObservableObject {
     @AppStorage("rewindReactiveLighting") public var rewindReactiveLighting: Bool = true
     /// Radiant light waves radiating outward from trackballs in direction of motion.
     @AppStorage("trackballRadiantLighting") public var trackballRadiantLighting: Bool = true
+    /// Waves of light across nearby keys when a knob is turned.
+    @AppStorage("knobRadiantLighting") public var knobRadiantLighting: Bool = true
     @AppStorage("autoCloseResolve") public var autoCloseResolve: Bool = false
     /// Let go of the panel while DaVinci Resolve runs, take it back when Resolve quits.
     @AppStorage("handPanelToResolve") public var handPanelToResolve: Bool = true

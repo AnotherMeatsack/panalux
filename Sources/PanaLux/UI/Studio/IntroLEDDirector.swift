@@ -16,6 +16,8 @@ public final class IntroLEDDirector {
     public static let shared = IntroLEDDirector()
     
     public private(set) var isActive = false
+    /// Active and still being updated. If the intro window vanished without saying so, this lapses.
+    public var isLive: Bool { isActive && Date().timeIntervalSince(lastUpdate) < 6 }
     private var lastUpdate: Date = .distantPast
     private var lastScene: Int = -1
     
@@ -23,6 +25,7 @@ public final class IntroLEDDirector {
     
     public func start() {
         isActive = true
+        lastUpdate = Date()
         lastScene = -1
         StudioEngine.shared.isLightShowActive = true
     }

@@ -135,9 +135,11 @@ public struct SettingsView: View {
                 Text("All keys off").tag("stealth")
             }
             .onChange(of: settings.ledMode) { _, _ in engine.updateLeds() }
-            Text("Lights only show for keys you press or for the active mode. If your panel looks dark, pick \"All keys on\".")
+            Text("Reactive lights need some keys dark to show. With \"All keys on\", waves pass through as a dark band; the other modes light the keys they pass.")
                 .font(.callout).foregroundStyle(.secondary)
             Toggle("Light the key I click in the Map", isOn: $settings.highlightHardwareOnSelect)
+            Toggle("Light waves when I turn a knob", isOn: $settings.knobRadiantLighting)
+                .help("Turning a knob sends a wave of light across the keys nearest to it.")
             Toggle("Radiant trackball light waves", isOn: $settings.trackballRadiantLighting)
                 .help("Ripples radiant light outward across the panel keys in the direction you push the trackballs.")
             LabeledContent("Fine speed") {
