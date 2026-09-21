@@ -851,6 +851,12 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         let tapSpec = layerOverride ?? baseSpec
         let needsHoldDelay = tapSpec.hasTapAnything && holdSpec.hasHoldFunctionSet
 
+        if isDown, toggledLayers.contains("REWIND"), profile.buttons[name]?.hold_layer == "REWIND" {
+            holdWasUsed.insert(name)
+            closeLatchedRewind(key: name)
+            return
+        }
+
         if activePickerButton != nil, let combine = MaskCombine.buttonMap[name] {
             if isDown {
                 ToolWheelSession.shared.combine = combine
@@ -1671,6 +1677,26 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         currentDisplayMode = .rewind(rewind.state)
     }
 
+    /// Press Stop while holding Undo and Rewind stays open, so Undo can be let go.
+    private func latchRewindIfHeld(key: String) {
+        guard activeLayers.contains("REWIND"), !toggledLayers.contains("REWIND") else { return }
+        toggledLayers.insert("REWIND")
+        triggerActionDisplay(name: key, label: "Rewind stays open · press Undo to close", phase: .done)
+        updateLeds()
+        updateStatusMessage()
+    }
+
+    /// Undo pressed while Rewind is latched: close it.
+    private func closeLatchedRewind(key: String) {
+        RewindEngine.shared.endRewind()
+        toggledLayers.remove("REWIND")
+        activeLayers.remove("REWIND")
+        collapseToIdle()
+        triggerActionDisplay(name: key, label: "Rewind closed", phase: .done)
+        updateLeds()
+        updateStatusMessage()
+    }
+
     /// A key mapped to the trail.
     private func performRewindKey(_ command: String, key: String) {
         let rewind = RewindEngine.shared
@@ -1693,7 +1719,9 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         case RewindCommands.tip: rewind.jumpToTip()
         case RewindCommands.play: rewind.play(forward: true)
         case RewindCommands.playReverse: rewind.play(forward: false)
-        case RewindCommands.pause: rewind.pausePlayback()
+        case RewindCommands.pause:
+            rewind.pausePlayback()
+            latchRewindIfHeld(key: key)
         case RewindCommands.tangentPrevious: rewind.hopTangent(forward: false)
         case RewindCommands.tangentNext: rewind.hopTangent(forward: true)
         case RewindCommands.previous: rewind.step(forward: false)

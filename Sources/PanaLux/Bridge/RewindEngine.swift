@@ -785,6 +785,16 @@ public final class RewindEngine: ObservableObject {
             : String(format: "%d:%02d", total / 60, total % 60)
     }
 
+    /// The real time an edit was made: "3:42:07 PM" today, "Yesterday 3:42:07 PM", or with the date.
+    static func editTime(_ date: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
+        let time = date.formatted(.dateTime.hour().minute().second())
+        if calendar.isDate(date, inSameDayAs: now) { return time }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: yesterday) {
+            return "Yesterday " + time
+        }
+        return date.formatted(.dateTime.month(.abbreviated).day()) + " " + time
+    }
+
     static func ago(_ seconds: TimeInterval) -> String {
         if seconds < 60 { return String(format: "%.0f seconds back", seconds.rounded()) }
         if seconds < 3600 {
@@ -838,6 +848,7 @@ public final class RewindEngine: ObservableObject {
             origin: playback.start,
             tip: playback.tip,
             playhead: peeking ? playback.tip : playhead,
+            editedAt: trail?.wallClock(at: peeking ? playback.tip : playhead),
             window: tapeWindow,
             marks: marks,
             knobs: knobs,

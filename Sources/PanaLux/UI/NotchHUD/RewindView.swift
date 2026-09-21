@@ -117,6 +117,8 @@ public struct RewindState: Equatable {
     /// The newest point. Rolling back never moves it.
     public var tip: TimeInterval
     public var playhead: TimeInterval
+    /// When the edit under the playhead really happened, if known.
+    public var editedAt: Date? = nil
     /// Seconds of tape across the whole track.
     public var window: TimeInterval
     public var marks: [TrailMark]
@@ -147,7 +149,7 @@ public struct RewindState: Equatable {
     public var spanStart: TimeInterval
     public var spanEnd: TimeInterval
 
-    public init(origin: TimeInterval = 0, tip: TimeInterval = 0, playhead: TimeInterval = 0,
+    public init(origin: TimeInterval = 0, tip: TimeInterval = 0, playhead: TimeInterval = 0, editedAt: Date? = nil,
                 window: TimeInterval = 60, marks: [TrailMark] = [],
                 knobs: [RewindKnobValue] = [], branchName: String? = nil, isPeeking: Bool = false,
                 isAtTip: Bool = true, caption: String = "Now", speed: Double = 0,
@@ -158,6 +160,7 @@ public struct RewindState: Equatable {
         self.origin = origin
         self.tip = tip
         self.playhead = playhead
+        self.editedAt = editedAt
         self.window = window
         self.marks = marks
         self.knobs = knobs
@@ -756,6 +759,9 @@ public struct RewindView: View {
             HStack {
                 Text(state.caption).lineLimit(1).minimumScaleFactor(0.8)
                 Spacer(minLength: 4)
+                if let edited = state.editedAt {
+                    Text(RewindEngine.editTime(edited)).monospacedDigit().foregroundStyle(RewindState.accent)
+                }
                 Text("\(RewindEngine.clock(state.playhead)) / \(RewindEngine.clock(state.tip))").monospacedDigit()
             }
             .font(.system(size: 11, weight: .medium))

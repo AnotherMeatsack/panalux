@@ -121,6 +121,9 @@ struct ExpandedRewindView: View {
                     .keyboardShortcut(.rightArrow, modifiers: []).help("Next edit")
                 Button("Mark", systemImage: "bookmark") { rewind.mark() }
                 Spacer()
+                if let edited = rewind.state.editedAt {
+                    Text("Edited " + RewindEngine.editTime(edited)).monospacedDigit()
+                }
                 Text("\(RewindEngine.clock(rewind.state.playhead)) / \(RewindEngine.clock(rewind.state.tip))").monospacedDigit().foregroundStyle(.secondary)
                 Button("Latest", systemImage: "forward.end") { rewind.beginRewind(); rewind.jumpToTip() }
             }.disabled(blocked)

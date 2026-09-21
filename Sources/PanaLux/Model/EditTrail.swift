@@ -14,6 +14,13 @@ public struct TrailEvent: Codable, Equatable {
     }
 }
 
+/// A stretch of trail time whose real-world clock is known: trail time `t` happened at `wall`.
+/// Trail time squeezes out the hours PanaLux was closed, so each session records its own anchor.
+public struct TrailSession: Codable, Equatable {
+    public var t: TimeInterval
+    public var wall: Date
+}
+
 /// A landmark on the trail. Structural edits and "I liked it" marks both land here, because
 /// both are places worth stopping at — and both are restored exactly, not interpolated.
 public struct TrailKeyframe: Codable, Equatable, Identifiable {
@@ -66,6 +73,8 @@ public struct TrailBranch: Codable, Equatable, Identifiable {
     public var clockOrigin: Date
     public var events: [TrailEvent]
     public var keyframes: [TrailKeyframe]
+    /// Real-world clock anchors, oldest first. Absent on trails recorded before they existed.
+    public var sessions: [TrailSession]? = nil
 
     public init(id: String = UUID().uuidString, name: String, parent: String? = nil,
                 forkTime: TimeInterval = 0, clockOrigin: Date = Date(),
@@ -77,6 +86,7 @@ public struct TrailBranch: Codable, Equatable, Identifiable {
         self.clockOrigin = clockOrigin
         self.events = events
         self.keyframes = keyframes
+        self.sessions = [TrailSession(t: forkTime, wall: clockOrigin)]
     }
 
     /// Latest time anything happened on this branch alone.
@@ -168,6 +178,15 @@ public struct EditTrail: Codable, Equatable {
         return b.forkTime + wall.timeIntervalSince(b.clockOrigin)
     }
 
+    /// The real time of day trail time `t` happened, or nil when it was recorded before PanaLux
+    /// kept a real clock. Never a guess: an unknown moment stays unknown.
+    public func wallClock(at t: TimeInterval) -> Date? {
+        let path = lineage()
+        guard let owner = path.last(where: { $0.forkTime <= t }) ?? path.first,
+              let anchor = (owner.sessions ?? []).last(where: { $0.t <= t }) else { return nil }
+        return anchor.wall.addingTimeInterval(t - anchor.t)
+    }
+
     /// Latest point on the active path. Rolling back never moves it.
     public var tipTime: TimeInterval {
         lineage().reduce(0.0) { max($0, $1.localTip) }
@@ -184,6 +203,9 @@ public struct EditTrail: Codable, Equatable {
         let index = activeIndex
         let localTip = max(branches[index].localTip, branches[index].forkTime)
         branches[index].clockOrigin = wall.addingTimeInterval(-(localTip - branches[index].forkTime) - EditTrail.resumeGap)
+        var sessions = branches[index].sessions ?? []
+        sessions.append(TrailSession(t: localTip + EditTrail.resumeGap, wall: wall))
+        branches[index].sessions = sessions
         updatedAt = wall
     }
 

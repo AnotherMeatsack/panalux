@@ -1,3 +1,14 @@
+# PanaLux v1.2.8
+
+Rewind now tells you when each edit happened, and you can keep it open without holding Undo.
+
+- **Rewind shows when you made each edit.** The readout shows the real time of day of the edit under the playhead, to the second, and adds Yesterday or the date for older edits. It stays correct after you quit PanaLux and return to the photo. Edits recorded before this update have no recorded time and show none.
+- **Keep Rewind open without holding Undo.** Hold Undo, then press Stop. Rewind stays open so you can let go of Undo. Press Undo again to close it. Stop still pauses playback.
+
+Signed ad hoc; not notarized and not Developer ID signed. macOS treats each ad hoc build as a new app, so after updating, remove PanaLux from System Settings → Privacy & Security → Accessibility and add it again to keep the typed-key buttons working.
+
+---
+
 # PanaLux v1.2.7
 
 Updating now shows you only what changed since the version you were on, then points to where each change lives. The panel guide stays out of the way until you ask for it.

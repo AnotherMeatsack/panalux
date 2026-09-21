@@ -1,12 +1,27 @@
 {
-  "version": "1.2.7",
-  "revision": "whats-new-1",
+  "version": "1.2.8",
+  "revision": "rewind-time-latch-1",
   "changelogHeadings": [
-    "What’s New only shows what’s new to you.",
-    "The Panel Guide opens only when you ask.",
-    "The intro plays once."
+    "Rewind shows when you made each edit.",
+    "Keep Rewind open without holding Undo."
   ],
   "steps": [
+    {
+      "id": "rewind-time",
+      "title": "Rewind shows when you made each edit",
+      "body": "As you scrub Rewind, the readout now shows the real time of day of the edit under the playhead, to the second — for example 3:42:07 PM, Yesterday 3:42:07 PM, or Sep 12 3:42:07 PM. It stays accurate even if you closed PanaLux and came back to the photo later. Edits recorded before this update have no recorded time, so they show none instead of a guess.",
+      "since": "1.2.8",
+      "kind": "new",
+      "target": "map"
+    },
+    {
+      "id": "rewind-latch",
+      "title": "Keep Rewind open without holding Undo",
+      "body": "Hold Undo to open Rewind, then press Stop (the square key on the right). Rewind stays open, so you can let go of Undo and use both hands. Press Undo again to close it. Stop still pauses playback as before.",
+      "since": "1.2.8",
+      "kind": "new",
+      "target": "map"
+    },
     {
       "id": "whats-new",
       "title": "What’s New only shows what’s new to you",
