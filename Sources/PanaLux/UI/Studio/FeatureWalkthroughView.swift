@@ -28,14 +28,14 @@ struct FeatureWalkthroughView: View {
                             Label("Open Contact", systemImage: "envelope")
                         }
                     }
-                    if step.id == "soft-edge" || step.id == "intro-color" {
+                    if step.id == "intro-lights" || step.id == "soft-edge" {
                         Button {
                             GuideController.shared.presentIntro()
                         } label: {
                             Label("Watch the Intro", systemImage: "play.rectangle")
                         }
                     }
-                    if step.id == "lightshow" {
+                    if step.id == "lightshow" || step.id == "lights-on" {
                         Button {
                             PanelLightShow.shared.start()
                         } label: {

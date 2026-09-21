@@ -140,6 +140,8 @@ public struct SettingsView: View {
             Toggle("Light the key I click in the Map", isOn: $settings.highlightHardwareOnSelect)
             Toggle("Light waves when I turn a knob", isOn: $settings.knobRadiantLighting)
                 .help("Turning a knob sends a wave of light across the keys nearest to it.")
+            Toggle("Include the red and green keys in waves", isOn: $settings.waveColorLights)
+                .help("Waves flash Bypass, Disable, Offset and the other colored keys as they pass. Turn off for white light only.")
             Toggle("Radiant trackball light waves", isOn: $settings.trackballRadiantLighting)
                 .help("Ripples radiant light outward across the panel keys in the direction you push the trackballs.")
             LabeledContent("Fine speed") {

@@ -45,6 +45,10 @@ public final class TrackballLightAnimator {
     private var waveKey: String = ""
     /// How thick the travelling ring of light is.
     static let ringBand = 0.17
+    private var band = 0.17
+    private var stepPerTick = 0.05
+    private var tickInterval = 0.035
+    private var isKnobWave = false
     
     public init() {
         buildControlPoints()
@@ -81,12 +85,13 @@ public final class TrackballLightAnimator {
         if axis == "X" {
             currentVector.dx = currentVector.dx * 0.5 + delta * 1.5
         } else {
-            currentVector.dy = currentVector.dy * 0.5 + delta * 1.5
+            // Pushing the ball away from you reads as negative Y; the layout here has up as positive.
+            currentVector.dy = currentVector.dy * 0.5 - delta * 1.5
         }
         let speed = sqrt(currentVector.dx * currentVector.dx + currentVector.dy * currentVector.dy)
         var direction = activeDirection ?? (0, 1)
         if speed > 0.005 { direction = (currentVector.dx / speed, currentVector.dy / speed) }
-        startWave(key: "ball-\(ballName)", origin: origin.position, direction: direction, maxReach: 1.1)
+        startWave(key: "ball-\(ballName)", origin: origin.position, direction: direction, maxReach: 1.1, knob: false)
     }
 
     /// A knob turned. The wave spreads from the knob's spot on the top row across the keys nearest it,
@@ -95,7 +100,7 @@ public final class TrackballLightAnimator {
         guard !RewindEngine.shared.isRewinding, AppSettings.shared.knobRadiantLighting,
               let index = PanelLayout.knobs.firstIndex(of: name), index < PanelStage.knobX.count else { return }
         let x = Double(PanelStage.knobX[index]) / 1080.0
-        startWave(key: "knob-\(name)", origin: (x, Self.knobRowY), direction: nil, maxReach: Self.knobReach(x: x))
+        startWave(key: "knob-\(name)", origin: (x, Self.knobRowY), direction: nil, maxReach: Self.knobReach(x: x), knob: true)
     }
 
     static let knobRowY = 1 - 125.0 / 552.0
@@ -116,19 +121,22 @@ public final class TrackballLightAnimator {
         return Set(controlPoints.filter { Self.distance(from: (x, Self.knobRowY), to: $0.x, $0.y) <= Self.knobReach(x: x) }.map(\.bit))
     }
 
-    private func startWave(key: String, origin: (x: Double, y: Double), direction: (dx: Double, dy: Double)?, maxReach: Double) {
+    private func startWave(key: String, origin: (x: Double, y: Double), direction: (dx: Double, dy: Double)?, maxReach: Double, knob: Bool) {
         lastInput = Date()
-        if key != waveKey {
-            waveKey = key
-            waveReach = 0
-        }
+        if key != waveKey && !isAnimating { waveKey = key }
         originPoint = origin
         activeDirection = direction
         self.maxReach = maxReach
         waveEnergy = 1.0
         if !isAnimating {
+            isKnobWave = knob
+            // Balls answer at once and run fast. Knobs are slow and calm: one soft ring, then a rest.
+            band = knob ? 0.10 : 0.20
+            stepPerTick = knob ? 0.028 : 0.07
+            tickInterval = knob ? 0.04 : 0.022
+            // Start just outside the ball so the first frame already lights keys.
+            waveReach = knob ? 0.02 : 0.14
             isAnimating = true
-            waveReach = 0
             applyWave()
             scheduleTick()
         }
@@ -138,17 +146,18 @@ public final class TrackballLightAnimator {
         tickWorkItem?.cancel()
         let work = DispatchWorkItem { [weak self] in self?.tick() }
         tickWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.035, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + tickInterval, execute: work)
     }
 
     /// The ring keeps travelling outward while you keep turning, then lets the last one run out and fade.
     private func tick() {
         let turning = Date().timeIntervalSince(lastInput) < 0.25
-        waveReach += 0.05
+        waveReach += stepPerTick
         if !turning { waveEnergy *= 0.9 }
-        if waveReach > maxReach + Self.ringBand {
+        if waveReach > maxReach + band {
             if turning {
-                waveReach = 0
+                // Balls go straight round again; knobs pause between rings so they never strobe.
+                waveReach = isKnobWave ? -0.45 : 0.14
             } else {
                 finish()
                 return
@@ -170,7 +179,7 @@ public final class TrackballLightAnimator {
 
     /// Which controls the ring is passing over right now.
     static func ringBits(points: [(bit: Int, x: Double, y: Double)], origin: (x: Double, y: Double),
-                         direction: (dx: Double, dy: Double)?, reach: Double, maxReach: Double) -> Set<Int> {
+                         direction: (dx: Double, dy: Double)?, reach: Double, maxReach: Double, band: Double = ringBand) -> Set<Int> {
         var lit = Set<Int>()
         for cp in points {
             let dx = cp.x - origin.x, dy = cp.y - origin.y
@@ -179,7 +188,7 @@ public final class TrackballLightAnimator {
             if let d = direction {
                 guard (dx * d.dx + dy * d.dy) / dist > 0.15 else { continue }
             }
-            if dist <= reach && dist >= reach - ringBand { lit.insert(cp.bit) }
+            if dist <= reach && dist >= reach - band { lit.insert(cp.bit) }
         }
         return lit
     }
@@ -188,19 +197,24 @@ public final class TrackballLightAnimator {
         guard !StudioEngine.shared.ledsOwnedByShow, !RewindEngine.shared.isRewinding else { return }
         let points = controlPoints.map { (bit: $0.bit, x: $0.x, y: $0.y) }
         let ring = Self.ringBits(points: points, origin: originPoint, direction: activeDirection,
-                                 reach: waveReach, maxReach: maxReach)
+                                 reach: waveReach, maxReach: maxReach, band: band)
         let baseWhite = StudioEngine.shared.currentBaseWhiteBits()
         let currentColor = StudioEngine.shared.currentSemanticColorBits()
 
         // With every key already lit the ring would be invisible, so it passes through as a dark band instead.
         var combinedWhite = AppSettings.shared.ledMode == "all" ? baseWhite.subtracting(ring) : baseWhite.union(ring)
+        var colorNow = currentColor
         let colorKeyBits: [PanelColorLED: Int] = [
             .bypassRed: 20, .disableRed: 21, .offsetGreen: 13, .shiftUpGreen: 24, .shiftDownGreen: 25,
             .playStillGreen: 26, .wipeStillGreen: 27, .hliteGreen: 29, .viewerGreen: 30, .cursorGreen: 31
         ]
-        for (colorLed, whiteBit) in colorKeyBits where currentColor.contains(colorLed.rawValue) {
+        // Keys with red or green lights show that colour as the ring passes, if wanted.
+        if AppSettings.shared.waveColorLights {
+            for (colorLed, whiteBit) in colorKeyBits where ring.contains(whiteBit) { colorNow.insert(colorLed.rawValue) }
+        }
+        for (colorLed, whiteBit) in colorKeyBits where colorNow.contains(colorLed.rawValue) {
             combinedWhite.remove(whiteBit)
         }
-        PanelManager.shared.setDualLEDs(whiteBits: combinedWhite, colorBits: currentColor)
+        PanelManager.shared.setDualLEDs(whiteBits: combinedWhite, colorBits: colorNow)
     }
 }

@@ -1,3 +1,19 @@
+# PanaLux v1.2.6
+
+The panel lights are reliable and reactive again, the intro plays them in step with what you see, and Rewind's edge glow is calmer.
+
+- **Panel lights stay on.** Key lights no longer go dark after the panel's colored lights change, which is why they only lit when you pressed a key. Your Key lights setting and the Backlight slider apply when the panel connects.
+- **The intro lights the panel with each scene.** Every intro scene now has its own light choreography: a dancing band on the title, the panel sweep in step with the screen, knob banks counting one-two-three, trackball rings, the key you hold lighting up with the keys under the knobs, User and Add Node lighting while held, and a left-to-right chase on Now try your panel.
+- **Waves follow your hand.** Trackball waves now travel the way you push the ball and start almost at once. Turning a knob sends one calm, slow ring across the keys beside it, then rests, so it never strobes. Settings → Panel has switches for knob waves and for including the red and green keys.
+- **A calmer Rewind edge.** The glow on Lightroom's display is more transparent, softly blurred and gently warped. It no longer flickers as you turn the wheel, and a prismatic color wave sweeps across as Rewind opens.
+- **A calmer Rewind wheel.** A deliberate turn moves one stop per click over a wider range of speeds, and hard spins travel less far.
+- **Contact the maker.** Menu bar → Contact · Bug, Question, Idea, or Settings → Help. Send a bug, question or idea by email to panalux@icloud.com or as a GitHub issue, neatly formatted with your version and connection status. Nothing is sent until you press send.
+- **Sync Settings no longer beeps.** When Lightroom has Sync Settings greyed out, PanaLux says it needs two or more photos selected instead of sending a shortcut that makes the Mac beep.
+
+Signed ad hoc; not notarized and not Developer ID signed. macOS treats each ad hoc build as a new app, so after updating, remove PanaLux from System Settings → Privacy & Security → Accessibility and add it again to keep the typed-key buttons working.
+
+---
+
 # PanaLux v1.2.5
 
 Rewind is gentler and more organic, the intro shows color everywhere, and you can now reach the maker.

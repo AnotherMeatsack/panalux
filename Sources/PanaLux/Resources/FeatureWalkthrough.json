@@ -1,17 +1,44 @@
 {
-  "version": "1.2.5",
-  "revision": "soft-edge-contact-1",
+  "version": "1.2.6",
+  "revision": "lights-waves-1",
   "changelogHeadings": [
-    "A softer Rewind edge.",
+    "Panel lights stay on.",
+    "The intro lights the panel with each scene.",
+    "Waves follow your hand.",
+    "A calmer Rewind edge.",
     "A calmer Rewind wheel.",
-    "Color throughout the intro.",
-    "Contact the maker."
+    "Contact the maker.",
+    "Sync Settings no longer beeps."
   ],
   "steps": [
     {
+      "id": "lights-on",
+      "title": "Panel lights stay on",
+      "body": "Your panel's key lights now stay on. Choose how they behave in Settings → Panel → Key lights, and set the Backlight slider there. Click 'Play Panel Light Show' to see the panel light up.",
+      "target": "replay",
+      "gesture": "taps",
+      "zoom": "full"
+    },
+    {
+      "id": "intro-lights",
+      "title": "The intro lights the panel with each scene",
+      "body": "Each intro scene now has its own choreography on the physical panel: a dancing band, the sweep in step with the screen, knob banks counting one-two-three, trackball rings, the held key lighting up, and a chase on the last screen. Click 'Watch the Intro' and keep your eyes on the panel.",
+      "target": "replay",
+      "gesture": "taps",
+      "zoom": "full"
+    },
+    {
+      "id": "waves",
+      "title": "Waves follow your hand",
+      "body": "Push a trackball and a wave of light travels the way you push it. Turn a knob and one calm ring spreads across the keys beside it. Switch knob waves and the red and green keys on or off in Settings → Panel.",
+      "target": "replay",
+      "gesture": "taps",
+      "zoom": "full"
+    },
+    {
       "id": "soft-edge",
-      "title": "A softer Rewind edge",
-      "body": "Hold Undo in Lightroom to enter Rewind. The glow along the edge of Lightroom's display is now transparent, blurred and gently warped, and a color wave sweeps across as it opens and as you turn the wheel. Nothing changes on your other displays. Click 'Watch the Intro' to see the same colors demoed on screen.",
+      "title": "A calmer Rewind edge",
+      "body": "Hold Undo in Lightroom to enter Rewind. The glow along the edge of Lightroom's display is transparent, softly blurred and gently warped, and no longer flickers as you turn the wheel. Nothing changes on your other displays.",
       "target": "replay",
       "gesture": "taps",
       "zoom": "full"
@@ -19,15 +46,7 @@
     {
       "id": "calm-wheel",
       "title": "A calmer Rewind wheel",
-      "body": "Turn the center ring slowly and each click moves exactly one stop. Turning faster travels further, but the ramp is gentler than before, so the playhead no longer jogs around. The Rewind speed dial in Settings still sets how far a hard spin travels.",
-      "target": "replay",
-      "gesture": "taps",
-      "zoom": "full"
-    },
-    {
-      "id": "intro-color",
-      "title": "Color throughout the intro",
-      "body": "The color wave now runs along the screen edge in every intro scene and across the panel whenever the demo holds a key, presses a button or turns a ring. Replay the intro any time from Help → Watch the Intro, or from the menu bar.",
+      "body": "Turn the center ring slowly and each click moves exactly one stop. Faster turns travel further, more gently than before. The Rewind speed dial in Settings still sets how far a hard spin travels.",
       "target": "replay",
       "gesture": "taps",
       "zoom": "full"
@@ -36,6 +55,14 @@
       "id": "contact",
       "title": "Contact the maker",
       "body": "Menu bar → Contact · Bug, Question, Idea, or Settings → Help. Pick a type, write your message and choose Email (private, to panalux@icloud.com) or GitHub (public). Your PanaLux version and connection status are added and nothing is sent until you press send in Mail or on GitHub. Click 'Open Contact' to try it.",
+      "target": "replay",
+      "gesture": "taps",
+      "zoom": "full"
+    },
+    {
+      "id": "sync-beep",
+      "title": "Sync Settings no longer beeps",
+      "body": "Sync Settings only works when two or more photos are selected in Lightroom. If it is greyed out, PanaLux now says so on screen instead of sending a shortcut that makes the Mac beep. Select several photos in the filmstrip, then press your Sync key.",
       "target": "replay",
       "gesture": "taps",
       "zoom": "full"
