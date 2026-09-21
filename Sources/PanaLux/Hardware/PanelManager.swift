@@ -357,14 +357,12 @@ public class PanelManager: ObservableObject {
     /// Another app (Resolve, a replug, sleep) can clear the lights without telling us, and the
     /// cache would then swallow every write that matches what we last sent. Forget it and resend.
     public func rewriteLEDs() {
-        if let bits = lastLEDBits {
-            lastLEDBits = nil
-            setLEDs(activeBits: bits)
-        }
-        if let colorBits = lastColorLEDBits {
-            lastColorLEDBits = nil
-            setColorLEDs(activeBits: colorBits)
-        }
+        let bits = lastLEDBits
+        let colorBits = lastColorLEDBits
+        lastLEDBits = nil
+        lastColorLEDBits = nil
+        if let colorBits, !colorBits.isEmpty { setColorLEDs(activeBits: colorBits) }
+        if let bits { setLEDs(activeBits: bits) }
     }
 
     public func setLEDs(activeBits: Set<Int>) {
@@ -395,8 +393,11 @@ public class PanelManager: ObservableObject {
     public func setColorLEDs(activeBits: Set<Int>) {
         guard let dev = connectedDevice else { return }
         let validBits = Set(activeBits.filter { $0 >= 0 && $0 < 48 })
-        guard validBits != lastColorLEDBits else { return }
+        // Never send "no colours" to a panel that has none lit: the report is pointless and it may blank the white keys.
+        guard validBits != (lastColorLEDBits ?? []) else { lastColorLEDBits = validBits; return }
         lastColorLEDBits = validBits
+        // A colour frame can clear the white lights, so forget them: the next white write must go out again.
+        lastLEDBits = nil
         var payload = [UInt8](repeating: 0, count: 7)
         payload[0] = 0x04 // Output Report ID for color channels
         for bit in validBits {
@@ -413,9 +414,10 @@ public class PanelManager: ObservableObject {
         )
     }
 
+    /// Colour first, then white, so whatever the colour frame does to the white lights is undone straight away.
     public func setDualLEDs(whiteBits: Set<Int>, colorBits: Set<Int>) {
-        setLEDs(activeBits: whiteBits)
         setColorLEDs(activeBits: colorBits)
+        setLEDs(activeBits: whiteBits)
     }
 
     /// True when a report 0x02 payload has no button bits set, allowing for the
