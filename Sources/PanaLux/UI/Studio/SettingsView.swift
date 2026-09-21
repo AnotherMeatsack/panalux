@@ -274,7 +274,11 @@ public struct SettingsView: View {
                 dismiss()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { guide.presentSetup() }
             }
-            Button("Open Reference Card") { ReferenceCard.open() }
+            Button("Panel Reference · View / Print / Save…") { ReferenceCard.open() }
+            Button("Show This Update’s Walkthrough…") {
+                dismiss()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { FeatureWalkthroughController.shared.replay() }
+            }
             Button("Quick Reference") {
                 dismiss()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { guide.presentQuickReference() }

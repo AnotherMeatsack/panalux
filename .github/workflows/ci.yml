@@ -17,6 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check authored update walkthrough
+        run: python3 Scripts/check_release_walkthrough.py
+
       - name: Show toolchain
         run: swift --version
 

@@ -234,6 +234,8 @@ Drop a map on the PanaLux window, or choose **Maps → Import**. Importing backs
 
 The guide follows your actual assignments, held/toggled modes, active bank, programs and focus dial. **Your Controls (⌘?)** provides a persistent searchable alternative. The profile format does not retain a reliable preset name, so references say **Current map** instead of guessing one.
 
+Every new build opens a guided **Next / Done** walkthrough of its changes, including same-version updates. **Later** keeps it unfinished and a Continue reminder stays in the app; relaunch resumes it. **Done** records completion for that build. Replay with **Help → Show This Update’s Walkthrough…**. **Take the Hands-On Tour** starts with the same guided reference steps before panel practice. The animated intro stays separate.
+
 Click **Print / Panel Guide** in the toolbar, or **Help → Panel Reference · View / Print / Save…**. Both this reference and the hold guide reuse the mapper's actual physical SVG, with all 58 controls in position. Choose a mode/bank, custom program or combination from **Map**, then **Turn / Tap**, **Press / Hold**, or **Both views**. **All modes** shows a visual atlas. Click a control for full assignment text; use **Zoom** for larger labels.
 
 **Print this view / PDF** prints the chosen mode, gesture and region. **Print complete guide / PDF** prints every mode and both gestures on separate A3 landscape pages. **Print enlarged sections** prints five close-up regions for the chosen mode/gesture (ten with Both views). Choose your browser's **Save as PDF** destination. **Save selected Turn / Tap PNG** (or Press / Hold) saves one complete physical diagram with full overflow labels; **Help → Save Current Panel Image** saves both current gesture diagrams together. Everything is generated locally and remains self-contained.
@@ -296,3 +298,5 @@ Compare the source and your result side by side. Choose **Whole control**, **Tap
 **Export & Share** saves a map and opens a public GitHub draft. Attach the file, review sharing permission and submit for manual review. The gallery starts with the official factory map. Lightroom preset slots refer to each recipient’s own plug-in setup; preset files and photos are not included.
 
 **Suggest a Feature**, available in the menu bar, Settings and library, opens a public GitHub draft containing the entered idea and workflow. Users review and submit it themselves with a GitHub account; PanaLux does not automatically send logs, credentials or photos. Maintainers reply through GitHub issues. See [community publishing and notifications](CommunityMaps/README.md).
+
+Feature-release authors: follow [the walkthrough and release checklist](Docs/RELEASING.md). Packaging checks require authored walkthrough coverage alongside the changelog.

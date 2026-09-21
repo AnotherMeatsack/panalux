@@ -5,9 +5,11 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP="${1:?Usage: prepare_update.sh /path/to/PanaLux.app /path/to/output}"
 OUT="${2:?Provide an empty output directory}"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist")"
+BUILD="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$APP/Contents/Info.plist")"
+python3 "$DIR/Scripts/check_release_walkthrough.py" "$VERSION" "$APP/Contents/Resources"
 TOOLS="$DIR/.build/artifacts/sparkle/Sparkle/bin"
 mkdir -p "$OUT"
-ARCHIVE="$OUT/PanaLux-${VERSION}.zip"
+ARCHIVE="$OUT/PanaLux-${VERSION}-${BUILD}.zip"
 if [[ -e "$ARCHIVE" || -e "$OUT/appcast.xml" ]]; then
   echo 'Refusing to replace an existing archive or feed; use a new output directory.' >&2
   exit 1
@@ -19,7 +21,7 @@ BUNDLED_KEY="$(/usr/libexec/PlistBuddy -c 'Print SUPublicEDKey' "$APP/Contents/I
 # Use the notes from the exact staged app, not a potentially newer working tree.
 NOTES="$APP/Contents/Resources/ReleaseNotes.md"
 [[ -s "$NOTES" ]] || { echo 'Release notes are required for every update.' >&2; exit 1; }
-python3 - "$NOTES" "$OUT/PanaLux-${VERSION}.html" "$VERSION" <<'PYNOTES'
+python3 - "$NOTES" "$OUT/PanaLux-${VERSION}-${BUILD}.html" "$VERSION" <<'PYNOTES'
 import html, pathlib, re, sys
 notes = pathlib.Path(sys.argv[1]).read_text()
 assert notes.startswith("# PanaLux v" + sys.argv[3] + "\n"), "Release notes must start with the packaged version"

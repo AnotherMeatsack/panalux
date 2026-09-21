@@ -22,9 +22,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let settings = AppSettings.shared
         let firstRun = !settings.hasCompletedOnboarding
         let atLogin = Self.launchedAtLogin
-        if firstRun || (settings.showWindowAtLaunch && !atLogin) {
+        if firstRun || FeatureWalkthroughController.shared.pending || (settings.showWindowAtLaunch && !atLogin) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 StudioWindowController.shared.show()
+                FeatureWalkthroughController.shared.presentAutomatically()
                 if firstRun {
                     GuideController.shared.presentSetup()
                 }

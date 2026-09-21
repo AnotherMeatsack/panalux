@@ -26,8 +26,8 @@ public struct QuickReferenceView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     section("See and save your mappings", items: [
                         "Press Previous Still + Next Still together and hold to peek at your current assignments. Release either key to dismiss. Your ordinary taps are suppressed for the chord; a single Still press keeps its mapping after a brief recognition delay.",
-                        "Your Controls (⌘?) stays open for searching. Print / Panel Guide opens the real panel SVG. Choose a mode, Turn / Tap or Press / Hold, and a zoom region. Use Print this view or Print complete guide, then Save as PDF; Save this panel PNG exports the selected diagram.",
-                        "Save either reference as a PNG for your phone or tablet. The printable pages offer Print / Save as PDF. The compact overview is best on A3 landscape; detailed pages stay readable on ordinary paper."
+                        "Your Controls (⌘?) stays open for searching. Print / Panel Guide opens the real panel SVG. Choose a mode, Turn / Tap or Press / Hold, and a zoom region. Use Print this view or Print complete guide, then Save as PDF; Save selected Turn / Tap PNG (or Press / Hold) exports the named gesture.",
+                        "Help → Save Current Panel Image saves both live gestures together. Print enlarged sections makes five close-ups per gesture; print defaults to A3 landscape and can be scaled to your paper. Help → Show This Update’s Walkthrough explains each control step by step."
                     ])
                     section("Change a control", items: [
                         "Click it on the drawing, or touch it on the panel. the Map follows your hands.",

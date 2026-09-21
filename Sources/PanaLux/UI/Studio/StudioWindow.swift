@@ -6,6 +6,7 @@ public struct StudioWindowView: View {
     @ObservedObject var engine = StudioEngine.shared
     @ObservedObject var coordinator = AppCoordinator.shared
     @ObservedObject var guide = GuideController.shared
+    @ObservedObject var featureTour = FeatureWalkthroughController.shared
     @ObservedObject var panel = PanelManager.shared
     @ObservedObject var bridge = LightroomBridge.shared
 
@@ -16,7 +17,14 @@ public struct StudioWindowView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            banners
+            if featureTour.pending && featureTour.index == nil {
+                HStack {
+                    Text("Discover what changed in this update")
+                    Spacer()
+                    Button("Continue update walkthrough") { featureTour.presentAutomatically() }
+                }.padding(10).background(Color.accentColor.opacity(0.12))
+            }
+            banners.accessibilityHidden(featureTour.index != nil)
             HStack(spacing: 0) {
                 PanelCanvasView(selectedControl: $selectedControl)
                     .spotlightAnchor(.map)
@@ -26,12 +34,19 @@ public struct StudioWindowView: View {
                     .frame(width: 370)
                     .spotlightAnchor(.inspector)
             }
+            .accessibilityHidden(featureTour.index != nil)
+            .allowsHitTesting(featureTour.index == nil)
         }
         .frame(minWidth: 980, minHeight: 640)
         .navigationTitle("PanaLux")
         .toolbar { toolbarContent }
         .overlayPreferenceValue(SpotlightAnchorKey.self) { anchors in
-            WalkthroughOverlay(anchors: anchors)
+            if featureTour.index == nil { WalkthroughOverlay(anchors: anchors) }
+        }
+        .overlay {
+            if featureTour.index != nil && !guide.showSetup && !guide.showIntro {
+                FeatureWalkthroughView()
+            }
         }
         .overlay {
             if guide.showIntro {
@@ -116,6 +131,9 @@ public struct StudioWindowView: View {
 
             Button { ReferenceCard.open() } label: {
                 Label("Print / Panel Guide", systemImage: "printer")
+                    .padding(4)
+                    .background(featureTour.index == 0 ? Color.orange.opacity(0.3) : Color.clear)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(featureTour.index == 0 ? Color.orange : Color.clear, lineWidth: 3))
             }
             .help("Physical panel diagrams for every mode, bank and gesture; print or save as PDF / PNG")
             Button { ControlHelpWindowController.shared.show() } label: {
@@ -193,6 +211,7 @@ public struct StudioWindowView: View {
                 Button("Watch the Intro") { guide.presentIntro() }
                 Button("Take the Hands-On Tour") { guide.startWalkthrough() }
                 Button("Setup Assistant…") { guide.presentSetup() }
+                Button("Show This Update’s Walkthrough…") { featureTour.replay() }
                 Button("Quick Reference") { guide.presentQuickReference() }
                 Button("Panel Reference · View / Print / Save…") { ReferenceCard.open() }
                 Button("Save Current Panel Image…") { ReferenceImageExport.save() }
@@ -200,6 +219,8 @@ public struct StudioWindowView: View {
                 Button("Report a Bug…") { BugReport.present() }
             } label: {
                 Label("Help", systemImage: "questionmark.circle")
+                    .padding(4)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(featureTour.index == featureTour.manifest.steps.count - 1 ? Color.orange : Color.clear, lineWidth: 3))
             }
 
             Button {

@@ -119,6 +119,12 @@ enum SVGPanelReference {
         guard let doc = try? XMLDocument(xmlString: asset, options: []), let root = doc.rootElement() else { return Drawing(svg: asset, fullLabels: []) }
         let rows = Dictionary(ControlHelpRow.rows(profile: state.profile).filter { !$0.id.hasPrefix("combination:") }.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
         let controls = (try? root.nodes(forXPath: ".//*[@data-control-id]")) ?? []
+        // The mapper's original interactive roles are not reference actions. Keep its
+        // geometry while exposing only the assignment cards to keyboard/VoiceOver.
+        if let group = (try? root.nodes(forXPath: ".//*[@id='controls']").first) as? XMLElement {
+            group.addAttribute(XMLNode.attribute(withName: "aria-hidden", stringValue: "true") as! XMLNode)
+        }
+        for case let node as XMLElement in controls { node.removeAttribute(forName: "tabindex"); node.removeAttribute(forName: "role") }
         var annotations = "", fullLabels: [(String, String)] = []
         for case let node as XMLElement in controls {
             guard let svgID = node.attribute(forName: "data-control-id")?.stringValue, let id = PanelControlMapping.svgToProfile[svgID], let row = rows[id] else { continue }

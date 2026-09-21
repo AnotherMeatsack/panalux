@@ -2,6 +2,7 @@
 
 See your actual panel assignments on the physical panel drawing while grading, or keep a detailed reference beside you.
 
+- **A guided tour of every update.** New and existing users get an explicit Next / Done walkthrough of this build’s changes. It highlights Print / Panel Guide and the real guide controls, explains the hold shortcut, mode/bank and gesture choices, zoom, PDF printing and PNG export. Later or closing the app preserves unfinished progress; Done completes it for this build. Replay from Help → Show This Update’s Walkthrough. The hands-on tutorial starts with these steps. The animated intro is unchanged.
 - **The real panel, in both guides.** The hold guide and printable reference use the same accurate SVG as the mapper. All 58 physical controls stay in position. Turn / Tap and Press / Hold views show knobs, knob presses, buttons, trackballs and rings.
 - **Every mode and bank.** Choose Live, Base, each saved mode/bank, custom analog programs or button combinations. All modes provides a visual atlas; click an assignment for its full text, or zoom into knobs, either key bank, centre keys or wheels.
 - **Print is easy to find.** Click Print / Panel Guide in the toolbar, or Help → Panel Reference · View / Print / Save. Print the selected view, the complete guide, or enlarged sections. Choose Save as PDF in the browser print dialog. Save the selected diagram as a high-resolution PNG, including full labels; Save Current Panel Image exports both current gesture views together.
