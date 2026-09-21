@@ -66,6 +66,7 @@ public class GuideController: ObservableObject {
         stepSatisfied = false
         captureTourPhoto()
         walkthroughStep = 0
+        PanelLightShow.shared.start()
     }
 
     public func goToStep(_ index: Int) {

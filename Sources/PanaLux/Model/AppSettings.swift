@@ -15,6 +15,10 @@ public class AppSettings: ObservableObject {
     @AppStorage("rewindClickUnits") public var rewindClickUnits: Double = 40
     /// Rewind's scrub ring: how fast a hard spin crosses a long session, 0…1.
     @AppStorage("rewindAcceleration") public var rewindAcceleration: Double = 0.5
+    /// Correlate button LEDs directly to wheel rotation ticks during Rewind mode.
+    @AppStorage("rewindReactiveLighting") public var rewindReactiveLighting: Bool = true
+    /// Radiant light waves radiating outward from trackballs in direction of motion.
+    @AppStorage("trackballRadiantLighting") public var trackballRadiantLighting: Bool = true
     @AppStorage("autoCloseResolve") public var autoCloseResolve: Bool = false
     /// Let go of the panel while DaVinci Resolve runs, take it back when Resolve quits.
     @AppStorage("handPanelToResolve") public var handPanelToResolve: Bool = true

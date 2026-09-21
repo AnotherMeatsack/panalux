@@ -2,7 +2,6 @@ import SwiftUI
 
 public struct NotchHUDView: View {
     @ObservedObject var windowController = NotchHUDWindowController.shared
-    @State private var expandWork: DispatchWorkItem?
     @ObservedObject var feed = HUDFeed.shared
     @ObservedObject var settings = AppSettings.shared
     /// Which tangent is being edited, so a tangent is never invisible.
@@ -60,14 +59,6 @@ public struct NotchHUDView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .top)
-        .onHover { inside in
-            expandWork?.cancel()
-            guard inside, isRewind, !windowController.isRewindExpanded else { return }
-            let work = DispatchWorkItem { windowController.expandRewind() }
-            expandWork = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55, execute: work)
-        }
-        .onDisappear { expandWork?.cancel() }
         .animation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.8), value: windowController.isRewindExpanded)
         .environment(\.colorScheme, .dark)
         .animation(.easeOut(duration: 0.2), value: isExpanded)

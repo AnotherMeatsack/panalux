@@ -29,8 +29,12 @@ struct IntroShowView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onChange(of: timeline.date) { _, now in
-                    if playing, !reduceMotion, scene < sceneCount - 1, now.timeIntervalSince(sceneStart) > sceneLengths[scene] {
-                        go(scene + 1)
+                    if playing, !reduceMotion {
+                        let elapsed = now.timeIntervalSince(sceneStart)
+                        IntroLEDDirector.shared.update(scene: scene, t: elapsed)
+                        if scene < sceneCount - 1, elapsed > sceneLengths[scene] {
+                            go(scene + 1)
+                        }
                     }
                 }
             }
@@ -44,11 +48,23 @@ struct IntroShowView: View {
         .focusable()
         .focused($focused)
         .focusEffectDisabled()
-        .onAppear { focused = true; sceneStart = Date() }
+        .onAppear {
+            focused = true
+            sceneStart = Date()
+            IntroLEDDirector.shared.start()
+            IntroLEDDirector.shared.update(scene: scene, t: 0)
+        }
+        .onDisappear {
+            IntroLEDDirector.shared.stop()
+        }
         .onKeyPress(.rightArrow) { go(scene + 1); return .handled }
         .onKeyPress(.leftArrow) { go(scene - 1); return .handled }
         .onKeyPress(.space) { if !reduceMotion { togglePlayback() }; return .handled }
-        .onKeyPress(.escape) { guide.finishIntro(startTour: false); return .handled }
+        .onKeyPress(.escape) {
+            IntroLEDDirector.shared.stop()
+            guide.finishIntro(startTour: false)
+            return .handled
+        }
         .environment(\.colorScheme, .dark)
         .transaction { if reduceMotion { $0.animation = nil; $0.disablesAnimations = true } }
     }
@@ -87,6 +103,7 @@ struct IntroShowView: View {
     private func go(_ next: Int) {
         guard next >= 0 else { return }
         guard next < sceneCount else {
+            IntroLEDDirector.shared.stop()
             guide.finishIntro(startTour: true)
             return
         }
@@ -94,6 +111,7 @@ struct IntroShowView: View {
             scene = next
             pausedElapsed = 0
             sceneStart = Date()
+            IntroLEDDirector.shared.update(scene: next, t: 0)
         }
     }
 
@@ -117,7 +135,10 @@ struct IntroShowView: View {
 
     private var controls: some View {
         HStack(spacing: 18) {
-            Button("Skip Intro") { guide.finishIntro(startTour: false) }
+            Button("Skip Intro") {
+                IntroLEDDirector.shared.stop()
+                guide.finishIntro(startTour: false)
+            }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.secondary)
             Spacer()

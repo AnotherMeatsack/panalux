@@ -105,7 +105,7 @@ public final class RewindEngine: ObservableObject {
 
     // MARK: Transport
     public private(set) var isPlaying = false
-    private var playDirection: Double = 1
+    public private(set) var playDirection: Double = 1
     /// 1 is the pace the edits were made at. The rings turn this dial; it survives between holds.
     public private(set) var playSpeed: Double = 1
     private var speedLatched = false
@@ -257,6 +257,7 @@ public final class RewindEngine: ObservableObject {
         isPlaying = false
         rebuildLaneActivity()
         publish(caption: "Now")
+        RewindLEDAnimator.shared.start()
     }
 
     /// UNDO came up. The photo stays wherever the playhead is — that is the point.
@@ -276,6 +277,7 @@ public final class RewindEngine: ObservableObject {
         ignoreRecordsUntil = Date().addingTimeInterval(RewindEngine.settleAfterRewind)
         flush()
         if announce { publish(caption: detached ? "Left in the past" : "Now") }
+        RewindLEDAnimator.shared.stop()
     }
 
     // MARK: - Scrubbing

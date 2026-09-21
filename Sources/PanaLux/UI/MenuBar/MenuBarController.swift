@@ -35,7 +35,9 @@ public class MenuBarController: NSObject, NSMenuDelegate {
         let engine = StudioEngine.shared
         button.image = PanelStatusIcon.image(paused: engine.isOutputPaused,
                                              connected: PanelManager.shared.isConnected && LightroomBridge.shared.isConnected)
-        button.toolTip = "PanaLux: \(engine.statusMessage)"
+        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.4"
+        let b = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "dev"
+        button.toolTip = "PanaLux \(v) (Build \(b)) · \(engine.statusMessage)"
     }
 
     // Rebuilt each time it opens so every line is current.
@@ -46,8 +48,10 @@ public class MenuBarController: NSObject, NSMenuDelegate {
         let coordinator = AppCoordinator.shared
         let settings = AppSettings.shared
 
-        let title = NSMenuItem(title: "PanaLux", action: nil, keyEquivalent: "")
-        title.attributedTitle = NSAttributedString(string: "PanaLux", attributes: [.font: NSFont.boldSystemFont(ofSize: 13)])
+        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.4"
+        let b = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "dev"
+        let title = NSMenuItem(title: "PanaLux \(v) · Build \(b)", action: nil, keyEquivalent: "")
+        title.attributedTitle = NSAttributedString(string: "PanaLux \(v)  ·  Build \(b)", attributes: [.font: NSFont.boldSystemFont(ofSize: 13)])
         menu.addItem(title)
 
         let panelLine: String
@@ -129,11 +133,17 @@ public class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(action("Report a Bug…", #selector(reportBug), key: "", symbol: "exclamationmark.bubble"))
         menu.addItem(action("What’s New…", #selector(showReleaseNotes), key: "", symbol: "sparkles"))
         menu.addItem(action("Check for Updates…", #selector(checkForUpdates), key: "", symbol: "arrow.down.circle"))
+        menu.addItem(action("Play Panel Light Show", #selector(playLightShow), key: "", symbol: "sparkles"))
         menu.addItem(action("Tangents…", #selector(openTangents), key: "", symbol: "arrow.triangle.branch"))
         menu.addItem(action("Settings…", #selector(openSettings), key: ",", symbol: "gearshape"))
 
         menu.addItem(.separator())
         menu.addItem(action("Quit PanaLux", #selector(quitApp), key: "q", symbol: nil))
+    }
+
+    @objc private func playLightShow() {
+        StudioWindowController.shared.show()
+        PanelLightShow.shared.start()
     }
 
     @MainActor @objc private func openMapLibrary() { MapLibraryWindowController.shared.show() }

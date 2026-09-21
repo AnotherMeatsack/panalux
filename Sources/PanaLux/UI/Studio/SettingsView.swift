@@ -138,6 +138,8 @@ public struct SettingsView: View {
             Text("Lights only show for keys you press or for the active mode. If your panel looks dark, pick \"All keys on\".")
                 .font(.callout).foregroundStyle(.secondary)
             Toggle("Light the key I click in the Map", isOn: $settings.highlightHardwareOnSelect)
+            Toggle("Radiant trackball light waves", isOn: $settings.trackballRadiantLighting)
+                .help("Ripples radiant light outward across the panel keys in the direction you push the trackballs.")
             LabeledContent("Fine speed") {
                 HStack {
                     Slider(value: $settings.fineMultiplier, in: 0.1...0.5, step: 0.05)
@@ -201,6 +203,8 @@ public struct SettingsView: View {
                 layer.rings = rings
                 engine.profile.layers["REWIND"] = layer
             }
+            Toggle("Tactile wheel-correlated lighting", isOn: $settings.rewindReactiveLighting)
+                .help("Flickers illuminated keys tick-by-tick as you rotate the rings during Rewind.")
             Text("Right ring travels, left ring visits landmarks, center ring compares tangents. Trackballs rest while rewinding; release Undo to grade. Map Undo restores your previous assignments.")
                 .font(.caption).foregroundStyle(.secondary)
             Text(bridge.previewStatus).font(.caption).foregroundStyle(.secondary)
@@ -279,6 +283,11 @@ public struct SettingsView: View {
                 dismiss()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { FeatureWalkthroughController.shared.replay() }
             }
+            Button("Play Panel Light Show") {
+                dismiss()
+                StudioWindowController.shared.show()
+                PanelLightShow.shared.start()
+            }
             Button("Quick Reference") {
                 dismiss()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { guide.presentQuickReference() }
@@ -295,6 +304,7 @@ public struct SettingsView: View {
             Button("What’s New…") { ReleaseNotesWindowController.shared.show() }
             Button("Check for Updates…") { AppUpdater.shared.checkForUpdates() }
             LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")
+            LabeledContent("Build", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "dev")
             Text("PanaLux is a free, unofficial, open-source macOS app. It is not affiliated with, endorsed by, or related to Blackmagic Design, Adobe, or Apple. It talks to a Micro Color Panel you already purchased and to Lightroom Classic through PanaLux Bridge, a lightly modified copy of the free community plugin MIDI2LR (GPL-3.0). You are not buying anything.")
                 .font(.callout)
                 .foregroundStyle(.secondary)

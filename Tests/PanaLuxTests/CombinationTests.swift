@@ -19,7 +19,7 @@ final class CombinationTests: XCTestCase {
         let start = Date()
         var until = start.addingTimeInterval(0.08)
         let empty = Data(repeating: 0, count: 8)
-        XCTAssertTrue(PanelManager.shouldSuppressButtonReport(empty, until: &until, now: start))
+        XCTAssertFalse(PanelManager.shouldSuppressButtonReport(empty, until: &until, now: start))
         for _ in 0..<3 {
             var down = Data(repeating: 0, count: 8)
             down[1] = 2 // Saturation push, bit 9

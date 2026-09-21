@@ -1491,3 +1491,34 @@ final class RewindRefreshRegressionTests: XCTestCase {
         XCTAssertEqual(trail.activeBranch.events.count, 152, "the saved history stays intact")
     }
 }
+
+final class RewindEdgeAnimatorTests: XCTestCase {
+    func testContinuousPhaseAccumulatesSmoothly() {
+        let animator = RewindEdgeAnimator.shared
+        animator.reset()
+        let initialPhase = animator.continuousPhase
+
+        // Reverse turn: delta < 0 -> phase decreases (inward cascade)
+        animator.noteWheelDelta(command: "scrub", deltaUnits: -40.0)
+        XCTAssertLessThan(animator.continuousPhase, initialPhase)
+        XCTAssertEqual(animator.currentDirection, -1.0)
+        XCTAssertGreaterThan(animator.smoothedVelocity, 0)
+        XCTAssertGreaterThan(animator.reactiveEnergy, 0.20)
+
+        // Forward turn: delta > 0 -> phase increases (outward cascade)
+        animator.noteWheelDelta(command: "scrub", deltaUnits: 40.0)
+        XCTAssertEqual(animator.currentDirection, 1.0)
+
+        // Tick with friction deceleration over 0.5s
+        var simTime = Date()
+        for _ in 0..<30 {
+            simTime = simTime.addingTimeInterval(0.016)
+            animator.tick(date: simTime, isPlaying: false, playSpeed: 1, playDirection: 1, reduceMotion: false)
+        }
+        XCTAssertLessThanOrEqual(animator.smoothedVelocity, 0.1)
+
+        animator.reset()
+        XCTAssertEqual(animator.smoothedVelocity, 0)
+    }
+}
+

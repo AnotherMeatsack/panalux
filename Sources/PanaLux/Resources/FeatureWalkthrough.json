@@ -67,6 +67,14 @@
       "zoom": "full"
     },
     {
+      "id": "lightshow",
+      "title": "Hardware Color Indicators & Light Show",
+      "body": "Your Micro Color Panel now features active dual-color hardware lighting. Bypass illuminates Red in Lightroom Before view and White in After view; mode keys illuminate Green for Offset, Modifiers, Stills, Highlights, Loupe and Masks. In Rewind mode, Shift Up blinks green in direct correlation with your reverse wheel rotation speed. Click 'Play Light Show' to preview the full lighting choreography on your physical panel and screen.",
+      "target": "replay",
+      "gesture": "taps",
+      "zoom": "full"
+    },
+    {
       "id": "replay",
       "title": "Find this walkthrough again",
       "body": "Help → Show This Update's Walkthrough… replays these steps. Take the Hands-On Tour starts with this guide, then continues with panel practice. Quick Reference has the shortcut and export instructions; What’s New in the menu bar or Settings keeps the changelog. Click Done to mark this build's walkthrough complete. Later or closing the app keeps it unfinished.",

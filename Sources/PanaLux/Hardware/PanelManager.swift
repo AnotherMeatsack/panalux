@@ -45,8 +45,8 @@ public class PanelManager: ObservableObject {
     // panel often echoes that write as an input with empty bits, which used
     // to look like every hold had been released.
     private var suppressButtonInputUntil: Date = .distantPast
-    private var pendingLEDBits: Set<Int>?
     private var lastLEDBits: Set<Int>? = nil
+    private var lastColorLEDBits: Set<Int>? = nil
     private var wakeObserver: NSObjectProtocol?
     private var wakeWork: DispatchWorkItem?
 
@@ -67,6 +67,7 @@ public class PanelManager: ObservableObject {
     public func release() {
         guard !isReleased else { return }
         setLEDs(activeBits: [])
+        setColorLEDs(activeBits: [])
         stop()
         DispatchQueue.main.async { self.isReleased = true }
     }
@@ -233,7 +234,6 @@ public class PanelManager: ObservableObject {
             self.connectedDevice = nil
         }
         decoder.reset()
-        pendingLEDBits = nil
         suppressButtonInputUntil = .distantPast
         DispatchQueue.main.async {
             self.isConnected = false
@@ -309,8 +309,7 @@ public class PanelManager: ObservableObject {
             IOHIDDeviceRegisterInputReportCallback(device, reportBuffer, reportBufferSize, nil, nil)
             self.connectedDevice = nil
             decoder.reset()
-        pendingLEDBits = nil
-        suppressButtonInputUntil = .distantPast
+            suppressButtonInputUntil = .distantPast
 
             if let token = activityToken {
                 ProcessInfo.processInfo.endActivity(token)
@@ -356,22 +355,23 @@ public class PanelManager: ObservableObject {
     /// Another app (Resolve, a replug, sleep) can clear the lights without telling us, and the
     /// cache would then swallow every write that matches what we last sent. Forget it and resend.
     public func rewriteLEDs() {
-        guard let bits = lastLEDBits else { return }
-        lastLEDBits = nil
-        setLEDs(activeBits: bits)
+        if let bits = lastLEDBits {
+            lastLEDBits = nil
+            setLEDs(activeBits: bits)
+        }
+        if let colorBits = lastColorLEDBits {
+            lastColorLEDBits = nil
+            setColorLEDs(activeBits: colorBits)
+        }
     }
 
     public func setLEDs(activeBits: Set<Int>) {
         guard let dev = connectedDevice else { return }
         // Encoder pushes have no LEDs. Never write into their input-bit positions.
         let activeBits = Set(activeBits.filter { $0 >= 12 && $0 < 64 })
-        // Echo suppression must never overlap a real held button, including long holds.
-        pendingLEDBits = activeBits
-        guard !decoder.hasHeldButtons else { return }
-        pendingLEDBits = nil
         guard activeBits != lastLEDBits else { return }
         lastLEDBits = activeBits
-        suppressButtonInputUntil = Date().addingTimeInterval(0.08)
+        suppressButtonInputUntil = Date().addingTimeInterval(0.02)
         var payload = [UInt8](repeating: 0, count: 9)
         payload[0] = 0x02 // Output Report ID
         for bit in activeBits {
@@ -390,6 +390,32 @@ public class PanelManager: ObservableObject {
         )
     }
 
+    public func setColorLEDs(activeBits: Set<Int>) {
+        guard let dev = connectedDevice else { return }
+        let validBits = Set(activeBits.filter { $0 >= 0 && $0 < 48 })
+        guard validBits != lastColorLEDBits else { return }
+        lastColorLEDBits = validBits
+        var payload = [UInt8](repeating: 0, count: 7)
+        payload[0] = 0x04 // Output Report ID for color channels
+        for bit in validBits {
+            let byteIdx = 1 + (bit / 8)
+            let bitIdx = bit % 8
+            payload[byteIdx] |= (1 << bitIdx)
+        }
+        _ = IOHIDDeviceSetReport(
+            dev,
+            kIOHIDReportTypeOutput,
+            CFIndex(0x04),
+            &payload,
+            payload.count
+        )
+    }
+
+    public func setDualLEDs(whiteBits: Set<Int>, colorBits: Set<Int>) {
+        setLEDs(activeBits: whiteBits)
+        setColorLEDs(activeBits: colorBits)
+    }
+
     /// True when a report 0x02 payload has no button bits set, allowing for the
     /// leading report-ID byte IOKit sometimes prefixes.
     static func isEmptyButtonReport(_ data: Data) -> Bool {
@@ -398,12 +424,11 @@ public class PanelManager: ObservableObject {
     }
 
     static func shouldSuppressButtonReport(_ data: Data, until: inout Date, now: Date) -> Bool {
-        if !isEmptyButtonReport(data) {
-            // A fresh press ends suppression of the older LED write. Its release is real.
-            until = .distantPast
-            return false
-        }
-        return now < until
+        // Never drop button reports: the panel only sends reports on state change.
+        // Dropping an empty report permanently swallows the key release, causing
+        // buttons (like UNDO) to become stuck indefinitely.
+        // StudioEngine handles hold debouncing safely at the layer level.
+        return false
     }
 
     private func readSerial(device: IOHIDDevice) -> String {
@@ -438,9 +463,6 @@ public class PanelManager: ObservableObject {
         let motions = decoder.decode(reportId: reportID, data: data)
         if !motions.isEmpty {
             delegate?.panelDidReceiveMotion(motions)
-        }
-        if reportID == 0x02, !decoder.hasHeldButtons, let pending = pendingLEDBits {
-            setLEDs(activeBits: pending)
         }
     }
 

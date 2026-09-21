@@ -68,6 +68,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     /// Pause: nothing reaches Lightroom or Photoshop. The HUD says what would have happened.
     @Published public var isOutputPaused: Bool = false
     @Published public private(set) var isProgrammingButtons = false
+    @Published public var isLightShowActive: Bool = false
+    @Published public private(set) var isBeforeViewActive: Bool = false
     @Published public private(set) var programmingHoldControl: String?
     private var programmingHoldWork: DispatchWorkItem?
     private var programmingPressed = Set<String>()
@@ -271,6 +273,23 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
                         phase: .done,
                         duration: 4
                     )
+                }
+            }
+            .store(in: &cancellables)
+
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didActivateApplicationNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notif in
+                guard let self else { return }
+                guard let app = notif.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                      let bundleID = app.bundleIdentifier else { return }
+                let isLightroom = bundleID == "com.adobe.LightroomClassicCC7" || bundleID == "com.adobe.Lightroom"
+                let isPanaLux = bundleID == Bundle.main.bundleIdentifier
+                if !isLightroom && !isPanaLux {
+                    if self.activeLayers.contains("REWIND") || RewindEngine.shared.isRewinding {
+                        NotchHUDWindowController.shared.collapseRewind()
+                        self.returnToBase(announce: false)
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -517,7 +536,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     public func panelDidConnect(serial: String) {
         // A replug must never resume a hold whose key-up we missed.
         returnToBase(announce: false)
-        updateLeds()
+        updateLeds(immediate: true)
     }
 
     public func panelDidDisconnect() {
@@ -819,6 +838,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             } else if !engagedHolds.contains(name) {
                 pressedButtonBits.remove(bit)
             }
+            updateLeds(immediate: true)
         }
 
         let baseSpec = profile.buttons[name] ?? ButtonBinding()
@@ -1169,6 +1189,10 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
             return
         }
         let sent = LightroomKeys.press(parsed.key, flags: parsed.flags)
+        if id == "key:\\" || name == "BYPASS" {
+            isBeforeViewActive.toggle()
+            updateLEDs()
+        }
         triggerActionDisplay(name: name, label: title, phase: sent ? .sent : .failed, hold: hold)
     }
 
@@ -1562,12 +1586,35 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
 
     // MARK: - Rewind
 
+    private var scrubAutoEndTimer: DispatchWorkItem?
+
+    private func scheduleScrubAutoEnd() {
+        guard !activeLayers.contains("REWIND") else { return }
+        scrubAutoEndTimer?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            if !self.activeLayers.contains("REWIND"), RewindEngine.shared.isRewinding {
+                RewindEngine.shared.endRewind(announce: false)
+                self.collapseToIdle()
+            }
+        }
+        scrubAutoEndTimer = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5, execute: work)
+    }
+
     /// A knob or ring mapped to the trail. Like every other binding, this is whatever the
     /// map says it is — the factory map puts scrub on the right, landmarks on the left and tangents in the center.
     private func driveRewind(_ command: String, control: String, deltaUnits: Double) {
         GuideController.shared.hardwareEvent(.analogMoved(control))
+        RewindLEDAnimator.shared.noteWheelDelta(command: command, deltaUnits: deltaUnits)
+        RewindEdgeAnimator.shared.noteWheelDelta(command: command, deltaUnits: deltaUnits)
         let rewind = RewindEngine.shared
-        if !rewind.isRewinding, activeLayers.contains("REWIND") { beginRewind() }
+        if !rewind.isRewinding {
+            beginRewind()
+        }
+        if !activeLayers.contains("REWIND") {
+            scheduleScrubAutoEnd()
+        }
         guard rewind.isRewinding else {
             notice(control, activeLayers.contains("REWIND") ? "Waiting for Lightroom’s photo · check PanaLux Bridge" : "Hold Undo to rewind")
             return
@@ -1604,7 +1651,11 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         if rewind.photoID == nil, let id = LightroomBridge.shared.activePhotoID {
             rewind.setActivePhoto(id)
         }
-        if rewind.photoID == nil { LightroomBridge.shared.requestFullRefresh() }
+        if rewind.photoID == nil {
+            LightroomBridge.shared.requestFullRefresh()
+            let fallbackID = LightroomBridge.shared.activePhotoID ?? "current_photo"
+            rewind.setActivePhoto(fallbackID)
+        }
         rewind.beginRewind()
         collapseTimer?.invalidate()
         guard rewind.isRewinding else {
@@ -1685,6 +1736,9 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         let fineFactor = isFine ? AppSettings.shared.fineMultiplier : 1.0
         let scaledDelta = deltaUnits * fineFactor
         GuideController.shared.hardwareEvent(.analogMoved(ballName))
+        if AppSettings.shared.trackballRadiantLighting {
+            TrackballLightAnimator.shared.noteMotion(ballName: ballName, axis: axis, delta: scaledDelta)
+        }
 
         if maskPlacing || overlayLayerName == "MASK" {
             handleMaskBall(ballName: ballName, axis: axis, scaledDelta: scaledDelta, isFine: isFine)
@@ -2302,31 +2356,27 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         }
     }
 
-    public func updateLeds() {
+    public func updateLEDs() {
+        updateLeds(immediate: true)
+    }
+
+    public func updateLeds(immediate: Bool = false) {
+        guard !isLightShowActive, !RewindEngine.shared.isRewinding else { return }
         ledWorkItem?.cancel()
+        if immediate {
+            pushLeds()
+            return
+        }
         let work = DispatchWorkItem { [weak self] in
             self?.pushLeds()
         }
         ledWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03, execute: work)
     }
 
-    private func pushLeds() {
-        // Writing LEDs briefly masks key input on this panel, because the lights share
-        // report 0x02 with the button bitmap. The report most likely to land inside that
-        // mask is the *release* of the key being pressed right now — and a swallowed
-        // release leaves the key looking held, so a quick tap turned into a mode.
-        // Hold the write until the keys are up, or until a hold has genuinely engaged.
-        if !pressedButtonBits.isEmpty && engagedHolds.isEmpty && latchedProgramButton == nil {
-            ledWorkItem?.cancel()
-            let retry = DispatchWorkItem { [weak self] in self?.pushLeds() }
-            ledWorkItem = retry
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.09, execute: retry)
-            return
-        }
+    public func currentBaseWhiteBits() -> Set<Int> {
         let mode = AppSettings.shared.ledMode
         var bits = Set<Int>()
-
         let programButton = programLEDButton()
 
         switch mode {
@@ -2357,8 +2407,94 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
                 bits = [bit]
             }
         }
+        return bits.union(pickerLEDBits())
+    }
 
-        PanelManager.shared.setLEDs(activeBits: bits.union(pickerLEDBits()))
+    public func currentSemanticColorBits() -> Set<Int> {
+        let mode = AppSettings.shared.ledMode
+        guard mode != "stealth" else { return [] }
+        var colorBits = Set<Int>()
+
+        // 1. Bypass (Bit 0: Red) - Before view active, or physically pressed down, or held
+        if isBeforeViewActive || engagedHolds.contains("BYPASS") || pressedButtonBits.contains(20) {
+            colorBits.insert(PanelColorLED.bypassRed.rawValue)
+        }
+
+        // 2. Disable (Bit 3: Red) - Physically pressed down, or held
+        if engagedHolds.contains("DISABLE") || pressedButtonBits.contains(21) || activeLayers.contains("DISABLE") || toggledLayers.contains("DISABLE") {
+            colorBits.insert(PanelColorLED.disableRed.rawValue)
+        }
+
+        // 3. Offset (Bit 2: Green) - Pressed, held, or in active OFFSET mode
+        if activeLayers.contains("OFFSET") || overlayLayerName == "OFFSET" || toggledLayers.contains("OFFSET") || engagedHolds.contains("OFFSET") || pressedButtonBits.contains(13) {
+            colorBits.insert(PanelColorLED.offsetGreen.rawValue)
+        }
+
+        // 4. Shift Up (Bit 4: Green) - Pressed, or held
+        if heldModifiers.contains("SHIFT") || engagedHolds.contains("SHIFT") || pressedButtonBits.contains(24) || activeLayers.contains("MIXER") || activeLayers.contains("SHIFT") {
+            colorBits.insert(PanelColorLED.shiftUpGreen.rawValue)
+        }
+
+        // 5. Shift Down (Bit 5: Green) - Pressed, or held
+        if heldModifiers.contains("CORNER_LOWER_RIGHT") || engagedHolds.contains("CORNER_LOWER_RIGHT") || pressedButtonBits.contains(25) || activeLayers.contains("MULTISELECT") || activeLayers.contains("CORNER_LOWER_RIGHT") {
+            colorBits.insert(PanelColorLED.shiftDownGreen.rawValue)
+        }
+
+        // 6. Play Still (Bit 6: Green) - Pressed, held, or in STILL/EFFECTS layer
+        if engagedHolds.contains("PLAY_STILL") || pressedButtonBits.contains(26) || activeLayers.contains("STILL") || activeLayers.contains("EFFECTS") || toggledLayers.contains("STILL") || toggledLayers.contains("EFFECTS") {
+            colorBits.insert(PanelColorLED.playStillGreen.rawValue)
+        }
+
+        // 7. Wipe Still (Bit 7: Green) - Pressed, held, or in WIPE layer
+        if engagedHolds.contains("WIPE_STILL") || pressedButtonBits.contains(27) || activeLayers.contains("WIPE") || toggledLayers.contains("WIPE") {
+            colorBits.insert(PanelColorLED.wipeStillGreen.rawValue)
+        }
+
+        // 8. Highlight Clipping / Warning (Bit 8: Green) - Pressed, held, or in H/LITE/DETAIL mode
+        if engagedHolds.contains("H/LITE") || pressedButtonBits.contains(29) || activeLayers.contains("H/LITE") || activeLayers.contains("DETAIL") || toggledLayers.contains("H/LITE") {
+            colorBits.insert(PanelColorLED.hliteGreen.rawValue)
+        }
+
+        // 9. Viewer Zoom / Loupe (Bit 9: Green) - Pressed, held, or in VIEWER/CROP mode
+        if engagedHolds.contains("VIEWER") || pressedButtonBits.contains(30) || activeLayers.contains("VIEWER") || activeLayers.contains("CROP") || toggledLayers.contains("VIEWER") {
+            colorBits.insert(PanelColorLED.viewerGreen.rawValue)
+        }
+
+        // 10. Cursor / Local Adjustments / Mask mode (Bit 10: Green)
+        // Stays illuminated in Green when in CURSOR / Local mode (MASK layer, radial, linear, brush, picker), or pressed, or held
+        if activeLayers.contains("MASK") || overlayLayerName == "MASK" || toggledLayers.contains("MASK") || maskPlacing || activePickerButton != nil || engagedHolds.contains("CURSOR") || pressedButtonBits.contains(31) {
+            colorBits.insert(PanelColorLED.cursorGreen.rawValue)
+        }
+
+        return colorBits
+    }
+
+    private func pushLeds() {
+        guard !isLightShowActive, !RewindEngine.shared.isRewinding else { return }
+        var bits = currentBaseWhiteBits()
+        let colorBits = currentSemanticColorBits()
+
+        // For any button currently illuminated in color (Report 0x04),
+        // suppress its white LED so the color is 100% vibrant and pure
+        let colorKeyBits: [PanelColorLED: Int] = [
+            .bypassRed: 20,
+            .disableRed: 21,
+            .offsetGreen: 13,
+            .shiftUpGreen: 24,
+            .shiftDownGreen: 25,
+            .playStillGreen: 26,
+            .wipeStillGreen: 27,
+            .hliteGreen: 29,
+            .viewerGreen: 30,
+            .cursorGreen: 31
+        ]
+        for (colorLed, whiteBit) in colorKeyBits {
+            if colorBits.contains(colorLed.rawValue) {
+                bits.remove(whiteBit)
+            }
+        }
+
+        PanelManager.shared.setDualLEDs(whiteBits: bits, colorBits: colorBits)
     }
 
     private func pickerLEDBits() -> Set<Int> {
@@ -2483,6 +2619,8 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     /// A different photo is on screen, so a different trail is being recorded.
     public func lightroomActivePhotoDidChange(id: String?) {
         resetKnobReadout = nil
+        isBeforeViewActive = false
+        updateLeds()
         RewindEngine.shared.knobParams = currentKnobParams()
         RewindEngine.shared.setActivePhoto(id)
         // Preserve a held request when selection arrives after Undo went down.

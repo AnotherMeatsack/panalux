@@ -21,6 +21,13 @@ struct FeatureWalkthroughView: View {
                 HStack {
                     Button("Later — keep unfinished") { tour.later() }
                     Button("Open full guide in browser") { ReferenceCard.open() }
+                    if step.id == "lightshow" {
+                        Button {
+                            PanelLightShow.shared.start()
+                        } label: {
+                            Label("Play Light Show", systemImage: "sparkles")
+                        }
+                    }
                     Spacer()
                     if index > 0 { Button("Back") { tour.move(index - 1) } }
                     Button(index == tour.manifest.steps.count - 1 ? "Done" : "Next") {

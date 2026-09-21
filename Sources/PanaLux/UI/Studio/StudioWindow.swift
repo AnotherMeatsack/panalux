@@ -117,6 +117,13 @@ public struct StudioWindowView: View {
         ToolbarItemGroup(placement: .navigation) {
             ConnectionPill(title: "Panel", ok: panel.isConnected, detail: panelDetail)
             ConnectionPill(title: "Lightroom", ok: bridge.isConnected, detail: lightroomDetail)
+            let b = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "dev"
+            Text("Build \(b)")
+                .font(.caption2.weight(.medium).monospacedDigit())
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(Color.primary.opacity(0.08)))
+                .foregroundStyle(.secondary)
         }
 
         ToolbarItemGroup(placement: .primaryAction) {
@@ -356,7 +363,9 @@ public class StudioWindowController: NSObject, NSWindowDelegate {
                 defer: false
             )
             win.contentViewController = controller
-            win.title = "PanaLux"
+            let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.4"
+            let b = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "dev"
+            win.title = "PanaLux \(v) · Build \(b)"
             win.toolbarStyle = .unified
             // The panel drawing and HUD are designed on dark; match them.
             win.appearance = NSAppearance(named: .darkAqua)

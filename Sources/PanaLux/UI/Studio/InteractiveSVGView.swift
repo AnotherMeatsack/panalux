@@ -67,6 +67,7 @@ public struct InteractiveSVGView: NSViewRepresentable {
         }
         context.coordinator.webView = webView
         context.coordinator.startPulses(on: webView)
+        context.coordinator.startLightShow(on: webView)
         
         loadPanelSVG(into: webView)
         return webView
@@ -248,6 +249,71 @@ public struct InteractiveSVGView: NSViewRepresentable {
             filter: drop-shadow(0 0 18px rgba(245, 158, 11, 0.9)) !important;
           }
           
+          /* Light Show Highlights */
+          .control[data-lightshow="white"] .interactive-face {
+            fill: #f8fafc !important;
+            stroke: #ffffff !important;
+            stroke-width: 3.0 !important;
+            filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 28px rgba(255, 255, 255, 0.6)) !important;
+          }
+          .control[data-lightshow="white"] .control-label {
+            fill: #000000 !important;
+            font-weight: 800 !important;
+          }
+          .control[data-lightshow="red"] .interactive-face {
+            fill: #7f1d1d !important;
+            stroke: #ef4444 !important;
+            stroke-width: 3.5 !important;
+            filter: drop-shadow(0 0 20px rgba(239, 68, 68, 1.0)) drop-shadow(0 0 35px rgba(239, 68, 68, 0.7)) !important;
+          }
+          .control[data-lightshow="red"] .control-label {
+            fill: #fca5a5 !important;
+            font-weight: 800 !important;
+          }
+          .control[data-lightshow="green"] .interactive-face {
+            fill: #14532d !important;
+            stroke: #22c55e !important;
+            stroke-width: 3.5 !important;
+            filter: drop-shadow(0 0 20px rgba(34, 197, 94, 1.0)) drop-shadow(0 0 35px rgba(34, 197, 94, 0.7)) !important;
+          }
+          .control[data-lightshow="green"] .control-label {
+            fill: #86efac !important;
+            font-weight: 800 !important;
+          }
+          #lightshow-banner {
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 12px 28px;
+            text-align: center;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 100;
+          }
+          #lightshow-banner.visible {
+            opacity: 1;
+          }
+          #lightshow-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+          }
+          #lightshow-subtitle {
+            font-size: 12px;
+            font-weight: 500;
+            color: #94a3b8;
+            margin-top: 3px;
+          }
+
           /* Floating Glass HUD Readout Pill */
           #hud-pill {
             position: absolute;
@@ -403,6 +469,10 @@ public struct InteractiveSVGView: NSViewRepresentable {
         <body>
           <div class="canvas-wrapper">
             \(svgContent)
+            <div id="lightshow-banner">
+              <div id="lightshow-title">PanaLux</div>
+              <div id="lightshow-subtitle">Hardware Light Show</div>
+            </div>
             <svg id="arrow-overlay" xmlns="http://www.w3.org/2000/svg"></svg>
             <div id="link-layer"></div>
             <div id="hud-pill" class="hidden">
@@ -657,6 +727,46 @@ public struct InteractiveSVGView: NSViewRepresentable {
               }
             };
             
+            window.setLightShowFrame = function(frameJson) {
+              let frame = frameJson;
+              if (typeof frameJson === 'string') {
+                try { frame = JSON.parse(frameJson); } catch (e) { frame = null; }
+              }
+              const banner = document.getElementById('lightshow-banner');
+              const titleEl = document.getElementById('lightshow-title');
+              const subEl = document.getElementById('lightshow-subtitle');
+              
+              for (const el of svg.querySelectorAll('[data-lightshow]')) {
+                el.removeAttribute('data-lightshow');
+              }
+              
+              if (!frame || !frame.active) {
+                if (banner) banner.classList.remove('visible');
+                return;
+              }
+              
+              if (banner && titleEl && subEl) {
+                titleEl.textContent = frame.title || '';
+                subEl.textContent = frame.subtitle || '';
+                banner.classList.add('visible');
+              }
+              
+              if (frame.whiteControls && Array.isArray(frame.whiteControls)) {
+                for (const ctrl of frame.whiteControls) {
+                  const svgId = ctrl.startsWith('PRESS_') ? 'button_' + ctrl.toLowerCase().replace('press_', '') : ('button_' + ctrl.toLowerCase());
+                  const el = svg.querySelector(`[data-control-id="${svgId}"]`) || svg.querySelector(`[data-label="${ctrl}"]`);
+                  if (el) el.setAttribute('data-lightshow', 'white');
+                }
+              }
+              if (frame.colorControls && typeof frame.colorControls === 'object') {
+                for (const [ctrl, color] of Object.entries(frame.colorControls)) {
+                  const svgId = 'button_' + ctrl.toLowerCase();
+                  const el = svg.querySelector(`[data-control-id="${svgId}"]`) || svg.querySelector(`[data-label="${ctrl}"]`);
+                  if (el) el.setAttribute('data-lightshow', color);
+                }
+              }
+            };
+            
             // Event delegation on SVG controls
             svg.addEventListener('click', (event) => {
               const control = event.target.closest('[data-control-id]');
@@ -744,6 +854,7 @@ public struct InteractiveSVGView: NSViewRepresentable {
         
         private var lastScripts: [String: String] = [:]
         private var pulseCancellable: AnyCancellable?
+        private var lightShowCancellable: AnyCancellable?
         
         /// Skip scripts identical to the last one sent for the same purpose.
         func run(_ key: String, _ js: String, on webView: WKWebView) {
@@ -759,6 +870,19 @@ public struct InteractiveSVGView: NSViewRepresentable {
                 .sink { [weak webView] control in
                     let svgId = PanelControlMapping.toSvgId(control)
                     webView?.evaluateJavaScript("if (window.flashActiveControl) { window.flashActiveControl('\(svgId)'); }", completionHandler: nil)
+                }
+        }
+        
+        func startLightShow(on webView: WKWebView) {
+            lightShowCancellable = PanelLightShow.shared.$currentFrame
+                .receive(on: RunLoop.main)
+                .sink { [weak webView] frame in
+                    guard let webView else { return }
+                    if let data = try? JSONEncoder().encode(frame),
+                       let json = String(data: data, encoding: .utf8) {
+                        let escaped = json.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
+                        webView.evaluateJavaScript("if (window.setLightShowFrame) { window.setLightShowFrame('\(escaped)'); }", completionHandler: nil)
+                    }
                 }
         }
         

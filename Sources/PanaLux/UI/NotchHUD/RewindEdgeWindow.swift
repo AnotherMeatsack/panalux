@@ -2,7 +2,11 @@ import SwiftUI
 import AppKit
 import Combine
 
-/// A click-through perimeter on Lightroom's display. The photograph's centre stays clear.
+/// A click-through glassmorphic time-portal perimeter on Lightroom's display.
+/// Features subtle chromatic aberration (cyan/magenta color separation along the lens rim),
+/// delicate organic blooming, continuous cascading ripple wavefronts that hug the bezel edge,
+/// and native GPU-accelerated directional motion blur.
+/// Strictly overlays ONLY the display containing Lightroom, keeping the center 100% clear.
 final class RewindEdgeWindowController {
     static let shared = RewindEdgeWindowController()
     private var window: NSPanel?
@@ -12,159 +16,432 @@ final class RewindEdgeWindowController {
         guard window == nil, !AppRuntime.isRenderingStills else { return }
         let panel = NSPanel(contentRect: .zero,
                             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.level = .floating
+        panel.level = .statusBar
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
         panel.ignoresMouseEvents = true
+        panel.hidesOnDeactivate = false
         panel.contentView = NSHostingView(rootView: LiveRewindEdges())
         window = panel
+
         RewindEngine.shared.$isRewinding.receive(on: DispatchQueue.main).sink { [weak self] active in
-            guard let panel = self?.window else { return }
-            if active, let screen = NotchHUDWindowController.lightroomScreen() ?? NSScreen.main {
+            guard let self = self, let panel = self.window else { return }
+            RewindEdgeAnimator.shared.reset()
+            if active {
+                // Strictly target ONLY the screen Lightroom is currently on
+                guard let screen = NotchHUDWindowController.lightroomScreen() ?? NSScreen.main ?? NSScreen.screens.first else { return }
                 panel.setFrame(screen.frame, display: true)
                 panel.alphaValue = 0
                 panel.orderFrontRegardless()
                 NSAnimationContext.runAnimationGroup { context in
-                    context.duration = 0.22
+                    context.duration = 0.18
                     panel.animator().alphaValue = 1
                 }
             } else {
+                RewindEdgeAnimator.shared.reset()
                 NSAnimationContext.runAnimationGroup({ context in
-                    context.duration = 0.2
+                    context.duration = 0.18
                     panel.animator().alphaValue = 0
                 }, completionHandler: {
-                    if !RewindEngine.shared.isRewinding { panel.orderOut(nil) }
+                    panel.orderOut(nil)
                 })
             }
         }.store(in: &subscriptions)
+
+        NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self = self, let panel = self.window, panel.isVisible else { return }
+                if let screen = NotchHUDWindowController.lightroomScreen() ?? NSScreen.main {
+                    panel.setFrame(screen.frame, display: true)
+                }
+            }
+            .store(in: &subscriptions)
+
+        // Ensure the overlay disappears and rewind ends if the user activates an external editor (e.g. Photoshop)
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didActivateApplicationNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                      let id = app.bundleIdentifier else { return }
+                let isExternalCreative = id.contains("Photoshop") || id.contains("Resolve") || id.contains("FinalCut") || id.contains("Premiere")
+                if isExternalCreative {
+                    if RewindEngine.shared.isRewinding {
+                        RewindEngine.shared.endRewind(announce: false)
+                    }
+                    self?.window?.orderOut(nil)
+                }
+            }
+            .store(in: &subscriptions)
+    }
+
+    static func isLightroomFrontmost() -> Bool {
+        guard let id = NSWorkspace.shared.frontmostApplication?.bundleIdentifier else { return false }
+        return id == "com.adobe.LightroomClassicCC7" || id == "com.adobe.Lightroom"
+    }
+}
+
+/// Physics-driven animator tracking continuous physical wheel rotation,
+/// angular momentum, velocity-based motion blur, and reactive energy.
+public final class RewindEdgeAnimator: ObservableObject {
+    public static let shared = RewindEdgeAnimator()
+
+    /// Continuous rotation phase without jumping or snapping
+    @Published public private(set) var continuousPhase: Double = 0.0
+    /// Smoothed angular velocity (0.0 … 3.0+) for motion blur and line width
+    @Published public private(set) var smoothedVelocity: Double = 0.0
+    /// Reactive energy (0.15 … 1.0) governing subtle glow bloom and intensity
+    @Published public private(set) var reactiveEnergy: Double = 0.20
+    /// Direction of motion: -1.0 for rewind/counter-clockwise, +1.0 for forward/clockwise
+    @Published public private(set) var currentDirection: Double = -1.0
+
+    /// When the overlay last (re)started; drives the opening colour sweep
+    public private(set) var startedAt: Date = Date()
+
+    private var lastTickTime: Date = .distantPast
+    private var lastWheelTime: Date = .distantPast
+
+    // 0.025 phase per wheel unit: 40 units (one full detent click) equals exactly 1.0 ripple cycle
+    private let phaseSensitivity: Double = 0.025
+
+    public init() {}
+
+    /// Called on hardware wheel/ring rotation packets in Rewind mode
+    public func noteWheelDelta(command: String, deltaUnits: Double) {
+        guard deltaUnits.isFinite, deltaUnits != 0 else { return }
+
+        // Continuous phase accumulation: turning in reverse cascades inward, forward cascades outward
+        continuousPhase += deltaUnits * phaseSensitivity
+        currentDirection = deltaUnits < 0 ? -1.0 : 1.0
+
+        let now = Date()
+        let dt = max(0.005, min(0.10, now.timeIntervalSince(lastWheelTime)))
+        lastWheelTime = now
+
+        let instantVelocity = min(3.0, abs(deltaUnits) / (dt * 50.0))
+        smoothedVelocity = smoothedVelocity * 0.5 + instantVelocity * 0.5
+
+        // Reactive energy flares subtly with rotation intensity
+        reactiveEnergy = min(1.0, reactiveEnergy + min(0.4, abs(deltaUnits) * 0.04 + instantVelocity * 0.10))
+    }
+
+    /// 60fps frame tick to update inertia decay and playback tracking
+    public func tick(date: Date, isPlaying: Bool, playSpeed: Double, playDirection: Double, reduceMotion: Bool) {
+        guard !reduceMotion else {
+            smoothedVelocity = 0
+            reactiveEnergy = 0.18
+            return
+        }
+
+        let now = date
+        let dt = lastTickTime == .distantPast ? 0.016 : max(0.001, min(0.05, now.timeIntervalSince(lastTickTime)))
+        lastTickTime = now
+
+        if isPlaying {
+            // During auto-playback, continuously advance the ripple cascade
+            let playDelta = playDirection * playSpeed * dt * 0.75
+            continuousPhase += playDelta
+            currentDirection = playDirection < 0 ? -1.0 : 1.0
+            smoothedVelocity = max(smoothedVelocity, min(2.0, abs(playSpeed) * 0.4))
+            reactiveEnergy = max(reactiveEnergy, 0.65)
+        } else {
+            // Natural momentum: residual drift glides smoothly
+            if smoothedVelocity > 0.01 {
+                continuousPhase += currentDirection * smoothedVelocity * dt * 0.35
+            }
+
+            // Exponential deceleration (smooth friction over ~280ms)
+            let decay = pow(0.86, dt * 60.0)
+            smoothedVelocity *= decay
+            if smoothedVelocity < 0.004 { smoothedVelocity = 0 }
+
+            // Smooth decay down to organic living floor
+            let idleFloor = 0.18
+            if now.timeIntervalSince(lastWheelTime) > 0.08 {
+                let energyDecay = dt * 1.6
+                reactiveEnergy = max(idleFloor, reactiveEnergy - energyDecay)
+            }
+        }
+    }
+
+    public func reset() {
+        smoothedVelocity = 0
+        reactiveEnergy = 0.20
+        startedAt = Date()
+        lastTickTime = .distantPast
+        lastWheelTime = .distantPast
     }
 }
 
 private struct LiveRewindEdges: View {
     @ObservedObject var engine = RewindEngine.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var movementAt = Date.distantPast
-    @State private var direction = -1.0
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: !engine.isRewinding || reduceMotion)) { context in
-            let age = context.date.timeIntervalSince(movementAt)
-            let energy = engine.isPlaying ? 0.8 : (reduceMotion ? 0.5 : RewindEdgeEffect.glowEnergy(age: age))
-            RewindEdgeEffect(phase: engine.state.playhead / max(1, engine.state.window),
-                             energy: energy, direction: direction, reduceMotion: reduceMotion, state: engine.state)
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: !engine.isRewinding)) { context in
+            RewindEdgeEffect(
+                phase: RewindEdgeAnimator.shared.continuousPhase,
+                energy: RewindEdgeAnimator.shared.reactiveEnergy,
+                direction: RewindEdgeAnimator.shared.currentDirection,
+                velocity: RewindEdgeAnimator.shared.smoothedVelocity,
+                reduceMotion: reduceMotion,
+                state: engine.state,
+                age: context.date.timeIntervalSince(RewindEdgeAnimator.shared.startedAt)
+            )
+            .onChange(of: context.date) { _, newDate in
+                RewindEdgeAnimator.shared.tick(
+                    date: newDate,
+                    isPlaying: engine.isPlaying,
+                    playSpeed: engine.playSpeed,
+                    playDirection: engine.playDirection,
+                    reduceMotion: reduceMotion
+                )
+            }
         }
-        .onChange(of: engine.state.playhead) { old, new in
-            direction = new < old ? -1 : 1
-            movementAt = Date()
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 }
 
-/// Deterministic drawing also used by visual regression renders.
-struct RewindEdgeEffect: View {
-    var phase: Double
-    var energy: Double
-    var direction: Double
-    var reduceMotion = false
-    var state: RewindState = .empty
+/// Slim, Transparent Glassmorphic Time-Portal with Chromatic Aberration,
+/// Edge-Hugging Cascading Wavefronts, and Directional Motion Blur.
+public struct RewindEdgeEffect: View {
+    public var phase: Double
+    public var energy: Double
+    public var direction: Double = -1.0
+    public var velocity: Double = 0.0
+    public var reduceMotion: Bool = false
+    public var state: RewindState = .empty
+    /// Seconds since the overlay opened; the colour sweep plays over the first 1.3s
+    public var age: Double = 10
 
-    var body: some View {
+    public init(phase: Double, energy: Double, direction: Double = -1.0, velocity: Double = 0.0, reduceMotion: Bool = false, state: RewindState = .empty, age: Double = 10) {
+        self.age = age
+        self.phase = phase
+        self.energy = energy
+        self.direction = direction
+        self.velocity = velocity
+        self.reduceMotion = reduceMotion
+        self.state = state
+    }
+
+    public var body: some View {
         Canvas { context, size in
-            let screen = CGRect(origin: .zero, size: size)
-            let bounds = screen.insetBy(dx: 6, dy: 6)
-            let boundary = Path(roundedRect: bounds, cornerRadius: 32)
-            var corners = Path(screen)
-            corners.addPath(boundary)
-            context.fill(corners, with: .color(.black), style: FillStyle(eoFill: true))
-            context.clip(to: boundary)
-            let aqua = Color(red: 0.28, green: 0.87, blue: 1)
-            let violet = Color(red: 0.52, green: 0.40, blue: 1)
-            // Broad feathered light on all four edges, with no tint over the central image.
-            let depth = min(210.0, min(size.width, size.height) * 0.22)
-            let strength = 0.27 + energy * 0.43
+            let bounds = CGRect(origin: .zero, size: size)
+            let cornerRadius: CGFloat = 26
+
+            // Subtle living breathing shimmer: delicate organic pulse
+            let t = Date().timeIntervalSinceReferenceDate
+            let organicPulse = reduceMotion ? 0.0 : (0.04 * sin(t * 2.2) + 0.02 * cos(t * 3.4))
+            let totalEnergy = min(1.0, max(0.12, energy + organicPulse))
+
+            // Slim perimeter depth: hugs the outer screen bezel tightly (32px to 48px max)
+            // Leaves 96%+ of the display area completely clear and unobstructed
+            let baseRimDepth: CGFloat = 32.0
+            let bloomExpansion = CGFloat(min(16.0, totalEnergy * 8.0 + velocity * 8.0))
+            let rimDepth = baseRimDepth + bloomExpansion
+
+            let cyan = Color(red: 0.15, green: 0.88, blue: 1.0)
+            let magenta = Color(red: 1.0, green: 0.22, blue: 0.70)
+            let violet = Color(red: 0.58, green: 0.38, blue: 1.0)
+            let tangentColor = RewindState.tangentColor(state.tangentColorIndex)
+            let glassWhite = Color(white: 0.98)
+
+            // MARK: - Layer 1: Delicate Feathered Edge Shadow
+            // Ultra-subtle, whisper-soft feathered edge framing (never darkens or dims the photo)
+            let edgeShadowDepth = rimDepth * 0.85
+            let edgeShadowOpacity = 0.06 + totalEnergy * 0.10
             for edge in 0..<4 {
                 let start: CGPoint
                 let end: CGPoint
                 switch edge {
-                case 0: start = CGPoint(x: 0, y: 0); end = CGPoint(x: 0, y: depth)
-                case 1: start = CGPoint(x: 0, y: size.height); end = CGPoint(x: 0, y: size.height - depth)
-                case 2: start = CGPoint(x: 0, y: 0); end = CGPoint(x: depth, y: 0)
-                default: start = CGPoint(x: size.width, y: 0); end = CGPoint(x: size.width - depth, y: 0)
+                case 0: start = CGPoint(x: 0, y: 0); end = CGPoint(x: 0, y: edgeShadowDepth)
+                case 1: start = CGPoint(x: 0, y: size.height); end = CGPoint(x: 0, y: size.height - edgeShadowDepth)
+                case 2: start = CGPoint(x: 0, y: 0); end = CGPoint(x: edgeShadowDepth, y: 0)
+                default: start = CGPoint(x: size.width, y: 0); end = CGPoint(x: size.width - edgeShadowDepth, y: 0)
                 }
                 context.fill(Path(bounds), with: .linearGradient(
-                    Gradient(colors: [(edge % 2 == 0 ? aqua : violet).opacity(strength), .clear]),
+                    Gradient(colors: [violet.opacity(edgeShadowOpacity), .clear]),
                     startPoint: start, endPoint: end))
             }
-            // Expanding/contracting rounded light echoes make direction visible in peripheral vision.
-            let count = reduceMotion ? 1 : 7
-            for i in 0..<count {
-                let travel = reduceMotion ? 0.15 : (Double(i) / Double(count) + phase * 0.9).truncatingRemainder(dividingBy: 1)
-                let fraction = travel < 0 ? travel + 1 : travel
-                let inset = 3 + fraction * depth
-                let rect = bounds.insetBy(dx: inset, dy: inset)
-                let opacity = (1 - fraction) * (0.16 + energy * 0.46)
-                context.stroke(Path(roundedRect: rect, cornerRadius: 24 + fraction * 35),
-                               with: .linearGradient(Gradient(colors: [aqua.opacity(opacity), violet.opacity(opacity), aqua.opacity(opacity)]),
-                                                     startPoint: .zero, endPoint: CGPoint(x: size.width, y: size.height)),
-                               lineWidth: 1 + (1 - fraction) * energy * 2)
+
+            // MARK: - Layer 2: Compact Corner Lens Glints
+            // Subtle luminescent optical highlights nestled in the very corner radii
+            let cornerBloomRadius = rimDepth * 1.5
+            let cornerOpacity = 0.14 + totalEnergy * 0.16
+            context.fill(Path(bounds), with: .radialGradient(
+                Gradient(colors: [cyan.opacity(cornerOpacity), .clear]),
+                center: .zero, startRadius: 4, endRadius: cornerBloomRadius))
+            context.fill(Path(bounds), with: .radialGradient(
+                Gradient(colors: [magenta.opacity(cornerOpacity * 0.9), .clear]),
+                center: CGPoint(x: size.width, y: 0), startRadius: 4, endRadius: cornerBloomRadius))
+            context.fill(Path(bounds), with: .radialGradient(
+                Gradient(colors: [violet.opacity(cornerOpacity), .clear]),
+                center: CGPoint(x: 0, y: size.height), startRadius: 4, endRadius: cornerBloomRadius))
+            context.fill(Path(bounds), with: .radialGradient(
+                Gradient(colors: [tangentColor.opacity(cornerOpacity * 0.9), .clear]),
+                center: CGPoint(x: size.width, y: size.height), startRadius: 4, endRadius: cornerBloomRadius))
+
+            // MARK: - Layer 3: Prismatic Glass Rim (Refractive Dispersion)
+            // Crisp, razor-thin refractive glass contours along the bezel border
+            let dispersion = CGFloat(1.2 + totalEnergy * 0.8 + velocity * 1.8)
+
+            // Cyan refraction fringe
+            let cyanBounds = bounds.offsetBy(dx: -dispersion, dy: -dispersion * 0.7)
+            context.stroke(
+                Path(roundedRect: cyanBounds, cornerRadius: cornerRadius),
+                with: .color(cyan.opacity(0.18 + totalEnergy * 0.18)),
+                lineWidth: 1.4 + CGFloat(min(0.8, velocity * 0.4))
+            )
+
+            // Magenta refraction fringe
+            let magentaBounds = bounds.offsetBy(dx: dispersion, dy: dispersion * 0.7)
+            context.stroke(
+                Path(roundedRect: magentaBounds, cornerRadius: cornerRadius),
+                with: .color(magenta.opacity(0.18 + totalEnergy * 0.18)),
+                lineWidth: 1.4 + CGFloat(min(0.8, velocity * 0.4))
+            )
+
+            // Specular Frosted Glass Rim with rotating optical phase reflection
+            let rimAngle = phase * 0.3
+            let startP = CGPoint(x: size.width * (0.5 + 0.5 * cos(rimAngle)), y: size.height * (0.5 + 0.5 * sin(rimAngle)))
+            let endP = CGPoint(x: size.width * (0.5 - 0.5 * cos(rimAngle)), y: size.height * (0.5 - 0.5 * sin(rimAngle)))
+            context.stroke(
+                Path(roundedRect: bounds, cornerRadius: cornerRadius),
+                with: .linearGradient(
+                    Gradient(colors: [
+                        glassWhite.opacity(0.40 + totalEnergy * 0.22),
+                        cyan.opacity(0.24),
+                        glassWhite.opacity(0.50),
+                        magenta.opacity(0.24),
+                        tangentColor.opacity(0.28)
+                    ]),
+                    startPoint: startP,
+                    endPoint: endP
+                ),
+                lineWidth: 1.5
+            )
+
+            // MARK: - Layer 3b: Colour Wave Sweep
+            // A prismatic band of light travels across the screen and shows on the rim as it passes.
+            // It plays once on open, then again whenever the wheel carries the phase around.
+            if !reduceMotion {
+                let intro = age < 1.3 ? age / 1.3 : nil
+                let loop = phase * 0.35
+                let cycle = loop - loop.rounded(.down)
+                let progress = intro.map { 1 - pow(1 - $0, 2) } ?? (velocity > 0.02 || energy > 0.3 ? cycle : nil)
+                if let progress {
+                    let diag = hypot(size.width, size.height)
+                    let along = CGVector(dx: size.width / diag, dy: size.height / diag)
+                    let bandLength = diag * 0.42
+                    let travel = (progress * (1.0 + 0.42) - 0.42) * diag
+                    let dirSign: CGFloat = (intro != nil || direction >= 0) ? 1 : -1
+                    let base = dirSign > 0 ? 0.0 : diag
+                    let head = base + dirSign * travel
+                    let tail = head - dirSign * bandLength
+                    let fade = intro != nil ? 1.0 : min(1.0, 0.35 + totalEnergy)
+                    let band = Gradient(colors: [
+                        .clear,
+                        cyan.opacity(0.55 * fade),
+                        violet.opacity(0.65 * fade),
+                        magenta.opacity(0.60 * fade),
+                        tangentColor.opacity(0.50 * fade),
+                        .clear
+                    ])
+                    context.stroke(
+                        Path(roundedRect: bounds, cornerRadius: cornerRadius),
+                        with: .linearGradient(band,
+                            startPoint: CGPoint(x: tail * along.dx, y: tail * along.dy),
+                            endPoint: CGPoint(x: head * along.dx, y: head * along.dy)),
+                        lineWidth: rimDepth * 1.1
+                    )
+                }
             }
-            // These are the exact nearby stops supplied to the small Rewind timeline.
-            let rail = bounds.insetBy(dx: 14, dy: 14)
-            for stop in state.steps {
-                let offset = (stop - state.playhead) / max(1, state.window)
-                let unit = (0.5 + offset).truncatingRemainder(dividingBy: 1)
-                let point = Self.perimeter(unit < 0 ? unit + 1 : unit, in: rail, radius: 30)
-                let isCurrent = abs(stop - state.playhead) < 0.00001
-                let length = isCurrent ? 30.0 : 14.0 + energy * 7
-                var tick = Path()
-                tick.move(to: point.0)
-                tick.addLine(to: CGPoint(x: point.0.x + point.1.dx * length, y: point.0.y + point.1.dy * length))
-                context.stroke(tick, with: .color(isCurrent ? .white : aqua.opacity(0.6 + energy * 0.35)),
-                               style: StrokeStyle(lineWidth: isCurrent ? 3 : 1.5, lineCap: .round))
-                context.fill(Path(ellipseIn: CGRect(x: point.0.x - 2, y: point.0.y - 2, width: 4, height: 4)), with: .color(aqua))
+
+            // MARK: - Layer 4: Edge-Hugging Cascading Ripple Lines
+            // Wavefronts stay strictly within 5px to 32px of the physical screen border.
+            // Continuous phase accumulation + sine envelope guarantees zero jumps and seamless looping.
+            let waveCount = reduceMotion ? 3 : 5
+
+            // Native GPU Metal Motion Blur Layer
+            let blurRadius = CGFloat(min(7.0, velocity * 3.5))
+            if blurRadius > 0.5 && !reduceMotion {
+                context.drawLayer { blurLayer in
+                    blurLayer.addFilter(.blur(radius: blurRadius))
+                    for i in 0..<waveCount {
+                        let waveProgress = (Double(i) / Double(waveCount) - phase).truncatingRemainder(dividingBy: 1.0)
+                        let fraction = waveProgress < 0 ? waveProgress + 1.0 : waveProgress
+                        let envelope = sin(fraction * .pi)
+                        guard envelope > 0.02 else { continue }
+                        let waveOpacity = envelope * (0.16 + totalEnergy * 0.24)
+                        let rippleDepth = 5.0 + fraction * (rimDepth * 0.60)
+                        let waveRadius = max(14.0, cornerRadius - fraction * 8.0)
+
+                        // Directional motion smear trail passes
+                        let trailSteps = min(3, max(1, Int(velocity * 1.8)))
+                        for step in 1...trailSteps {
+                            let trailLag = CGFloat(Double(step) * 2.0 * min(2.0, velocity)) * (direction < 0 ? -1.0 : 1.0)
+                            let trailDepth = max(3.0, rippleDepth + trailLag)
+                            let trailRect = bounds.insetBy(dx: trailDepth, dy: trailDepth)
+                            let trailOpacity = waveOpacity * (1.0 - Double(step) / Double(trailSteps + 1)) * 0.40
+
+                            blurLayer.stroke(
+                                Path(roundedRect: trailRect.offsetBy(dx: -dispersion * 0.5, dy: -dispersion * 0.3), cornerRadius: waveRadius),
+                                with: .color(cyan.opacity(trailOpacity)),
+                                lineWidth: 2.0 + CGFloat(step) * 1.0
+                            )
+                            blurLayer.stroke(
+                                Path(roundedRect: trailRect.offsetBy(dx: dispersion * 0.5, dy: dispersion * 0.3), cornerRadius: waveRadius),
+                                with: .color(magenta.opacity(trailOpacity)),
+                                lineWidth: 2.0 + CGFloat(step) * 1.0
+                            )
+                        }
+                    }
+                }
             }
-            context.stroke(Path(roundedRect: bounds.insetBy(dx: 2, dy: 2), cornerRadius: 32),
-                           with: .color(aqua.opacity(0.25 + energy * 0.35)), lineWidth: 2)
+
+            // In-Focus Specular Core Wavefront Lines (Transparent, Sleek)
+            for i in 0..<waveCount {
+                let waveProgress = (Double(i) / Double(waveCount) - phase).truncatingRemainder(dividingBy: 1.0)
+                let fraction = waveProgress < 0 ? waveProgress + 1.0 : waveProgress
+                let envelope = sin(fraction * .pi)
+                guard envelope > 0.02 else { continue }
+                let waveOpacity = envelope * (0.18 + totalEnergy * 0.28)
+                let rippleDepth = 5.0 + fraction * (rimDepth * 0.60)
+                let rippleRect = bounds.insetBy(dx: rippleDepth, dy: rippleDepth)
+                let waveRadius = max(14.0, cornerRadius - fraction * 8.0)
+
+                let chromOffset = CGFloat(0.8 + velocity * 1.2)
+                let coreWidth: CGFloat = 1.2 + CGFloat(min(1.0, velocity * 0.4))
+
+                // Cyan chromatic fringe
+                context.stroke(
+                    Path(roundedRect: rippleRect.offsetBy(dx: -chromOffset, dy: -chromOffset * 0.5), cornerRadius: waveRadius),
+                    with: .color(cyan.opacity(waveOpacity * 0.50)),
+                    lineWidth: coreWidth
+                )
+                // Magenta chromatic fringe
+                context.stroke(
+                    Path(roundedRect: rippleRect.offsetBy(dx: chromOffset, dy: chromOffset * 0.5), cornerRadius: waveRadius),
+                    with: .color(magenta.opacity(waveOpacity * 0.50)),
+                    lineWidth: coreWidth
+                )
+                // Specular frosted white core
+                context.stroke(
+                    Path(roundedRect: rippleRect, cornerRadius: waveRadius),
+                    with: .color(glassWhite.opacity(waveOpacity * 0.75)),
+                    lineWidth: coreWidth * 0.8
+                )
+            }
         }
     }
-    /// Brightness has a pause cushion; position never has one. New input restarts the hold
-    /// from the same full intensity, so a brief stop cannot produce a dark flash.
-    static func glowEnergy(age: TimeInterval) -> Double {
+
+    public static func glowEnergy(age: TimeInterval) -> Double {
         let progress = min(1, max(0, (age - 0.35) / 0.55))
         return 1 - progress * progress * (3 - 2 * progress)
     }
-
-    static func perimeter(_ unit: Double, in rect: CGRect, radius: Double) -> (CGPoint, CGVector) {
-        let w = rect.width - 2 * radius, h = rect.height - 2 * radius
-        let arc = Double.pi * radius / 2
-        var distance = unit * (2 * w + 2 * h + 4 * arc)
-        let lengths = [w, arc, h, arc, w, arc, h, arc]
-        for segment in 0..<8 {
-            let length = lengths[segment]
-            if distance > length { distance -= length; continue }
-            let f = length > 0 ? distance / length : 0
-            switch segment {
-            case 0: return (CGPoint(x: rect.minX + radius + distance, y: rect.minY), CGVector(dx: 0, dy: 1))
-            case 2: return (CGPoint(x: rect.maxX, y: rect.minY + radius + distance), CGVector(dx: -1, dy: 0))
-            case 4: return (CGPoint(x: rect.maxX - radius - distance, y: rect.maxY), CGVector(dx: 0, dy: -1))
-            case 6: return (CGPoint(x: rect.minX, y: rect.maxY - radius - distance), CGVector(dx: 1, dy: 0))
-            default:
-                let corner = (segment - 1) / 2
-                let centers = [CGPoint(x: rect.maxX - radius, y: rect.minY + radius),
-                               CGPoint(x: rect.maxX - radius, y: rect.maxY - radius),
-                               CGPoint(x: rect.minX + radius, y: rect.maxY - radius),
-                               CGPoint(x: rect.minX + radius, y: rect.minY + radius)]
-                let angle = (-Double.pi / 2) + Double(corner) * Double.pi / 2 + f * Double.pi / 2
-                let center = centers[corner]
-                return (CGPoint(x: center.x + cos(angle) * radius, y: center.y + sin(angle) * radius),
-                        CGVector(dx: -cos(angle), dy: -sin(angle)))
-            }
-        }
-        return (CGPoint(x: rect.minX + radius, y: rect.minY), CGVector(dx: 0, dy: 1))
-    }
-
 }

@@ -23,6 +23,7 @@ public class NotchHUDWindowController: ObservableObject {
 
     public func collapseRewind() {
         isRewindExpanded = false
+        window?.resignKey()
         RewindEngine.shared.pausePlayback(announce: false)
         if !StudioEngine.shared.activeLayers.contains("REWIND") { RewindEngine.shared.endRewind(announce: false) }
         handleDisplayModeChange(HUDFeed.shared.latest)
@@ -105,6 +106,34 @@ public class NotchHUDWindowController: ObservableObject {
                 if let s = self.activeScreen, !NSScreen.screens.contains(s) { self.activeScreen = nil }
                 guard let window = self.window, window.isVisible, !self.isHiding else { return }
                 self.updatePosition(height: window.frame.height)
+            }
+            .store(in: &cancellables)
+
+        RewindEngine.shared.$isRewinding
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] active in
+                guard let self else { return }
+                if !active && self.isRewindExpanded {
+                    self.collapseRewind()
+                }
+            }
+            .store(in: &cancellables)
+
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didActivateApplicationNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let self else { return }
+                guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                      let id = app.bundleIdentifier else { return }
+                let isExternalCreative = id.contains("Photoshop") || id.contains("Resolve") || id.contains("FinalCut") || id.contains("Premiere")
+                if isExternalCreative {
+                    if self.isRewindExpanded {
+                        self.collapseRewind()
+                    }
+                    if self.window?.isKeyWindow == true {
+                        self.window?.resignKey()
+                    }
+                }
             }
             .store(in: &cancellables)
     }
@@ -302,6 +331,8 @@ enum HUDPlacement {
 }
 
 private final class InteractiveHUDPanel: NSPanel {
-    override var canBecomeKey: Bool { NotchHUDWindowController.shared.isRewindExpanded }
+    override var canBecomeKey: Bool {
+        NotchHUDWindowController.shared.isRewindExpanded
+    }
     override var canBecomeMain: Bool { false }
 }

@@ -22,13 +22,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let settings = AppSettings.shared
         let firstRun = !settings.hasCompletedOnboarding
         let atLogin = Self.launchedAtLogin
-        if firstRun || FeatureWalkthroughController.shared.pending || (settings.showWindowAtLaunch && !atLogin) {
+        if !atLogin {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 StudioWindowController.shared.show()
-                FeatureWalkthroughController.shared.presentAutomatically()
-                if firstRun {
-                    GuideController.shared.presentSetup()
+                if firstRun || !settings.hasCompletedTour || settings.showWindowAtLaunch {
+                    GuideController.shared.presentIntro()
+                } else if FeatureWalkthroughController.shared.pending {
+                    FeatureWalkthroughController.shared.presentAutomatically()
                 }
+            }
+        }
+
+        // Automatically trigger the standalone light show on launch when panel is connected if intro isn't playing
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if PanelManager.shared.isConnected && !PanelLightShow.shared.isRunning && !IntroLEDDirector.shared.isActive && !GuideController.shared.showIntro {
+                PanelLightShow.shared.start()
             }
         }
     }
