@@ -115,7 +115,7 @@ enum SVGPanelReference {
 
     struct Drawing { let svg: String; let fullLabels: [(String, String)] }
 
-    static func drawing(_ state: ReferencePanelState, holds: Bool) -> Drawing {
+    static func drawing(_ state: ReferencePanelState, holds: Bool, peek: Bool = false) -> Drawing {
         guard let doc = try? XMLDocument(xmlString: asset, options: []), let root = doc.rootElement() else { return Drawing(svg: asset, fullLabels: []) }
         let rows = Dictionary(ControlHelpRow.rows(profile: state.profile).filter { !$0.id.hasPrefix("combination:") }.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
         let controls = (try? root.nodes(forXPath: ".//*[@data-control-id]")) ?? []
@@ -158,13 +158,17 @@ enum SVGPanelReference {
                 // Clear original button text; the exact physical name is retained on the card.
                 for text in (try? node.nodes(forXPath: ".//*[local-name()='text']")) ?? [] { text.detach() }
             }
+            if peek {
+                font *= 1.25
+                linesMax = max(1, Int((h - 18) / (font + 0.7)) + 1)
+            }
             let lines = wrapped(action, columns: max(8, Int((w - 6) / (font * 0.54))))
             let shortened = lines.count > linesMax
             if shortened { fullLabels.append((physical, action)) }
             let stroke = state.emphasized.contains(id) ? "#d06412" : "#739aa4"
             let attrs = "data-ref='\(esc(id))' data-name='\(esc(row.control))' data-turn='\(esc(row.action))' data-press='\(esc(press?.action ?? ""))' data-hold='\(esc(knob ? (press?.hold ?? "") : row.hold))'"
             annotations += "<g \(attrs) role='button' tabindex='0' aria-label='\(esc(physical + ": " + action))'><title>\(esc(physical + ": " + action))</title><rect x='\(x)' y='\(y)' width='\(w)' height='\(h)' rx='3' fill='white' stroke='\(stroke)' stroke-width='\(state.emphasized.contains(id) ? 2 : 0.6)'/>"
-            let titleFont = ball || ring || knob ? 6.1 : 4.6
+            let titleFont = peek ? min(8, (w - 6) / (Double(physical.count) * 0.58)) : (ball || ring || knob ? 6.1 : 4.6)
             annotations += "<text x='\(x + w / 2)' y='\(y + 7)' text-anchor='middle' font-size='\(titleFont)' font-weight='700' fill='#42616b'>\(esc(physical))</text>"
             for (i, line) in lines.prefix(linesMax).enumerated() {
                 let text = shortened && i == linesMax - 1 ? String(line.dropLast(min(2, line.count))) + "…*" : line
@@ -178,8 +182,8 @@ enum SVGPanelReference {
         return Drawing(svg: svg, fullLabels: fullLabels)
     }
 
-    static func sheet(_ state: ReferencePanelState, holds: Bool) -> String {
-        let drawn = drawing(state, holds: holds)
+    static func sheet(_ state: ReferencePanelState, holds: Bool, peek: Bool = false) -> String {
+        let drawn = drawing(state, holds: holds, peek: peek)
         let gesture = holds ? "Press / Hold" : "Turn / Tap"
         let detail = drawn.fullLabels.isEmpty ? "" : "<div class=full-labels><b>* Full assignments</b>" + drawn.fullLabels.map { "<p><strong>\(esc($0.0)):</strong> \(esc($0.1))</p>" }.joined() + "</div>"
         return "<article class='diagram \(holds ? "holds" : "taps")'><h2>\(esc(state.title)) <span>\(gesture)</span></h2><p class=context>\(esc(state.context))</p><div class=svg-wrap>\(drawn.svg)</div>\(detail)<p class=legend>\(holds ? "Knobs show PRESS; buttons show HOLD. Wheel assignments remain visible." : "Knobs and wheels show TURN / ROLL; buttons show TAP.") Orange outlines identify a combination or program. * Full labels appear below. Hold Previous Still + Next Still for this guide. Use region zoom for larger labels.</p></article>"
@@ -187,10 +191,23 @@ enum SVGPanelReference {
 
     static func document(states: [ReferencePanelState], peek: Bool = false, atlas: Bool = false) -> String {
         let options = states.enumerated().map { "<option value='\($0.offset)'>\(esc($0.element.title))</option>" }.joined()
-        let pages = states.enumerated().map { index, state in "<section class='state\(index == 0 ? " selected" : "")' data-index='\(index)'>" + sheet(state, holds: false) + sheet(state, holds: true) + "</section>" }.joined()
+        let pages = states.enumerated().map { index, state in "<section class='state\(index == 0 ? " selected" : "")' data-index='\(index)'>" + sheet(state, holds: false, peek: peek) + sheet(state, holds: true, peek: peek) + "</section>" }.joined()
         return """
         <!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>PanaLux · Panel Reference</title><style>
-        *{box-sizing:border-box}body{margin:0;background:#eef2f5;color:#18333e;font:14px -apple-system,Arial,sans-serif}button,select{font:inherit;padding:8px 11px;border:1px solid #a8bbc5;border-radius:7px;background:white;color:#16333e;cursor:pointer}button.active{background:#163f4d;color:white}.toolbar{position:sticky;top:0;z-index:3;background:#f8fafbf5;padding:12px 18px;border-bottom:1px solid #c4d0d7;display:flex;gap:8px;flex-wrap:wrap;align-items:center}.toolbar strong{margin-right:8px}.toolbar label{display:flex;align-items:center;gap:6px}.toolbar select{max-width:300px}.tools{display:flex;gap:6px;flex-wrap:wrap}.hint{padding:8px 20px;margin:0;font-size:12px;color:#435f6a}.state{display:none}.state.selected{display:block}.diagram{background:white;margin:12px;padding:14px;border-radius:12px;border:1px solid #cfdae0;break-after:page}.diagram h2{font-size:20px;margin:0 0 4px}.diagram h2 span{font-size:14px;color:#147e8b;margin-left:14px}.context{font-size:12px;margin:0 0 6px}.svg-wrap svg{overflow:hidden;margin:auto;display:block;width:100%;height:auto;aspect-ratio:1080/552}.diagram.holds{display:none}body[data-gesture=holds] .diagram.taps{display:none}body[data-gesture=holds] .diagram.holds,body[data-gesture=both] .diagram.holds{display:block}.legend{font-size:11px;color:#536a74;margin:5px 0 0}.full-labels{font-size:12px;columns:2;margin:8px 0}.full-labels p{margin:3px 0;break-inside:avoid}.inspector{margin:12px;padding:13px 18px;background:#163f4d;color:white;border-radius:10px;position:sticky;bottom:8px;display:flex;gap:20px;flex-wrap:wrap}.inspector span{white-space:pre-wrap}.atlas main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.atlas .state{display:block}.atlas .diagram h2{font-size:15px}.atlas .diagram{margin:6px;padding:10px}.atlas .legend{display:none}#printdetails{display:none}.peek .print-tools{display:none}.peek .hint{font-size:11px}.peek .toolbar{padding:8px}.peek .diagram{margin:5px;padding:8px}.peek .diagram h2{font-size:16px}.peek .inspector{font-size:12px;margin:5px;padding:8px}.peek .legend{font-size:9px}
+        *{box-sizing:border-box}body{margin:0;background:#eef2f5;color:#18333e;font:14px -apple-system,Arial,sans-serif}button,select{font:inherit;padding:8px 11px;border:1px solid #a8bbc5;border-radius:7px;background:white;color:#16333e;cursor:pointer}button.active{background:#163f4d;color:white}.toolbar{position:sticky;top:0;z-index:3;background:#f8fafbf5;padding:12px 18px;border-bottom:1px solid #c4d0d7;display:flex;gap:8px;flex-wrap:wrap;align-items:center}.toolbar strong{margin-right:8px}.toolbar label{display:flex;align-items:center;gap:6px}.toolbar select{max-width:300px}.tools{display:flex;gap:6px;flex-wrap:wrap}.hint{padding:8px 20px;margin:0;font-size:12px;color:#435f6a}.state{display:none}.state.selected{display:block}.diagram{background:white;margin:12px;padding:14px;border-radius:12px;border:1px solid #cfdae0;break-after:page}.diagram h2{font-size:20px;margin:0 0 4px}.diagram h2 span{font-size:14px;color:#147e8b;margin-left:14px}.context{font-size:12px;margin:0 0 6px}.svg-wrap svg{overflow:hidden;margin:auto;display:block;width:100%;height:auto;aspect-ratio:1080/552}.diagram.holds{display:none}body[data-gesture=holds] .diagram.taps{display:none}body[data-gesture=holds] .diagram.holds,body[data-gesture=both] .diagram.holds{display:block}.legend{font-size:11px;color:#536a74;margin:5px 0 0}.full-labels{font-size:12px;columns:2;margin:8px 0}.full-labels p{margin:3px 0;break-inside:avoid}.inspector{margin:12px;padding:13px 18px;background:#163f4d;color:white;border-radius:10px;position:sticky;bottom:8px;display:flex;gap:20px;flex-wrap:wrap}.inspector span{white-space:pre-wrap}.atlas main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.atlas .state{display:block}.atlas .diagram h2{font-size:15px}.atlas .diagram{margin:6px;padding:10px}.atlas .legend{display:none}#printdetails{display:none}.peek .print-tools{display:none}
+        @media screen {
+          body.peek{background:linear-gradient(135deg,rgba(231,245,251,.48),rgba(244,247,252,.32));font-size:16px;min-height:100vh}
+          .peek .toolbar{padding:16px 20px;gap:10px;background:rgba(247,252,255,.75);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.9)}
+          .peek button,.peek select{padding:10px 14px;border-radius:12px;box-shadow:0 1px 3px #18333e12}
+          .peek .hint{font-size:15px;line-height:1.5;padding:12px 24px;color:#274651}
+          .peek .diagram{margin:0 16px 16px;padding:20px;border-radius:20px;background:rgba(255,255,255,.38);border:1px solid rgba(255,255,255,.95);box-shadow:0 8px 30px #233b4c10}
+          .peek #chassis-outline{fill:rgba(224,237,245,.48)}
+          .peek .diagram h2{font-size:24px}.peek .diagram h2 span{font-size:17px}
+          .peek .context,.peek .legend{font-size:14px;line-height:1.5}
+          .peek .full-labels{font-size:16px;line-height:1.5;column-gap:28px}
+          .peek .inspector{font-size:17px;line-height:1.5;margin:16px;padding:18px 22px;border:1px solid #ffffff80;border-radius:18px;background:rgba(18,52,65,.94);box-shadow:0 8px 30px #18333e25;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+          @media(prefers-reduced-transparency:reduce),(prefers-contrast:more){body.peek{background:#edf3f7}.peek .toolbar,.peek .diagram{background:#fff}.peek .inspector{background:#123441}.peek .diagram{border-color:#6c8490}.peek #chassis-outline{fill:#e8edf1}}
+        }
         @page{size:A3 landscape;margin:10mm}@media print{body{background:white;font-size:11px}.toolbar,.hint,.inspector{display:none!important}main,.atlas main{display:block}.state{display:none!important}body[data-print=all] .state,.state.selected{display:block!important}body[data-print=all] .diagram{display:block!important}.diagram{margin:0;padding:0;border:0;border-radius:0}.diagram h2{font-size:19px!important}.diagram .legend{display:block!important}.full-labels{columns:2}.svg-wrap svg{max-height:235mm}.diagram:last-child{break-after:page}body[data-print=details] main{display:none!important}body[data-print=details] #printdetails{display:block}#printdetails .diagram{display:block!important}#printdetails svg{max-height:220mm}}
         </style></head><body class='\(peek ? "peek" : "") \(atlas ? "atlas" : "")' data-gesture=taps data-print=current>
         <header class=toolbar><strong>PanaLux · Panel Reference</strong><label>Map <select id=map onchange='selectMap(this.value)'>\(options)</select></label><div class=tools><button id=taps class=active onclick="gesture('taps')">Turn / Tap</button><button id=holds onclick="gesture('holds')">Press / Hold</button><button id=both onclick="gesture('both')">Both views</button><button id=atlas onclick='allPanels()'>All modes</button></div><label>Zoom <select id=zoom onchange='zoomPanel(this.value)'><option value=full>Whole panel</option><option value=knobs>Knobs</option><option value=left>Left keys</option><option value=center>Centre keys</option><option value=right>Right keys</option><option value=wheels>Wheels</option></select></label><div class='tools print-tools'><button onclick='printGuide(false)'>Print this view / PDF…</button><button onclick='printGuide(true)'>Print complete guide / PDF…</button><button onclick='printDetails()'>Print enlarged sections…</button><button id=savepng onclick='savePNG()'>Save selected Turn / Tap PNG</button></div></header>

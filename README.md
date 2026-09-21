@@ -182,7 +182,7 @@ Choose Full, Minimal, or Hidden. Set the readout to tuck away after 2, 4, 8, 15,
 
 ## Working on several photos
 
-Bypass selects all photos in the filmstrip. Disable opens Sync Settings; press it again to click Synchronize. Copy and Paste handle Develop settings. Undo, Redo, and Reset are available too.
+Bypass defaults to Lightroom’s Before/After toggle (the backslash key); existing customized maps keep their assignments. Disable opens Sync Settings; press it again to click Synchronize. Copy and Paste handle Develop settings. Undo, Redo, and Reset are available too.
 
 Previous Still gathers photos into a bracket for the Photoshop round-trip. See [Gathering a bracket](#gathering-a-bracket).
 
@@ -230,7 +230,7 @@ There is also an option to quit Resolve automatically. It is off by default.
 
 Drop a map on the PanaLux window, or choose **Maps → Import**. Importing backs up your current map first. **Copy Map** puts the same file on the clipboard so you can paste it into a message.
 
-**Peek at your current controls:** press and hold **Previous Still + Next Still together**, then release either key to hide the guide. PanaLux keeps Lightroom focused. Press the two keys within 300 ms; a recognized chord suppresses both ordinary taps. A single Still key retains its mapping (with up to 300 ms recognition delay). Presses & Combinations editing bypasses the guide so gestures can still be captured. The chord is reserved while grading; an existing custom combination using exactly these keys can still be invoked by holding its first key beyond the recognition window before pressing the second. Disconnecting or Back to Base dismisses the guide.
+**Peek at your current controls:** the on-screen guide uses a larger glass surface and larger assignment labels, with opaque accessibility fallbacks; printed guides retain their paper styling. Press and hold **Previous Still + Next Still together**, then release either key to hide the guide. PanaLux keeps Lightroom focused. Press the two keys within 300 ms; a recognized chord suppresses both ordinary taps. A single Still key retains its mapping (with up to 300 ms recognition delay). Presses & Combinations editing bypasses the guide so gestures can still be captured. The chord is reserved while grading; an existing custom combination using exactly these keys can still be invoked by holding its first key beyond the recognition window before pressing the second. Disconnecting or Back to Base dismisses the guide.
 
 The guide follows your actual assignments, held/toggled modes, active bank, programs and focus dial. **Your Controls (⌘?)** provides a persistent searchable alternative. The profile format does not retain a reliable preset name, so references say **Current map** instead of guessing one.
 

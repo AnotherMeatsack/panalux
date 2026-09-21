@@ -25,18 +25,43 @@ final class ReferencePeekWindow: NSObject, WKNavigationDelegate {
             panel.hidesOnDeactivate = false
             panel.isReleasedWhenClosed = false
             panel.hasShadow = true
+            panel.isOpaque = false
+            panel.backgroundColor = .clear
+            panel.appearance = NSAppearance(named: .aqua)
             panel.ignoresMouseEvents = false
             panel.becomesKeyOnlyIfNeeded = true
             let web = WKWebView()
             web.navigationDelegate = self
-            panel.contentView = web
+            web.setValue(false, forKey: "drawsBackground")
+            web.autoresizingMask = [.width, .height]
+            let surface: NSView
+            if #available(macOS 26.0, *), !NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency,
+               !NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast {
+                let glass = NSGlassEffectView()
+                glass.cornerRadius = 24
+                glass.style = .regular
+                glass.contentView = web
+                surface = glass
+            } else {
+                let effect = NSVisualEffectView()
+                effect.material = .hudWindow
+                effect.blendingMode = .behindWindow
+                effect.state = .active
+                effect.wantsLayer = true
+                effect.layer?.cornerRadius = 24
+                effect.layer?.masksToBounds = true
+                effect.addSubview(web)
+                surface = effect
+            }
+            panel.contentView = surface
+            web.frame = surface.bounds
             self.webView = web
             self.panel = panel
         }
         let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
         if let screen {
             let area = screen.visibleFrame.insetBy(dx: 24, dy: 24)
-            let size = NSSize(width: min(1200, area.width), height: min(1000, area.height))
+            let size = NSSize(width: min(1800, area.width), height: min(1250, area.height))
             panel?.setFrame(NSRect(x: area.midX - size.width / 2, y: area.midY - size.height / 2, width: size.width, height: size.height), display: true)
         }
         refresh()
