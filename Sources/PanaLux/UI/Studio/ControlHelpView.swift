@@ -24,16 +24,17 @@ struct ControlHelpRow: Identifiable {
                 let b = profile.buttons[id] ?? ButtonBinding()
                 var actions: [String] = []
                 if let action = b.action ?? b.ps { actions.append(label(action)) }
-                if let layer = b.layer { actions.append("Toggle \(LayerNames.defaultTitle(layer))") }
-                if let layer = b.enter_layer { actions.append("Enter \(LayerNames.defaultTitle(layer))") }
+                if let layer = b.layer { actions.append("Toggle \((profile.layers[layer]?.title ?? LayerNames.defaultTitle(layer)))") }
+                if let layer = b.enter_layer { actions.append("Enter \((profile.layers[layer]?.title ?? LayerNames.defaultTitle(layer)))") }
                 if let variant = b.set_variant { actions.append("Bank: \(variant)") }
                 if let program = b.tapProgram { actions.append(program.summary) }
                 var holds: [String] = []
-                if let layer = b.hold_layer { holds.append(LayerNames.defaultTitle(layer)) }
+                if let layer = b.hold_layer { holds.append((profile.layers[layer]?.title ?? LayerNames.defaultTitle(layer))) }
                 if b.hold_picker != nil { holds.append("Mask tool wheel") }
                 if let action = b.hold_action { holds.append(label(action)) }
                 if let program = b.holdProgram { holds.append(program.summary) }
                 if b.modifier != nil { holds.append("Fine adjustment") }
+                if let action = b.release_action { holds.append("Release: " + label(action)) }
                 rows.append(.init(id: id, control: title, action: actions.isEmpty ? "Not assigned" : actions.joined(separator: " · "), hold: holds.joined(separator: " · ")))
             }
         }
@@ -41,7 +42,7 @@ struct ControlHelpRow: Identifiable {
             let spec = profile.buttons["PRESS_" + id]
             rows.append(.init(id: "PRESS_" + id, control: PanelLayout.label(forControl: "PRESS_" + id),
                               action: spec.map { MapReadme.tapLine($0) } ?? "Reset current parameter",
-                              hold: spec.map { MapReadme.holdLine($0) } ?? ""))
+                              hold: spec.map { MapReadme.holdLine($0) + ($0.release_action.map { " · Release: " + label($0) } ?? "") } ?? ""))
         }
         for entry in profile.combinations ?? ButtonCombination.defaults {
             rows.append(.init(id: "combination:" + entry.id, control: entry.title,
@@ -101,7 +102,7 @@ struct ControlHelpView: View {
                     }
                 }
             }
-            Text("Follows your saved map and active modes. Open with ⌘? in PanaLux; Escape closes this window.")
+            Text("Follows your saved map and active modes. Hold Previous Still + Next Still together to peek; release to dismiss. ⌘? opens this window; Escape closes it.")
                 .font(.caption).foregroundStyle(.secondary)
         }.padding(20).frame(width: 680, height: 620)
     }

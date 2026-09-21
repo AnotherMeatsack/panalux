@@ -114,7 +114,9 @@ public class MenuBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(action("Expand Rewind+", #selector(expandRewind), key: "", symbol: "arrow.up.left.and.arrow.down.right"))
         menu.addItem(action("Your Controls…", #selector(openControlHelp), key: "?", symbol: "questionmark.circle"))
-        menu.addItem(action("Reference Card", #selector(openReferenceCard), key: "", symbol: "printer"))
+        menu.addItem(action("Panel Reference · View / Print / Save…", #selector(openReferenceCard), key: "", symbol: "printer"))
+        menu.addItem(action("Save Current Panel Image…", #selector(saveLayerReference), key: "", symbol: "photo"))
+        menu.addItem(action("Hold Previous Still + Next Still to peek", #selector(openControlHelp), key: "", symbol: "questionmark.circle"))
         menu.addItem(action("Map Library & Community…", #selector(openMapLibrary), key: "", symbol: "square.grid.2x2"))
         menu.addItem(action("Suggest a Feature…", #selector(suggestFeature), key: "", symbol: "lightbulb"))
         menu.addItem(action("Import Map…", #selector(importMap), key: "", symbol: "square.and.arrow.down"))
@@ -190,6 +192,9 @@ public class MenuBarController: NSObject, NSMenuDelegate {
         StudioWindowController.shared.show()
         GuideController.shared.showSettings = true
     }
+
+    @objc private func openLayerReference() { ReferenceCard.open(overview: true) }
+    @MainActor @objc private func saveLayerReference() { ReferenceImageExport.save(overview: true) }
 
     @objc private func openReferenceCard() {
         ReferenceCard.open()

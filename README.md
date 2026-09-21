@@ -4,7 +4,7 @@
 
 **One panel. Every job.** Rewind+, tangents, and customizable controls.
 
-[What changed in 1.2.3](RELEASE_NOTES.md) · [Downloads](https://github.com/AnotherMeatsack/panalux/releases/latest)
+[What changed in 1.2.4](RELEASE_NOTES.md) · [Downloads](https://github.com/AnotherMeatsack/panalux/releases/latest)
 
 I bought a Micro Color Panel for Resolve. I also edit stills. I wanted the panel I already paid for to do more than one job.
 
@@ -230,7 +230,13 @@ There is also an option to quit Resolve automatically. It is off by default.
 
 Drop a map on the PanaLux window, or choose **Maps → Import**. Importing backs up your current map first. **Copy Map** puts the same file on the clipboard so you can paste it into a message.
 
-You can also print a Reference Card for the current map, including every mode.
+**Peek at your current controls:** press and hold **Previous Still + Next Still together**, then release either key to hide the guide. PanaLux keeps Lightroom focused. Press the two keys within 300 ms; a recognized chord suppresses both ordinary taps. A single Still key retains its mapping (with up to 300 ms recognition delay). Presses & Combinations editing bypasses the guide so gestures can still be captured. The chord is reserved while grading; an existing custom combination using exactly these keys can still be invoked by holding its first key beyond the recognition window before pressing the second. Disconnecting or Back to Base dismisses the guide.
+
+The guide follows your actual assignments, held/toggled modes, active bank, programs and focus dial. **Your Controls (⌘?)** provides a persistent searchable alternative. The profile format does not retain a reliable preset name, so references say **Current map** instead of guessing one.
+
+Click **Print / Panel Guide** in the toolbar, or **Help → Panel Reference · View / Print / Save…**. Both this reference and the hold guide reuse the mapper's actual physical SVG, with all 58 controls in position. Choose a mode/bank, custom program or combination from **Map**, then **Turn / Tap**, **Press / Hold**, or **Both views**. **All modes** shows a visual atlas. Click a control for full assignment text; use **Zoom** for larger labels.
+
+**Print this view / PDF** prints the chosen mode, gesture and region. **Print complete guide / PDF** prints every mode and both gestures on separate A3 landscape pages. **Print enlarged sections** prints five close-up regions for the chosen mode/gesture (ten with Both views). Choose your browser's **Save as PDF** destination. **Save selected Turn / Tap PNG** (or Press / Hold) saves one complete physical diagram with full overflow labels; **Help → Save Current Panel Image** saves both current gesture diagrams together. Everything is generated locally and remains self-contained.
 
 Preset, Keywords, Key 1-40, and Command Series slots are defined in Lightroom under **File > Plug-in Extras > General options**. PanaLux triggers those slots. A Command Series such as Auto Tone, then Upright, then Lens Corrections can live on one key.
 

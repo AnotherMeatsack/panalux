@@ -114,6 +114,10 @@ public struct StudioWindowView: View {
             }
             .help("Name, compare and merge selected settings from your saved tangents")
 
+            Button { ReferenceCard.open() } label: {
+                Label("Print / Panel Guide", systemImage: "printer")
+            }
+            .help("Physical panel diagrams for every mode, bank and gesture; print or save as PDF / PNG")
             Button { ControlHelpWindowController.shared.show() } label: {
                 Label("Your Controls", systemImage: "questionmark.circle")
             }
@@ -190,7 +194,8 @@ public struct StudioWindowView: View {
                 Button("Take the Hands-On Tour") { guide.startWalkthrough() }
                 Button("Setup Assistant…") { guide.presentSetup() }
                 Button("Quick Reference") { guide.presentQuickReference() }
-                Button("Reference Card") { ReferenceCard.open() }
+                Button("Panel Reference · View / Print / Save…") { ReferenceCard.open() }
+                Button("Save Current Panel Image…") { ReferenceImageExport.save() }
                 Divider()
                 Button("Report a Bug…") { BugReport.present() }
             } label: {

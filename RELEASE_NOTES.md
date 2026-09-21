@@ -1,3 +1,19 @@
+# PanaLux v1.2.4
+
+See your actual panel assignments on the physical panel drawing while grading, or keep a detailed reference beside you.
+
+- **The real panel, in both guides.** The hold guide and printable reference use the same accurate SVG as the mapper. All 58 physical controls stay in position. Turn / Tap and Press / Hold views show knobs, knob presses, buttons, trackballs and rings.
+- **Every mode and bank.** Choose Live, Base, each saved mode/bank, custom analog programs or button combinations. All modes provides a visual atlas; click an assignment for its full text, or zoom into knobs, either key bank, centre keys or wheels.
+- **Print is easy to find.** Click Print / Panel Guide in the toolbar, or Help → Panel Reference · View / Print / Save. Print the selected view, the complete guide, or enlarged sections. Choose Save as PDF in the browser print dialog. Save the selected diagram as a high-resolution PNG, including full labels; Save Current Panel Image exports both current gesture views together.
+- **Hold to peek.** Hold Previous Still + Next Still together to show the guide without taking keyboard focus; release either to dismiss. Mode, gesture and zoom controls work while held. Press both within 300 ms; recognized chords consume the ordinary taps. Single Still presses retain their mappings with a brief recognition delay.
+- **Accurate live help.** Custom layer names, layer-only knob presses, slider balls, mask placement, Rewind and the mask tool wheel follow the active state. Command-? remains the persistent searchable alternative.
+
+The hardware chord is reserved when its keys are pressed together. Existing custom combinations using the same pair remain available by holding the first key beyond the recognition window before pressing the second. The combination editor still captures either key normally.
+
+Developer ID signed; not notarized. Physical panel timing and focus behavior over Lightroom still need hands-on validation. Print defaults to A3 landscape; enlarged sections provide larger labels and can be scaled to your printer's paper. Larger custom maps may require additional pages.
+
+---
+
 # PanaLux v1.2.3
 
 Corrects the right-side navigation buttons on the Micro Color Panel.

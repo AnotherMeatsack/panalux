@@ -390,6 +390,10 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
 
     /// Drop every hold, latch, toggle, and temporary override. The panel is back on its base map.
     public func returnToBase(announce: Bool = true) {
+        referenceChordWork?.cancel()
+        referenceChord.reset()
+        referencePeekVisible = false
+        ReferencePeekWindow.shared.setVisible(false)
         for work in holdWorkItems.values { work.cancel() }
         holdWorkItems.removeAll()
         for work in pendingHoldReleases.values { work.cancel() }
@@ -591,6 +595,10 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
     }
 
+    private var referenceChord = ReferenceChord()
+    private var referenceChordWork: DispatchWorkItem?
+    @Published private(set) var referencePeekVisible = false
+
     private var holdWorkItems: [String: DispatchWorkItem] = [:]
     private var engagedHolds: Set<String> = []
     private var pendingHoldReleases: [String: DispatchWorkItem] = [:]
@@ -710,6 +718,29 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     }
 
     private func applyButton(_ name: String, isDown: Bool) {
+        // The combination editor must still be able to capture either physical key.
+        guard !isProgrammingButtons else { applyMappedButton(name, isDown: isDown); return }
+        let wasVisible = referenceChord.visible
+        let events = referenceChord.receive(name, down: isDown)
+        referenceChordWork?.cancel()
+        referenceChordWork = nil
+        if referenceChord.pending != nil {
+            let work = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.referenceChordWork = nil
+                for event in self.referenceChord.flush() { self.applyMappedButton(event.name, isDown: event.down) }
+            }
+            referenceChordWork = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + ReferenceChord.grace, execute: work)
+        }
+        if wasVisible != referenceChord.visible {
+            referencePeekVisible = referenceChord.visible
+            ReferencePeekWindow.shared.setVisible(referencePeekVisible)
+        }
+        for event in events { applyMappedButton(event.name, isDown: event.down) }
+    }
+
+    private func applyMappedButton(_ name: String, isDown: Bool) {
         if isDown { resetKnobReadout = nil }
         if isProgrammingButtons {
             if isDown {
@@ -1321,7 +1352,7 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
     }
 
     /// Map a function-set focus name (Y Lift, Blacks, hardware ids) to a MIDI2LR param.
-    private func resolveProgramParam(_ raw: String) -> String {
+    func resolveProgramParam(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return trimmed }
         if CommandDatabase.shared.commands[trimmed] != nil {
@@ -2466,17 +2497,32 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
         }
     }
 
+    var referenceContext: String {
+        var parts = layerPriority.map { layer in
+            let bank = activeVariants[layer].map { " · " + $0 } ?? ""
+            return layerTitle(layer) + bank + (toggledLayers.contains(layer) ? " (on)" : " (held)")
+        }
+        if parts.isEmpty { parts = ["Base"] }
+        if currentAnalogProgram() != nil { parts.append(currentProgramLabel()) }
+        if let param = tempFocusParam { parts.append("Focus: " + CommandDatabase.shared.label(for: param)) }
+        if !heldModifiers.isEmpty { parts.append("Fine adjustment") }
+        if maskPlacing { parts.append("Placing mask: balls move the pointer") }
+        if ToolWheelSession.shared.isPresented { parts.append("Mask wheel active: wheels choose tool / operation") }
+        return parts.joined(separator: " · ")
+    }
+
     /// The help overlay follows the same layer priority, custom programs and focus dial
     /// as the live controls. It never loads a factory map over the user's assignments.
     func currentHelpProfile() -> Profile {
         var shown = profile
-        if overlayLayerName == "MASK" { shown.knobs = [:] }
+        if overlayLayerName == "MASK" { shown.knobs = [:]; shown.rings = [:] }
         for layer in layerPriority.reversed() {
             if let knobs = knobsForLayer(layer, variant: activeVariants[layer]) { shown.knobs.merge(knobs) { _, next in next } }
             if let rings = profile.layers[layer]?.rings { shown.rings.merge(rings) { _, next in next } }
             if let balls = profile.layers[layer]?.balls { shown.balls.merge(balls) { _, next in next } }
         }
-        for id in profile.buttons.keys {
+        let helpButtonIDs = Set(PanelLayout.allButtons + PanelLayout.knobs.map { "PRESS_" + $0 } + Array(profile.buttons.keys) + layerPriority.flatMap { Array(profile.layers[$0]?.buttons?.keys ?? Dictionary<String, ButtonBinding>().keys) })
+        for id in helpButtonIDs {
             var binding = resolvedButtonBinding(for: id) ?? ButtonBinding()
             let hold = holdBinding(for: id)
             binding.hold_layer = hold?.hold_layer
@@ -2503,7 +2549,25 @@ public class StudioEngine: ObservableObject, PanelManagerDelegate, LightroomBrid
                 }
             }
         }
+        // Mask balls bypass programs and Base in the actual analog dispatcher.
+        if maskPlacing {
+            shown.balls = Dictionary(uniqueKeysWithValues: PanelLayout.balls.map { ($0, maskPlaceBinding()) })
+            shown.rings.merge(profile.layers["MASK"]?.rings ?? [:]) { _, next in next }
+        } else if overlayLayerName == "MASK" {
+            shown.balls = profile.layers["MASK"]?.balls ?? [:]
+        }
         if let param = tempFocusParam { shown.knobs[AppSettings.shared.focusDialControl] = KnobBinding(param: param) }
+        if RewindEngine.shared.isRewinding {
+            shown.knobs = shown.knobs.filter { RewindCommands.isRewind($0.value.param) }
+            shown.rings = shown.rings.filter { RewindCommands.isRewind($0.value.param) }
+            shown.balls = [:]
+        }
+        if activePickerButton != nil {
+            shown.knobs = Dictionary(uniqueKeysWithValues: PanelLayout.knobs.map { ($0, KnobBinding(param: "Choose mask tool")) })
+            shown.rings = Dictionary(uniqueKeysWithValues: PanelLayout.rings.map { ($0, RingBinding(param: $0 == MaskCombine.ringControl ? "Choose mask operation" : "Choose mask tool")) })
+            shown.balls = Dictionary(uniqueKeysWithValues: PanelLayout.balls.map { ($0, BallBinding.slider("Aim at mask tool")) })
+            for (key, operation) in MaskCombine.buttonMap { shown.buttons[key] = ButtonBinding(action: "Mask operation: " + operation.title) }
+        }
         return shown
     }
 

@@ -24,6 +24,11 @@ public struct QuickReferenceView: View {
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    section("See and save your mappings", items: [
+                        "Press Previous Still + Next Still together and hold to peek at your current assignments. Release either key to dismiss. Your ordinary taps are suppressed for the chord; a single Still press keeps its mapping after a brief recognition delay.",
+                        "Your Controls (⌘?) stays open for searching. Print / Panel Guide opens the real panel SVG. Choose a mode, Turn / Tap or Press / Hold, and a zoom region. Use Print this view or Print complete guide, then Save as PDF; Save this panel PNG exports the selected diagram.",
+                        "Save either reference as a PNG for your phone or tablet. The printable pages offer Print / Save as PDF. The compact overview is best on A3 landscape; detailed pages stay readable on ordinary paper."
+                    ])
                     section("Change a control", items: [
                         "Click it on the drawing, or touch it on the panel. the Map follows your hands.",
                         "Pick a command on the right, or drag a tile onto the drawing. Search covers every MIDI2LR command.",
