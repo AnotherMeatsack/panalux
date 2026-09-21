@@ -1,95 +1,104 @@
 {
-  "version": "1.2.6",
-  "revision": "lights-waves-1",
+  "version": "1.2.7",
+  "revision": "whats-new-1",
   "changelogHeadings": [
-    "Panel lights stay on.",
-    "The intro lights the panel with each scene.",
-    "Waves follow your hand.",
-    "A calmer Rewind edge.",
-    "A calmer Rewind wheel.",
-    "Contact the maker.",
-    "Sync Settings no longer beeps."
+    "What’s New only shows what’s new to you.",
+    "The Panel Guide opens only when you ask.",
+    "The intro plays once."
   ],
   "steps": [
     {
+      "id": "whats-new",
+      "title": "What’s New only shows what’s new to you",
+      "body": "When PanaLux updates it lists the changes since the version you last used, then lights up where each one lives. Someone one update behind sees a short list; someone who skipped several sees more. A feature appears again only if it changed. Help → What’s New… brings this back any time.",
+      "since": "1.2.7",
+      "kind": "new",
+      "target": "help"
+    },
+    {
+      "id": "guide-button",
+      "title": "The Panel Guide opens only when you ask",
+      "body": "The panel guide no longer appears by itself when PanaLux opens. Open it from the Panel Guide button in the toolbar, or Help → Panel Reference. The intro also plays only the first time, not every launch.",
+      "since": "1.2.7",
+      "kind": "updated",
+      "target": "guide"
+    },
+    {
       "id": "lights-on",
       "title": "Panel lights stay on",
-      "body": "Your panel's key lights now stay on. Choose how they behave in Settings → Panel → Key lights, and set the Backlight slider there. Click 'Play Panel Light Show' to see the panel light up.",
-      "target": "replay",
-      "gesture": "taps",
-      "zoom": "full"
+      "body": "Your panel's key lights now stay on. Choose how they behave in Settings → Panel → Key lights, and set the Backlight slider there.",
+      "since": "1.2.6",
+      "kind": "updated",
+      "target": "settings",
+      "action": "lightshow"
     },
     {
       "id": "intro-lights",
       "title": "The intro lights the panel with each scene",
-      "body": "Each intro scene now has its own choreography on the physical panel: a dancing band, the sweep in step with the screen, knob banks counting one-two-three, trackball rings, the held key lighting up, and a chase on the last screen. Click 'Watch the Intro' and keep your eyes on the panel.",
-      "target": "replay",
-      "gesture": "taps",
-      "zoom": "full"
+      "body": "Each intro scene has its own choreography on the physical panel: a dancing band, the sweep in step with the screen, knob banks counting one-two-three, trackball rings, the held key lighting up, and a chase on the last screen. Help → Watch the Intro, and keep your eyes on the panel.",
+      "since": "1.2.6",
+      "kind": "updated",
+      "target": "help",
+      "action": "intro"
     },
     {
       "id": "waves",
       "title": "Waves follow your hand",
       "body": "Push a trackball and a wave of light travels the way you push it. Turn a knob and one calm ring spreads across the keys beside it. Switch knob waves and the red and green keys on or off in Settings → Panel.",
-      "target": "replay",
-      "gesture": "taps",
-      "zoom": "full"
+      "since": "1.2.6",
+      "kind": "updated",
+      "target": "settings"
     },
     {
       "id": "soft-edge",
       "title": "A calmer Rewind edge",
       "body": "Hold Undo in Lightroom to enter Rewind. The glow along the edge of Lightroom's display is transparent, softly blurred and gently warped, and no longer flickers as you turn the wheel. Nothing changes on your other displays.",
-      "target": "replay",
-      "gesture": "taps",
-      "zoom": "full"
+      "since": "1.2.6",
+      "kind": "updated",
+      "target": "settings"
     },
     {
       "id": "calm-wheel",
       "title": "A calmer Rewind wheel",
       "body": "Turn the center ring slowly and each click moves exactly one stop. Faster turns travel further, more gently than before. The Rewind speed dial in Settings still sets how far a hard spin travels.",
-      "target": "replay",
-      "gesture": "taps",
-      "zoom": "full"
-    },
-    {
-      "id": "contact",
-      "title": "Contact the maker",
-      "body": "Menu bar → Contact · Bug, Question, Idea, or Settings → Help. Pick a type, write your message and choose Email (private, to panalux@icloud.com) or GitHub (public). Your PanaLux version and connection status are added and nothing is sent until you press send in Mail or on GitHub. Click 'Open Contact' to try it.",
-      "target": "replay",
-      "gesture": "taps",
-      "zoom": "full"
+      "since": "1.2.6",
+      "kind": "updated",
+      "target": "settings"
     },
     {
       "id": "sync-beep",
       "title": "Sync Settings no longer beeps",
       "body": "Sync Settings only works when two or more photos are selected in Lightroom. If it is greyed out, PanaLux now says so on screen instead of sending a shortcut that makes the Mac beep. Select several photos in the filmstrip, then press your Sync key.",
-      "target": "replay",
-      "gesture": "taps",
-      "zoom": "full"
+      "since": "1.2.6",
+      "kind": "updated",
+      "target": "map"
     },
     {
-      "id": "find-guide",
-      "title": "Start here: Print / Panel Guide",
-      "body": "The highlighted printer button in the app toolbar opens your panel reference. You can also use Help → Panel Reference · View / Print / Save…. The real guide is shown below so you can practice its controls here. This walkthrough changes no assignments or Lightroom settings.",
-      "target": "launcher",
-      "gesture": "taps",
-      "zoom": "full"
+      "id": "contact",
+      "title": "Contact the maker",
+      "body": "Menu bar → Contact · Bug, Question, Idea, or Settings → Help. Pick a type, write your message and choose Email (private, to panalux@icloud.com) or GitHub (public). Your PanaLux version and connection status are added and nothing is sent until you press send.",
+      "since": "1.2.5",
+      "kind": "new",
+      "target": "help",
+      "action": "contact"
     },
     {
       "id": "lightshow",
-      "title": "Hardware Color Indicators & Light Show",
-      "body": "Your Micro Color Panel now features active dual-color hardware lighting. Bypass illuminates Red in Lightroom Before view and White in After view; mode keys illuminate Green for Offset, Modifiers, Stills, Highlights, Loupe and Masks. In Rewind mode, Shift Up blinks green in direct correlation with your reverse wheel rotation speed. Click 'Play Light Show' to preview the full lighting choreography on your physical panel and screen.",
-      "target": "replay",
-      "gesture": "taps",
-      "zoom": "full"
+      "title": "Hardware color indicators and light show",
+      "body": "Bypass lights red in Lightroom's Before view and white in After view. Mode keys light green for Offset, Modifiers, Stills, Highlights, Loupe and Masks. In Rewind, Shift Up blinks green with your wheel speed. Help → Play Panel Light Show previews it on your panel.",
+      "since": "1.2.5",
+      "kind": "new",
+      "target": "help",
+      "action": "lightshow"
     },
     {
-      "id": "replay",
-      "title": "Find this walkthrough again",
-      "body": "Help → Show This Update's Walkthrough… replays these steps. Take the Hands-On Tour starts with this guide, then continues with panel practice. Quick Reference has the shortcut and export instructions; What’s New in the menu bar or Settings keeps the changelog. Click Done to mark this build's walkthrough complete. Later or closing the app keeps it unfinished.",
-      "target": "replay",
-      "gesture": "taps",
-      "zoom": "full"
+      "id": "find-guide",
+      "title": "The Panel Guide",
+      "body": "The Panel Guide button in the toolbar opens your panel reference: every mode, bank and gesture on the real panel drawing, ready to print or save as PDF or PNG. Hold Previous Still and Next Still together on the panel to peek at it while you grade.",
+      "since": "1.2.4",
+      "kind": "new",
+      "target": "guide",
+      "action": "guide"
     }
   ]
 }

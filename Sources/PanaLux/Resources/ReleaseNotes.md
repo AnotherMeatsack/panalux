@@ -1,3 +1,15 @@
+# PanaLux v1.2.7
+
+Updating now shows you only what changed since the version you were on, then points to where each change lives. The panel guide stays out of the way until you ask for it.
+
+- **What’s New only shows what’s new to you.** After an update PanaLux lists the changes since the version you last used, then closes in on each one in the real window with a spotlight. If you are one update behind you see a short list; if you skipped several you see more. A feature appears again only if it changed. Help → What’s New… replays it.
+- **The Panel Guide opens only when you ask.** It no longer appears by itself when PanaLux opens. Use the Panel Guide button in the toolbar or Help → Panel Reference.
+- **The intro plays once.** It no longer replays every time PanaLux opens. Help → Watch the Intro plays it any time.
+
+Signed ad hoc; not notarized and not Developer ID signed. macOS treats each ad hoc build as a new app, so after updating, remove PanaLux from System Settings → Privacy & Security → Accessibility and add it again to keep the typed-key buttons working.
+
+---
+
 # PanaLux v1.2.6
 
 The panel lights are reliable and reactive again, the intro plays them in step with what you see, and Rewind's edge glow is calmer.

@@ -283,9 +283,9 @@ public struct SettingsView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { guide.presentSetup() }
             }
             Button("Panel Reference · View / Print / Save…") { ReferenceCard.open() }
-            Button("Show This Update’s Walkthrough…") {
+            Button("What’s New…") {
                 dismiss()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { FeatureWalkthroughController.shared.replay() }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { WhatsNewController.shared.replay() }
             }
             Button("Play Panel Light Show") {
                 dismiss()

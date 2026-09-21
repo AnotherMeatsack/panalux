@@ -16,8 +16,9 @@ for s in m['steps']:
     assert s['id'] not in ids, 'Duplicate step ID'
     ids.add(s['id'])
     assert s['title'].strip() and len(s['body'].strip()) >= 60, 'Explain where and how, not just a feature name'
-    assert s['target'] in ['launcher','chord','map','gestures','zoom','print','png','replay'], 'Implement a real UI spotlight for each new target'
-    assert s['gesture'] in ['taps','holds','both']
-    assert s['zoom'] in ['full','knobs','left','center','right','wheels']
-assert {'launcher','replay'} <= {s['target'] for s in m['steps']}, 'Include discovery and replay instructions'
+    assert s['target'] in ['guide','help','settings','map','inspector'], 'Implement a real UI spotlight for each new target'
+    assert s['kind'] in ['new','updated'], 'Say whether the item is new or updated'
+    assert re.fullmatch(r'\d+(\.\d+)*', s['since']), 'since must be a version'
+    assert tuple(map(int, s['since'].split('.'))) <= tuple(map(int, version.split('.'))), 'since cannot be after this release'
+assert any(s['since'] == version for s in m['steps']), 'Author at least one item that is new in this version'
 print(f'Walkthrough {m["revision"]}: {len(m["steps"])} authored steps cover {len(headings)} changelog features.')

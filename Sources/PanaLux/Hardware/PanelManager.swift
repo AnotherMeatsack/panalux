@@ -301,6 +301,8 @@ public class PanelManager: ObservableObject {
             self.isConnected = true
             self.serialNumber = serial
             self.delegate?.panelDidConnect(serial: serial)
+            // Let the first LED setup settle, then come alive.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { PanelLightShow.shared.startBurst() }
         }
         print("[PanelManager] Panel connected")
     }

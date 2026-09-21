@@ -57,11 +57,6 @@ public class GuideController: ObservableObject {
     }
 
     public func startWalkthrough() {
-        walkthroughStep = nil
-        FeatureWalkthroughController.shared.replay { [weak self] in self?.startHardwareWalkthrough() }
-    }
-
-    private func startHardwareWalkthrough() {
         showSetup = false
         stepSatisfied = false
         captureTourPhoto()
@@ -125,7 +120,7 @@ public class GuideController: ObservableObject {
 
     /// The panel drives the tour: doing the thing a step asks for moves you on.
     public func hardwareEvent(_ event: HardwareEvent) {
-        guard FeatureWalkthroughController.shared.index == nil, let index = walkthroughStep, index < steps.count, !stepSatisfied else { return }
+        guard WhatsNewController.shared.spotlightIndex == nil, let index = walkthroughStep, index < steps.count, !stepSatisfied else { return }
         guard steps[index].goal.isMet(by: event) else { return }
         stepSatisfied = true
         let work = DispatchWorkItem { [weak self] in
@@ -225,7 +220,7 @@ public struct TourStep {
                  body: "⌘Z undoes map changes. Every map change is backed up. Pause stops all output so you can practice, and Back to Base drops every mode. Both are also in the menu bar.",
                  goal: .none, highlight: nil),
         TourStep(anchor: .toolbar, title: "Find anything with ⌘K",
-                 body: "Type a Lightroom command to run it once, assign it, see where it lives on the panel, or park it on a knob for a minute. Print / Panel Guide opens the physical reference. Choose a mode and gesture, then print a view, complete guide or enlarged sections, or save PNG. Help → Show This Update’s Walkthrough replays the guided explanation.",
+                 body: "Type a Lightroom command to run it once, assign it, see where it lives on the panel, or park it on a knob for a minute. Print / Panel Guide opens the physical reference. Choose a mode and gesture, then print a view, complete guide or enlarged sections, or save PNG. Help → What’s New replays the latest changes.",
                  goal: .none, highlight: nil)
     ]
 }

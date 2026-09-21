@@ -99,7 +99,7 @@ public struct WalkthroughOverlay: View {
     }
 }
 
-private struct CalloutBackground: ViewModifier {
+struct CalloutBackground: ViewModifier {
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *) {
             content.glassEffect(.regular, in: .rect(cornerRadius: 22))
@@ -109,7 +109,7 @@ private struct CalloutBackground: ViewModifier {
     }
 }
 
-private struct SpotlightMask: View {
+struct SpotlightMask: View {
     let hole: CGRect
 
     var body: some View {

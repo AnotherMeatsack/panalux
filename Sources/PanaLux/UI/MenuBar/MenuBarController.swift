@@ -126,7 +126,7 @@ public class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(action("Import Map…", #selector(importMap), key: "", symbol: "square.and.arrow.down"))
         menu.addItem(action("Export Map…", #selector(exportMap), key: "", symbol: "square.and.arrow.up"))
         menu.addItem(action("Copy Map", #selector(copyMap), key: "", symbol: "doc.on.doc"))
-        menu.addItem(action("Show This Update’s Walkthrough…", #selector(openFeatureWalkthrough), key: "", symbol: "sparkles"))
+        menu.addItem(action("What’s New…", #selector(openFeatureWalkthrough), key: "", symbol: "sparkles"))
         menu.addItem(action("Watch the Intro", #selector(openIntro), key: "", symbol: "play.rectangle"))
         menu.addItem(action("Take the Hands-On Tour", #selector(openTutorial), key: "", symbol: "sparkles"))
         menu.addItem(action("Setup Assistant…", #selector(openSetup), key: "", symbol: "checklist"))
@@ -191,7 +191,7 @@ public class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func openFeatureWalkthrough() {
         StudioWindowController.shared.show()
-        FeatureWalkthroughController.shared.replay()
+        WhatsNewController.shared.replay()
     }
 
     @objc private func openIntro() {

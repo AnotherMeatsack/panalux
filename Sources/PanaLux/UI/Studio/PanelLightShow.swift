@@ -28,11 +28,24 @@ public final class PanelLightShow: ObservableObject {
     private var startTime: Date = .distantPast
     private var initialBrightness: Int = 100
     private var completionCallback: (() -> Void)?
+    private var isBurst = false
+    private var lastBurst: Date = .distantPast
+    private static let burstDuration: TimeInterval = 1.3
     
     public init() {}
+
+    /// Plugging the panel in: one quick burst of light and color, then back to normal.
+    public func startBurst() {
+        guard !isRunning, !IntroLEDDirector.shared.isActive, !GuideController.shared.showIntro,
+              Date().timeIntervalSince(lastBurst) > 4 else { return }
+        lastBurst = Date()
+        isBurst = true
+        start()
+    }
     
     public func start(completion: (() -> Void)? = nil) {
         guard !isRunning && !IntroLEDDirector.shared.isActive else { return }
+        if !isBurst { lastBurst = Date() }
         isRunning = true
         startTime = Date()
         initialBrightness = Int(AppSettings.shared.backlightBrightness)
@@ -52,6 +65,7 @@ public final class PanelLightShow: ObservableObject {
     public func stop() {
         guard isRunning else { return }
         isRunning = false
+        isBurst = false
         timer?.invalidate()
         timer = nil
         currentFrame = .inactive
@@ -71,6 +85,7 @@ public final class PanelLightShow: ObservableObject {
     
     private func tick(timer: Timer) {
         let elapsed = Date().timeIntervalSince(startTime)
+        if isBurst { tickBurst(elapsed); return }
         let totalDuration: TimeInterval = 6.8
         
         if elapsed >= totalDuration {
@@ -272,5 +287,35 @@ public final class PanelLightShow: ObservableObject {
             title: title,
             subtitle: subtitle
         )
+    }
+
+    /// An explosion from the center: everything flashes on, then the keys flicker out from the
+    /// middle to the edges as the burst fades, and the normal lights come back.
+    private func tickBurst(_ elapsed: TimeInterval) {
+        guard elapsed < Self.burstDuration else { stop(); return }
+        let n = elapsed / Self.burstDuration
+        // Density of lit keys: full for the first instant, then decaying to nothing.
+        let density = n < 0.12 ? 1.0 : pow(1 - (n - 0.12) / 0.88, 1.6)
+        // The wavefront runs outward from the middle of the panel; keys behind it flicker.
+        let front = min(1.0, n / 0.45)
+        let bucket = Int(elapsed / 0.05)
+        func lit(_ bit: Int) -> Bool {
+            let dist = Double(bit % 13) / 13.0 * 0.5 + Double(bit % 5) / 5.0 * 0.5   // stable spread per key
+            if dist > front { return false }
+            var h = UInt64(truncatingIfNeeded: bit &* 73856093 ^ bucket &* 19349663)
+            h = (h ^ (h >> 13)) &* 0x9E3779B97F4A7C15
+            return Double(h % 1000) / 1000.0 < density
+        }
+        var whiteBits = Set<Int>(), colorBits = Set<Int>()
+        var whiteNames: [String] = [], colorDict: [String: String] = [:]
+        for (bit, name) in HardwareMap.shared.buttonBitToControl where lit(bit) {
+            whiteBits.insert(bit); whiteNames.append(name)
+        }
+        for ch in PanelColorLED.allCases where lit(ch.rawValue + 1000) {
+            colorBits.insert(ch.rawValue)
+            colorDict[ch.controlName] = ch.isRed ? "red" : "green"
+        }
+        PanelManager.shared.setDualLEDs(whiteBits: whiteBits, colorBits: colorBits)
+        currentFrame = LightShowFrame(active: true, whiteControls: whiteNames, colorControls: colorDict, title: "", subtitle: "")
     }
 }
