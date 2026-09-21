@@ -105,6 +105,9 @@ struct FeatureSuggestionView: View {
     static let shared = FeatureSuggestionWindow()
     private var window: NSWindow?
     func show() {
+        ContactWindowController.shared.show(kind: .idea)
+    }
+    func showLegacy() {
         if window == nil {
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 560, height: 410), styleMask: [.titled, .closable], backing: .buffered, defer: false)
             w.title = "Suggest a Feature"; w.contentView = NSHostingView(rootView: FeatureSuggestionView(onCancel: { [weak w] in w?.close() }))

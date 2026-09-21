@@ -230,7 +230,11 @@ public struct RewindEdgeEffect: View {
     }
 
     public var body: some View {
-        Canvas { context, size in
+        Canvas { outer, size in
+            // Organic, not crisp: everything is drawn into one softly blurred, mostly transparent layer.
+            outer.opacity = 0.55
+            outer.drawLayer { context in
+            context.addFilter(.blur(radius: reduceMotion ? 1.5 : 3.2))
             let bounds = CGRect(origin: .zero, size: size)
             let cornerRadius: CGFloat = 26
 
@@ -404,7 +408,8 @@ public struct RewindEdgeEffect: View {
                 }
             }
 
-            // In-Focus Specular Core Wavefront Lines (Transparent, Sleek)
+            let warpAmp: CGFloat = reduceMotion ? 0 : 5 + CGFloat(min(6, velocity * 3))
+            // Soft wavefront lines, gently warped
             for i in 0..<waveCount {
                 let waveProgress = (Double(i) / Double(waveCount) - phase).truncatingRemainder(dividingBy: 1.0)
                 let fraction = waveProgress < 0 ? waveProgress + 1.0 : waveProgress
@@ -420,24 +425,45 @@ public struct RewindEdgeEffect: View {
 
                 // Cyan chromatic fringe
                 context.stroke(
-                    Path(roundedRect: rippleRect.offsetBy(dx: -chromOffset, dy: -chromOffset * 0.5), cornerRadius: waveRadius),
+                    Self.warped(rippleRect.offsetBy(dx: -chromOffset, dy: -chromOffset * 0.5), phase: phase, seed: Double(i), amp: warpAmp),
                     with: .color(cyan.opacity(waveOpacity * 0.50)),
                     lineWidth: coreWidth
                 )
                 // Magenta chromatic fringe
                 context.stroke(
-                    Path(roundedRect: rippleRect.offsetBy(dx: chromOffset, dy: chromOffset * 0.5), cornerRadius: waveRadius),
+                    Self.warped(rippleRect.offsetBy(dx: chromOffset, dy: chromOffset * 0.5), phase: phase, seed: Double(i) + 0.4, amp: warpAmp),
                     with: .color(magenta.opacity(waveOpacity * 0.50)),
                     lineWidth: coreWidth
                 )
                 // Specular frosted white core
                 context.stroke(
-                    Path(roundedRect: rippleRect, cornerRadius: waveRadius),
+                    Self.warped(rippleRect, phase: phase, seed: Double(i) + 0.2, amp: warpAmp),
                     with: .color(glassWhite.opacity(waveOpacity * 0.75)),
                     lineWidth: coreWidth * 0.8
                 )
             }
+            }
         }
+    }
+
+    /// A squarish outline whose edge drifts in and out, so wave lines feel like liquid, not a frame.
+    static func warped(_ rect: CGRect, phase: Double, seed: Double, amp: CGFloat) -> Path {
+        var path = Path()
+        let steps = 140
+        for n in 0..<steps {
+            let a = Double(n) / Double(steps) * 2 * .pi
+            let c = cos(a), sn = sin(a)
+            // Superellipse: flat sides and round corners.
+            let sx = c < 0 ? -1.0 : 1.0, sy = sn < 0 ? -1.0 : 1.0
+            let x = sx * pow(abs(c), 0.18), y = sy * pow(abs(sn), 0.18)
+            let wobble = sin(a * 3 + phase * 4 + seed * 2.3) * 0.6 + sin(a * 7 - phase * 6 + seed) * 0.4
+            let inward = 1 - Double(amp * 3) * (wobble * 0.5 + 0.5) / max(1, Double(rect.width))
+            let p = CGPoint(x: rect.midX + CGFloat(x * inward) * rect.width / 2 - CGFloat(x) * amp * CGFloat(wobble * 0.5 + 0.5) * 0,
+                            y: rect.midY + CGFloat(y * inward) * rect.height / 2)
+            if n == 0 { path.move(to: p) } else { path.addLine(to: p) }
+        }
+        path.closeSubpath()
+        return path
     }
 
     public static func glowEnergy(age: TimeInterval) -> Double {

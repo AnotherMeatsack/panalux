@@ -286,9 +286,9 @@ public final class RewindEngine: ObservableObject {
     /// eases up smoothly, with no seam between "careful" and "travelling", to at most a fortieth
     /// of the session per click so a hard spin crosses any length of session in a second or two.
     static func jogMultiplier(rate: Double, stepCount: Int, acceleration: Double) -> Int {
-        let careful = 10.0     // clicks a second: a deliberate turn
-        let flat = 70.0        // clicks a second: a hard spin
-        let reach = max(1.0, Double(stepCount) / 40.0) * (0.25 + 1.5 * min(1, max(0, acceleration)))
+        let careful = 22.0     // clicks a second: a deliberate turn, still one stop a click
+        let flat = 120.0       // clicks a second: a hard spin
+        let reach = max(1.0, Double(stepCount) / 40.0) * (0.2 + 0.9 * min(1, max(0, acceleration)))
         let s = min(1.0, max(0.0, (rate - careful) / (flat - careful)))
         return max(1, Int((1.0 + (reach - 1.0) * s * s).rounded()))
     }
@@ -305,7 +305,7 @@ public final class RewindEngine: ObservableObject {
         let gap = max(0.001, min(0.5, elapsed))
         lastScrubAt = now
         let instant = abs(units) / gap / max(1, clickUnits)
-        jogRate = jogRate * 0.6 + instant * 0.4
+        jogRate = jogRate * 0.75 + instant * 0.25
         let reach = Double(RewindEngine.jogMultiplier(rate: jogRate, stepCount: playback.stepTimes.count,
                                                       acceleration: acceleration))
         // Fractional stops respond to every packet. A whole slow click still lands exactly on
@@ -845,7 +845,7 @@ public final class RewindEngine: ObservableObject {
             isPeeking: peeking,
             isAtTip: playback.tip - playhead < 0.4,
             caption: caption,
-            speed: isPlaying ? min(1.0, playSpeed / 8.0) : min(1.0, jogRate / 70.0),
+            speed: isPlaying ? min(1.0, playSpeed / 8.0) : min(1.0, jogRate / 120.0),
             rate: playSpeed,
             isPlaying: isPlaying,
             isReverse: isPlaying && playDirection < 0,

@@ -130,7 +130,7 @@ public class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(action("Watch the Intro", #selector(openIntro), key: "", symbol: "play.rectangle"))
         menu.addItem(action("Take the Hands-On Tour", #selector(openTutorial), key: "", symbol: "sparkles"))
         menu.addItem(action("Setup Assistant…", #selector(openSetup), key: "", symbol: "checklist"))
-        menu.addItem(action("Report a Bug…", #selector(reportBug), key: "", symbol: "exclamationmark.bubble"))
+        menu.addItem(action("Contact · Bug, Question, Idea…", #selector(reportBug), key: "", symbol: "exclamationmark.bubble"))
         menu.addItem(action("What’s New…", #selector(showReleaseNotes), key: "", symbol: "sparkles"))
         menu.addItem(action("Check for Updates…", #selector(checkForUpdates), key: "", symbol: "arrow.down.circle"))
         menu.addItem(action("Play Panel Light Show", #selector(playLightShow), key: "", symbol: "sparkles"))

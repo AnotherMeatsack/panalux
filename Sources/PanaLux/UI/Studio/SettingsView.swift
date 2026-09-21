@@ -292,8 +292,9 @@ public struct SettingsView: View {
                 dismiss()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { guide.presentQuickReference() }
             }
-            Button("Suggest a Feature…") { FeatureSuggestionWindow.shared.show() }
             Button("Report a Bug…") { BugReport.present() }
+            Button("Ask a Question or Suggest a Feature…") { ContactWindowController.shared.show(kind: .question) }
+            Link("Email \(ContactMessage.email)", destination: URL(string: "mailto:\(ContactMessage.email)")!)
             Link("GitHub", destination: URL(string: BugReport.github)!)
             Link("MIDI2LR command list", destination: URL(string: "https://github.com/rsjaffe/MIDI2LR/wiki/Commands")!)
         }

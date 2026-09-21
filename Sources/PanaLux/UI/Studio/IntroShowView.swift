@@ -40,6 +40,20 @@ struct IntroShowView: View {
             }
             .padding(.bottom, 70)
 
+            // Colour wave along the screen edge through every scene. It restarts with each scene
+            // and runs harder while the panel is being pressed or turned.
+            if !reduceMotion {
+                TimelineView(.animation) { timeline in
+                    let t = timeline.date.timeIntervalSince(sceneStart)
+                    RewindEdgeEffect(phase: t * 0.8, energy: scene == 7 ? 0.6 : 0.42,
+                                     direction: 1, velocity: scene == 7 ? 0.5 : 0.15,
+                                     state: .empty, age: t)
+                        .allowsHitTesting(false)
+                }
+                .ignoresSafeArea()
+                .opacity(playing ? 1 : 0.5)
+            }
+
             VStack {
                 Spacer()
                 controls
@@ -604,11 +618,19 @@ struct PanelStage: View {
                 if let image = PanelGlyph.image(named: "micro-color-panel") {
                     Image(nsImage: image).resizable()
                 }
-                if sweep {
-                    LinearGradient(colors: [.clear, .white.opacity(0.16), .clear], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: 180 * sx * 1.4)
+                // The colour wave runs whenever the panel is doing something, not only on the opening
+                // scene, so holds, presses and turns all read as alive on screen.
+                if sweep || !heldKeys.isEmpty || pressedFlash || !ringGlow.isEmpty || !changed.isEmpty {
+                    LinearGradient(colors: [.clear, Color.cyan.opacity(0.30), keyColor.opacity(0.34),
+                                            Color(red: 1, green: 0.22, blue: 0.70).opacity(0.30), .clear],
+                                   startPoint: .leading, endPoint: .trailing)
+                        .frame(width: 220 * sx * 1.4)
+                        .blur(radius: 6)
                         .offset(x: CGFloat((t * 260).truncatingRemainder(dividingBy: 1400)) * sx - 200 * sx)
                         .blendMode(.plusLighter)
+                        .allowsHitTesting(false)
+                }
+                if sweep {
                     ForEach(0..<3, id: \.self) { i in
                         let on = sin(t * 2 + Double(i) * 2) > 0
                         Circle()

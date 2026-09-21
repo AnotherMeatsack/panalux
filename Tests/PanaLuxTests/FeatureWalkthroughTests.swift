@@ -69,9 +69,8 @@ final class FeatureWalkthroughTests: XCTestCase {
     func testManifestCoversRealTargetsAndDiscovery() {
         let m = FeatureWalkthroughManifest.current
         XCTAssertEqual(Set(m.steps.map(\.id)).count, m.steps.count)
-        XCTAssertEqual(Set(m.steps.map(\.target)), Set(["launcher","chord","map","gestures","zoom","print","png","replay"]))
-        XCTAssertTrue(m.steps.contains { $0.body.contains("Release either key") })
-        XCTAssertTrue(m.steps.contains { $0.body.contains("Save as PDF") })
+        XCTAssertEqual(Set(m.steps.map(\.target)), Set(["launcher", "replay"]))
+        XCTAssertTrue(m.steps.contains { $0.id == "contact" && $0.body.contains("panalux@icloud.com") })
         XCTAssertTrue(m.steps.contains { $0.body.contains("Help →") })
     }
 }

@@ -21,6 +21,20 @@ struct FeatureWalkthroughView: View {
                 HStack {
                     Button("Later — keep unfinished") { tour.later() }
                     Button("Open full guide in browser") { ReferenceCard.open() }
+                    if step.id == "contact" {
+                        Button {
+                            ContactWindowController.shared.show(kind: .question)
+                        } label: {
+                            Label("Open Contact", systemImage: "envelope")
+                        }
+                    }
+                    if step.id == "soft-edge" || step.id == "intro-color" {
+                        Button {
+                            GuideController.shared.presentIntro()
+                        } label: {
+                            Label("Watch the Intro", systemImage: "play.rectangle")
+                        }
+                    }
                     if step.id == "lightshow" {
                         Button {
                             PanelLightShow.shared.start()

@@ -855,7 +855,7 @@ final class RewindTransportTests: XCTestCase {
         }
         // A hard spin covers a long session in a couple of dozen clicks; a short one stays fine.
         let long = RewindEngine.jogMultiplier(rate: 90, stepCount: 40_000, acceleration: 0.5)
-        XCTAssertGreaterThan(long, 400)
+        XCTAssertGreaterThan(long, 150)
         XCTAssertLessThanOrEqual(long, 40_000 / 40 * 2)
         let short = RewindEngine.jogMultiplier(rate: 90, stepCount: 40, acceleration: 0.5)
         XCTAssertLessThanOrEqual(short, 2, "thirty seconds of editing does not need to be crossed at speed")

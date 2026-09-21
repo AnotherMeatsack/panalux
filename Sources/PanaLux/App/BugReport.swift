@@ -8,6 +8,10 @@ public enum BugReport {
     public static let newIssue = github + "/issues/new"
 
     public static func present() {
+        Task { @MainActor in ContactWindowController.shared.show(kind: .bug) }
+    }
+
+    static func presentLegacyAlert() {
         let alert = NSAlert()
         alert.messageText = "Report a bug"
         alert.informativeText = "Write what happened. PanaLux adds version, connections, and the active mode. You can attach your map on GitHub if the bug is about mapping."

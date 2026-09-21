@@ -1,3 +1,16 @@
+# PanaLux v1.2.5
+
+Rewind is gentler and more organic, the intro shows color everywhere, and you can now reach the maker.
+
+- **A softer Rewind edge.** The screen-edge glow on Lightroom's display is far more transparent, blurred and gently warped, so it feels like liquid light instead of a crisp frame. A prismatic color wave sweeps across when Rewind opens and again as you turn the wheel.
+- **A calmer Rewind wheel.** A deliberate turn now moves one stop per click over a wider range of speeds, and hard spins travel less far, so the playhead no longer jogs around. The Rewind speed dial still sets how far a fast spin travels.
+- **Color throughout the intro.** The color wave runs along the screen edge in every scene and across the panel whenever the demo holds keys, presses buttons or turns rings. Replay it any time from Help → Watch the Intro or the menu bar.
+- **Contact the maker.** Menu bar → Contact · Bug, Question, Idea, or Settings → Help. Choose Bug, Question or Idea, write your message and send it by email to panalux@icloud.com or as a public GitHub issue. Both arrive neatly formatted with your PanaLux version and connection status. Nothing is sent until you press send.
+
+Signed ad hoc; not notarized and not Developer ID signed. Physical panel timing and focus behavior over Lightroom still need hands-on validation.
+
+---
+
 # PanaLux v1.2.4
 
 See your actual panel assignments on the physical panel drawing while grading, or keep a detailed reference beside you.
